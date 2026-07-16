@@ -1,6 +1,97 @@
 // FFT Analyser — application logic
 // (ported from d:/ClaudeCode/fft-analyser/index.html; FFT math left byte-identical)
 
+// ── i18n dictionary (zh restored from old single-file version) ─────────────
+var MT_I18N = {
+  inputData:  { en: 'Input Data', zh: '輸入資料' },
+  uploadCsv:  { en: 'Upload CSV', zh: '上傳 CSV' },
+  pasteData:  { en: 'Paste Data', zh: '貼上資料' },
+  dropMsg:    { en: 'Click to upload or drag & drop a CSV file', zh: '點擊上傳或拖曳 CSV 檔案' },
+  dropSub:    { en: 'Tektronix format — column D = time, column E = voltage', zh: 'Tektronix 格式 — D 欄 = 時間，E 欄 = 電壓' },
+  srLabel:    { en: 'Sampling rate (Hz):', zh: '取樣率 (Hz)：' },
+  srHint:     { en: 'Leave blank to auto-detect', zh: '時間欄為秒時可留空' },
+  srPh:       { en: 'auto-detect from time column', zh: '留空自動偵測' },
+  manualPh:   { en: 'Paste data here…', zh: '在此貼上資料…' },
+  winFunc:    { en: 'Window Function', zh: '窗函數' },
+  btnAnalyse: { en: '▶ Analyse', zh: '▶ 開始分析' },
+  btnExport:  { en: '⬇ Export CSV', zh: '⬇ 匯出 CSV' },
+  preview:    { en: 'Preview', zh: '預覽' },
+  barTitle:   { en: 'Harmonic amplitude (log scale)', zh: '諧波振幅（對數刻度）' },
+  specTitle:  { en: 'Frequency spectrum', zh: '頻譜圖' },
+  summary:    { en: 'Harmonic Summary', zh: '諧波摘要' },
+  thOrder:    { en: 'Order', zh: '階次' },
+  thFreq:     { en: 'Frequency (Hz)', zh: '頻率 (Hz)' },
+  thAmp:      { en: 'Amplitude (V)', zh: '振幅 (V)' },
+  thRel:      { en: 'Relative to fund.', zh: '相對基頻' },
+  ready:      { en: 'Ready', zh: '就緒' },
+
+  hintBox: {
+    en: 'Two columns (time or index + voltage), tab or space separated:<br>'+
+        '&nbsp;&nbsp;-2.00E-02 &nbsp; 1.82E-01<br>'+
+        '&nbsp;&nbsp;-1.99E-02 &nbsp; 1.81E-01 &nbsp; ...<br><br>'+
+        'Index column (1, 2, 3 …) — enter sampling rate below:<br>'+
+        '&nbsp;&nbsp;1 &nbsp; 0.087 &nbsp;&nbsp;&nbsp; 2 &nbsp; 0.174 &nbsp; ...',
+    zh: '兩欄資料（時間或序號 + 電壓），Tab 或空白分隔：<br>'+
+        '&nbsp;&nbsp;-2.00E-02 &nbsp; 1.82E-01<br>'+
+        '&nbsp;&nbsp;-1.99E-02 &nbsp; 1.81E-01 &nbsp; ...<br><br>'+
+        '左欄為序號（1, 2, 3…）時，請在下方填入取樣率：<br>'+
+        '&nbsp;&nbsp;1 &nbsp; 0.087 &nbsp;&nbsp;&nbsp; 2 &nbsp; 0.174 &nbsp; ...',
+  },
+
+  winFlatTop: { en: 'Best amplitude accuracy — ideal for harmonic measurement', zh: '振幅精度最高 — 適合量諧波大小' },
+  winHann:    { en: 'Good frequency resolution — general-purpose default', zh: '頻率解析度好 — 一般分析的預設選擇' },
+  winHamming: { en: 'Low sidelobes — good for speech / telecom', zh: '旁瓣較小 — 適合語音／通訊訊號' },
+  winRect:    { en: 'No weighting — best resolution but heavy leakage', zh: '無加權 — 頻率解析度最好但洩漏嚴重' },
+
+  mFund: { en: 'Fundamental', zh: '基頻' },
+  mAmp:  { en: 'Amplitude (1x)', zh: '振幅 (1x)' },
+  mTHD:  { en: 'THD', zh: 'THD' },
+  mSr:   { en: 'Sample rate', zh: '取樣率' },
+  mFft:  { en: 'FFT size', zh: 'FFT 大小' },
+  mWin:  { en: 'Window', zh: '窗函數' },
+  kHz:   { en: 'kHz', zh: 'kHz' },
+  pts:   { en: 'pts', zh: '點' },
+
+  ttOrder: { en: '{h}x harmonic', zh: '第 {h} 次諧波' },
+  ttFreq:  { en: 'Freq', zh: '頻率' },
+  ttAmp:   { en: 'Amp', zh: '振幅' },
+
+  fundamentalWord: { en: 'fundamental', zh: '基頻' },
+  thdRow:          { en: 'Total Harmonic Distortion (THD)', zh: '總諧波失真 (THD)' },
+
+  spectrumLabel:  { en: 'Spectrum', zh: '頻譜' },
+  harmonicsLabel: { en: 'Harmonics', zh: '諧波' },
+  axisFreq:       { en: 'Frequency (Hz)', zh: '頻率 (Hz)' },
+  axisAmp:        { en: 'Amplitude (V)', zh: '振幅 (V)' },
+
+  startingWorker: { en: 'Starting worker…', zh: '啟動運算中…' },
+  renderingChart: { en: 'Rendering…', zh: '繪製圖表…' },
+  doneMsg:        { en: 'Done — fundamental {f} Hz | THD {t}%', zh: '完成 — 基頻 {f} Hz | THD {t}%' },
+  errMsg:         { en: 'Error: {m}', zh: '錯誤：{m}' },
+  loadedMsg:      { en: 'Loaded {n} points — {f}', zh: '已載入 {n} 個資料點 — {f}' },
+
+  alertNoCsv:    { en: 'Please upload a CSV file first.', zh: '請先上傳 CSV 檔案。' },
+  alertNoPaste:  { en: 'Please paste your data first.', zh: '請先貼上資料。' },
+  alertParse:    { en: 'Expected 2 columns per line:\n{l}', zh: '每行需要恰好兩個數值：\n{l}' },
+  alertNoSr:     { en: 'Cannot auto-detect sampling rate. Please enter it manually.', zh: '無法自動偵測取樣率，請在上方手動填入。' },
+  alertFewPts:   { en: 'Not enough data ({n} points — need at least 8).', zh: '資料點數不足（{n} 點，至少需要 8 點）。' },
+  alertCsvFmt:   { en: 'Not enough data points (< 8). Check CSV format.', zh: '資料點不足（< 8），請確認 CSV 格式。' },
+  alertNoSrCsv:  { en: 'Cannot determine sampling rate from CSV time column.', zh: '無法從時間欄計算取樣率。' },
+
+  aboutLabel:     { en: 'About this tool', zh: '關於此工具' },
+  whatDoesLabel:  { en: 'What it does', zh: '功能說明' },
+  whatDoesText:   { en: 'Upload an oscilloscope CSV or paste time-domain data to compute the frequency spectrum, extract harmonic amplitudes (1x–10x), and calculate THD — all in your browser, no install needed.',
+                    zh: '上傳示波器 CSV 檔案，或貼上時域資料，即可在瀏覽器中計算頻譜、擷取諧波振幅（1x–10x）並計算 THD——不需安裝任何軟體。' },
+  winFuncsLabel:  { en: 'Window functions', zh: '窗函數' },
+  seoFlatTop:     { en: 'best amplitude accuracy, ideal for THD measurement', zh: '振幅精度最高，適合量測 THD' },
+  seoHann:        { en: 'general-purpose spectrum analysis', zh: '一般用途頻譜分析' },
+  seoHamming:     { en: 'low sidelobes, speech & telecom', zh: '旁瓣較小，適合語音與通訊' },
+  seoRect:        { en: 'best frequency resolution', zh: '頻率解析度最佳' },
+  useCasesLabel:  { en: 'Use cases', zh: '應用場景' },
+  useCasesText:   { en: 'Motor back-EMF harmonic analysis · Power quality THD measurement · Audio distortion testing · Vibration analysis · FFT education',
+                    zh: '馬達反電動勢諧波分析．電力品質 THD 量測．音訊失真測試．振動分析．FFT 教學' },
+};
+
 function getThemeColors() {
   const s = getComputedStyle(document.documentElement);
   return {
@@ -34,11 +125,11 @@ document.addEventListener("mt-theme-change", () => {
 });
 
 // ── Window cards ───────────────────────────────────────────────────────────
-const WIN_DESCS = {
-  "Flat-top":"Best amplitude accuracy — ideal for harmonic measurement",
-  "Hann":"Good frequency resolution — general-purpose default",
-  "Hamming":"Low sidelobes — good for speech / telecom",
-  "Rectangular":"No weighting — best resolution but heavy leakage",
+const WIN_DESC_KEYS = {
+  "Flat-top":"winFlatTop",
+  "Hann":"winHann",
+  "Hamming":"winHamming",
+  "Rectangular":"winRect",
 };
 let selectedWindow = "Flat-top";
 function buildWinCards() {
@@ -48,7 +139,7 @@ function buildWinCards() {
   names.forEach(name => {
     const el = document.createElement("div");
     el.className = "win-card" + (name === selectedWindow ? " selected" : "");
-    el.innerHTML = `<div class="wname">${name}</div><div class="wdesc">${WIN_DESCS[name]}</div>`;
+    el.innerHTML = `<div class="wname">${name}</div><div class="wdesc">${window.mtT(WIN_DESC_KEYS[name])}</div>`;
     el.onclick = () => {
       selectedWindow = name;
       document.querySelectorAll(".win-card").forEach(c => c.classList.remove("selected"));
@@ -58,6 +149,24 @@ function buildWinCards() {
   });
 }
 buildWinCards();
+
+// ── Language switch: re-render dynamic content (shell.js handles data-i18n) ─
+function applyHintBox() {
+  const el = document.getElementById("t-hint");
+  if (el) el.innerHTML = window.mtT("hintBox");
+}
+applyHintBox();
+
+document.addEventListener("mt-lang-change", () => {
+  applyHintBox();
+  buildWinCards();
+  if (lastResult) {
+    renderMetrics(lastResult);
+    renderBarChart(lastResult);
+    renderSpecChart(lastResult);
+    renderTable(lastResult);
+  }
+});
 
 // ── Tab switch ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
@@ -87,26 +196,26 @@ function parseCSVFile(file) {
       if(isNaN(tv)||isNaN(v)) continue;
       times.push(tv); voltages.push(v);
     }
-    if(voltages.length < 8) { alert("Not enough data points (< 8). Check CSV format."); return; }
+    if(voltages.length < 8) { alert(window.mtT("alertCsvFmt")); return; }
     csvData = {times, voltages};
     const fn = document.getElementById("file-name");
-    fn.textContent = `✓  ${file.name}  (${voltages.length.toLocaleString()} pts)`;
+    fn.textContent = `✓  ${file.name}  (${voltages.length.toLocaleString()} ${window.mtT("pts")})`;
     fn.classList.remove("hidden");
-    setProgress(0, `Loaded ${voltages.length.toLocaleString()} points — ${file.name}`);
+    setProgress(0, window.mtT("loadedMsg").replace("{n}", voltages.length.toLocaleString()).replace("{f}", file.name));
   };
   reader.readAsText(file);
 }
 
 function parseManual() {
   const text = document.getElementById("manual-input").value.trim();
-  if(!text) { alert("Please paste your data first."); return null; }
+  if(!text) { alert(window.mtT("alertNoPaste")); return null; }
   const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   const pairs=[];
   for(const l of lines) {
     const parts = l.split(/[\t ]+/);
-    if(parts.length!==2) { alert(`Expected 2 columns per line:\n${l}`); return null; }
+    if(parts.length!==2) { alert(window.mtT("alertParse").replace("{l}", l)); return null; }
     const a=parseFloat(parts[0]), b=parseFloat(parts[1]);
-    if(isNaN(a)||isNaN(b)) { alert(`Expected 2 columns per line:\n${l}`); return null; }
+    if(isNaN(a)||isNaN(b)) { alert(window.mtT("alertParse").replace("{l}", l)); return null; }
     pairs.push([a,b]);
   }
   const times=pairs.map(p=>p[0]), voltages=pairs.map(p=>p[1]);
@@ -117,10 +226,10 @@ function parseManual() {
   } else {
     let dt=null;
     for(let i=1;i<times.length;i++){const d=times[i]-times[i-1];if(Math.abs(d)>1e-15){dt=d;break;}}
-    if(!dt||dt<=0){alert("Cannot auto-detect sampling rate. Please enter it manually."); return null;}
+    if(!dt||dt<=0){alert(window.mtT("alertNoSr")); return null;}
     sr=1/dt;
   }
-  if(voltages.length<8){alert(`Not enough data (${voltages.length} points — need at least 8).`); return null;}
+  if(voltages.length<8){alert(window.mtT("alertFewPts").replace("{n}", voltages.length)); return null;}
   return {voltages, sr};
 }
 
@@ -244,11 +353,11 @@ function runAnalysis(){
   const isCSV=document.getElementById("panel-csv").classList.contains("active");
   let voltages,sr;
   if(isCSV){
-    if(!csvData){alert("Please upload a CSV file first.");return;}
+    if(!csvData){alert(window.mtT("alertNoCsv"));return;}
     voltages=csvData.voltages;
     let dt=null;
     for(let i=1;i<csvData.times.length;i++){const d=csvData.times[i]-csvData.times[i-1];if(Math.abs(d)>1e-15){dt=d;break;}}
-    if(!dt){alert("Cannot determine sampling rate from CSV time column.");return;}
+    if(!dt){alert(window.mtT("alertNoSrCsv"));return;}
     sr=1/dt;
   } else {
     const p=parseManual(); if(!p) return;
@@ -257,7 +366,7 @@ function runAnalysis(){
 
   const btn=document.getElementById("btn-analyse");
   btn.disabled=true;
-  setProgress(10,"Starting worker…");
+  setProgress(10, window.mtT("startingWorker"));
 
   // Transfer voltages as ArrayBuffer to avoid copying 100M floats
   const buf = new Float64Array(voltages).buffer;
@@ -272,17 +381,19 @@ function runAnalysis(){
       setProgress(d.pct, d.msg);
     } else if(d.type==="done"){
       URL.revokeObjectURL(blobURL);
-      setProgress(90,"Rendering…");
+      setProgress(90, window.mtT("renderingChart"));
       lastResult = d.result;
       renderResults(d.result);
-      setProgress(100, `Done — fundamental ${d.result.freqFund.toFixed(2)} Hz | THD ${(d.result.thd*100).toFixed(2)}%`);
+      setProgress(100, window.mtT("doneMsg")
+        .replace("{f}", d.result.freqFund.toFixed(2))
+        .replace("{t}", (d.result.thd*100).toFixed(2)));
       document.getElementById("btn-dl").classList.remove("hidden");
       btn.disabled=false;
     }
   };
   worker.onerror = function(err){
     URL.revokeObjectURL(blobURL);
-    setProgress(0, `Error: ${err.message}`);
+    setProgress(0, window.mtT("errMsg").replace("{m}", err.message));
     alert(err.message);
     btn.disabled=false;
   };
@@ -303,12 +414,12 @@ function renderResults(r){
 function renderMetrics(r){
   const fund=r.harmonics[0];
   document.getElementById("metrics-row").innerHTML=`
-    <div class="metric"><div class="mlabel">Fundamental</div><div class="mvalue">${r.freqFund.toFixed(2)}<span class="munit">Hz</span></div></div>
-    <div class="metric"><div class="mlabel">Amplitude (1x)</div><div class="mvalue">${fund?fund.amp.toFixed(4):"—"}<span class="munit">V</span></div></div>
-    <div class="metric"><div class="mlabel">THD</div><div class="mvalue">${(r.thd*100).toFixed(2)}<span class="munit">%</span></div></div>
-    <div class="metric"><div class="mlabel">Sample rate</div><div class="mvalue">${(r.sr/1000).toFixed(1)}<span class="munit">kHz</span></div></div>
-    <div class="metric"><div class="mlabel">FFT size</div><div class="mvalue">${r.Nfft.toLocaleString()}<span class="munit">pts</span></div></div>
-    <div class="metric"><div class="mlabel">Window</div><div class="mvalue" style="font-size:14px">${selectedWindow}</div></div>
+    <div class="metric"><div class="mlabel">${window.mtT("mFund")}</div><div class="mvalue">${r.freqFund.toFixed(2)}<span class="munit">Hz</span></div></div>
+    <div class="metric"><div class="mlabel">${window.mtT("mAmp")}</div><div class="mvalue">${fund?fund.amp.toFixed(4):"—"}<span class="munit">V</span></div></div>
+    <div class="metric"><div class="mlabel">${window.mtT("mTHD")}</div><div class="mvalue">${(r.thd*100).toFixed(2)}<span class="munit">%</span></div></div>
+    <div class="metric"><div class="mlabel">${window.mtT("mSr")}</div><div class="mvalue">${(r.sr/1000).toFixed(1)}<span class="munit">${window.mtT("kHz")}</span></div></div>
+    <div class="metric"><div class="mlabel">${window.mtT("mFft")}</div><div class="mvalue">${r.Nfft.toLocaleString()}<span class="munit">${window.mtT("pts")}</span></div></div>
+    <div class="metric"><div class="mlabel">${window.mtT("mWin")}</div><div class="mvalue" style="font-size:14px">${selectedWindow}</div></div>
   `;
 }
 
@@ -331,9 +442,9 @@ const tooltipPlugin = {
         const h    = chart.canvas.id==="chart-bar"
                      ? lastResult.harmonics[idx]
                      : {h:raw.h, freq:raw.x, amp:raw.y};
-        const html = `<strong>${h.h}x harmonic</strong><br>`+
-                     `Freq:&nbsp; ${h.freq.toFixed(2)} Hz<br>`+
-                     `Amp:&nbsp; ${fmtAmp(h.amp)}`;
+        const html = `<strong>${window.mtT("ttOrder").replace("{h}", h.h)}</strong><br>`+
+                     `${window.mtT("ttFreq")}:&nbsp; ${h.freq.toFixed(2)} Hz<br>`+
+                     `${window.mtT("ttAmp")}:&nbsp; ${fmtAmp(h.amp)}`;
         showTooltip(html, e.native.clientX, e.native.clientY);
       } else {
         hideTooltip();
@@ -396,10 +507,10 @@ function renderSpecChart(r){
     type:"line",
     data:{
       datasets:[
-        {label:"Spectrum",data:pts.map(p=>({x:p.f,y:p.mag})),
+        {label:window.mtT("spectrumLabel"),data:pts.map(p=>({x:p.f,y:p.mag})),
          borderColor:"#2563eb",borderWidth:1.2,backgroundColor:"rgba(37,99,235,0.1)",
          fill:true,pointRadius:0,tension:0},
-        {label:"Harmonics",data:r.harmonics.map(h=>({x:h.freq,y:h.amp,h:h.h})),
+        {label:window.mtT("harmonicsLabel"),data:r.harmonics.map(h=>({x:h.freq,y:h.amp,h:h.h})),
          borderColor:"transparent",backgroundColor:"#dc2626",
          pointRadius:0,pointHoverRadius:0,showLine:false},
       ]
@@ -408,11 +519,11 @@ function renderSpecChart(r){
       responsive:true,maintainAspectRatio:false,
       scales:{
         x:{type:"linear",min:0,max:xlim,
-           title:{display:true,text:"Frequency (Hz)",font:{size:11},color:c.text2},
+           title:{display:true,text:window.mtT("axisFreq"),font:{size:11},color:c.text2},
            grid:{color:c.grid},
            ticks:{font:{size:10},color:c.text2,callback:v=>v>=1000?(v/1000).toFixed(1)+"k":v.toFixed(0)}},
         y:{min:0,
-           title:{display:true,text:"Amplitude (V)",font:{size:11},color:c.text2},
+           title:{display:true,text:window.mtT("axisAmp"),font:{size:11},color:c.text2},
            grid:{color:c.grid},ticks:{font:{size:10},color:c.text2}}
       },
       plugins:{legend:{display:false},tooltip:{enabled:false}}
@@ -430,10 +541,10 @@ function renderTable(r){
         <td><span class="badge ${i===0?"badge-fund":"badge-harm"}">${h.h}x</span></td>
         <td>${h.freq.toFixed(2)}</td>
         <td>${fmtAmp(h.amp)}</td>
-        <td>${i===0?`— (fundamental)`:(h.amp/fund*100).toFixed(3)+" %"}</td>
+        <td>${i===0?`— (${window.mtT("fundamentalWord")})`:(h.amp/fund*100).toFixed(3)+" %"}</td>
       </tr>`).join("")+
     `<tr style="font-weight:600;background:var(--metric-bg)">
-       <td colspan="3">Total Harmonic Distortion (THD)</td>
+       <td colspan="3">${window.mtT("thdRow")}</td>
        <td>${(r.thd*100).toFixed(4)} %</td>
      </tr>`;
 }

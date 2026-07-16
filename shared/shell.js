@@ -42,6 +42,66 @@
   };
   window.mtTheme = getTheme;
 
+  /* ── 1b. language (en / zh) ──
+     Pages provide a global MT_I18N = { key: { en:'…', zh:'…' }, … }.
+     Static text: <el data-i18n="key">, placeholders: data-i18n-ph,
+     title attributes: data-i18n-title.
+     Dynamic strings: call window.mtT('key'); re-render on the
+     'mt-lang-change' event. */
+  var LANG_KEY = 'mt-lang';
+  function getLang() {
+    try { return localStorage.getItem(LANG_KEY) || 'en'; } catch (e) { return 'en'; }
+  }
+  window.mtLang = getLang;
+  window.mtT = function (key) {
+    var dict = window.MT_I18N || {};
+    var entry = dict[key];
+    if (!entry) return key;
+    return entry[getLang()] || entry.en || key;
+  };
+  function applyLang() {
+    var lang = getLang();
+    document.documentElement.lang = lang === 'zh' ? 'zh-TW' : 'en';
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      el.textContent = window.mtT(el.getAttribute('data-i18n'));
+    });
+    document.querySelectorAll('[data-i18n-ph]').forEach(function (el) {
+      el.placeholder = window.mtT(el.getAttribute('data-i18n-ph'));
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
+      el.title = window.mtT(el.getAttribute('data-i18n-title'));
+    });
+    var btn = document.getElementById('mt-lang-btn');
+    if (btn) btn.textContent = lang === 'zh' ? 'EN' : '中';
+    /* header page title/sub from body data attributes */
+    var body = document.body;
+    var t = document.querySelector('.mt-page-title');
+    var s = document.querySelector('.mt-page-sub');
+    if (t) t.textContent = (lang === 'zh' && body.getAttribute('data-title-zh')) ||
+                           body.getAttribute('data-title') || '';
+    if (s) s.textContent = (lang === 'zh' && body.getAttribute('data-sub-zh')) ||
+                           body.getAttribute('data-sub') || '';
+    /* nav dropdown tool names/descs */
+    if (typeof MT_TOOLS !== 'undefined') {
+      document.querySelectorAll('.mt-nav-menu a').forEach(function (a, i) {
+        var tool = MT_TOOLS[i];
+        if (!tool) return;
+        var name = (lang === 'zh' && tool.name_zh) || tool.name;
+        var desc = (lang === 'zh' && tool.desc_zh) || tool.desc;
+        a.innerHTML = tool.icon + ' ' + name +
+          '<span class="mt-nav-desc">' + desc + '</span>';
+      });
+    }
+  }
+  window.mtApplyLang = applyLang;
+  window.mtToggleLang = function () {
+    var next = getLang() === 'zh' ? 'en' : 'zh';
+    try { localStorage.setItem(LANG_KEY, next); } catch (e) {}
+    applyLang();
+    document.dispatchEvent(new CustomEvent('mt-lang-change', { detail: { lang: next } }));
+    gaTrack('toggle_lang', next);
+  };
+
   /* ── 3. Google Analytics ── */
   var GA_ID = 'G-XT1MLNL88T';
   window.dataLayer = window.dataLayer || [];
@@ -122,6 +182,15 @@
       right.appendChild(nav);
     }
 
+    /* language toggle */
+    var lbtn = document.createElement('button');
+    lbtn.className = 'mt-icon-btn';
+    lbtn.id = 'mt-lang-btn';
+    lbtn.title = 'Switch language / 切換語言';
+    lbtn.textContent = getLang() === 'zh' ? 'EN' : '中';
+    lbtn.addEventListener('click', window.mtToggleLang);
+    right.appendChild(lbtn);
+
     /* theme toggle */
     var tbtn = document.createElement('button');
     tbtn.className = 'mt-icon-btn';
@@ -133,6 +202,7 @@
     header.appendChild(left);
     header.appendChild(right);
     body.insertBefore(header, body.firstChild);
+    applyLang();
   }
 
   if (document.readyState === 'loading') {

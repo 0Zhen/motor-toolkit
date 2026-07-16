@@ -4,6 +4,37 @@
    (Bowyer-Watson Delaunay triangulation + barycentric interpolation
    onto a regular grid), same colorscale.
    ═══════════════════════════════════════════════════════════════ */
+var MT_I18N = {
+  data:      { en: 'Data', zh: '資料' },
+  pasteLabel:{ en: 'Paste data — 3 columns: speed, torque, efficiency', zh: '貼上資料——三欄：轉速、扭矩、效率' },
+  pastePh:   {
+    en: '1000  15  92.68\n1000  20  94.61\n1000  25  93.80\n…\n\nSeparators: space / tab / comma / semicolon.\nA header row is skipped automatically.',
+    zh: '1000  15  92.68\n1000  20  94.61\n1000  25  93.80\n…\n\n分隔符：空白／Tab／逗號／分號皆可。\n標題列會自動略過。',
+  },
+  loadCsv:   { en: 'Load CSV…', zh: '載入 CSV…' },
+  sample:    { en: 'Sample data', zh: '範例資料' },
+  options:   { en: 'Options', zh: '選項' },
+  title:     { en: 'Title (optional)', zh: '標題（選填）' },
+  titlePh:   { en: 'e.g. Motor A — Total Efficiency', zh: '例：Motor A — 總效率' },
+  xAxis:     { en: 'X axis', zh: 'X 軸標籤' },
+  yAxis:     { en: 'Y axis', zh: 'Y 軸標籤' },
+  unit:      { en: 'Value unit', zh: '數值單位' },
+  valName:   { en: 'Value name', zh: '數值名稱' },
+  showPts:   { en: 'Show data points', zh: '顯示資料點' },
+  render:    { en: 'Generate map', zh: '產生地圖' },
+  png:       { en: 'Download PNG', zh: '下載 PNG' },
+  hint:      {
+    en: 'Points are triangulated (Delaunay) and interpolated onto a regular grid — irregular operating envelopes are supported; regions outside the measured envelope stay blank. All processing happens in your browser.',
+    zh: '資料點經 Delaunay 三角化後內插到規則網格——支援不規則運轉範圍，量測範圍外的區域保持空白。所有計算都在你的瀏覽器本機完成。',
+  },
+  errRows:   { en: 'Need at least 3 valid data rows (speed, torque, efficiency). Parsed {n} row(s).',
+               zh: '至少需要 3 筆有效資料（轉速、扭矩、效率），目前解析到 {n} 筆。' },
+  statPts:   { en: '{n} points', zh: '{n} 筆資料點' },
+  statSpeed: { en: 'speed', zh: '轉速' },
+  statTorque:{ en: 'torque', zh: '扭矩' },
+  statSkip:  { en: '{n} line(s) skipped', zh: '略過 {n} 行' },
+};
+
 (function () {
 'use strict';
 
@@ -141,8 +172,7 @@ function render() {
   var parsed = parseData($('dataInput').value);
   var rows = parsed.rows;
   if (rows.length < 3) {
-    showError('Need at least 3 valid data rows (speed, torque, efficiency). Parsed ' +
-      rows.length + ' row(s).');
+    showError(mtT('errRows').replace('{n}', rows.length));
     return;
   }
 
@@ -186,12 +216,14 @@ function render() {
   Plotly.newPlot('plot', traces, layout, { responsive: true, displayModeBar: false });
   lastRendered = true;
 
-  $('statBox').textContent = rows.length + ' points · speed ' +
+  $('statBox').textContent = mtT('statPts').replace('{n}', rows.length) +
+    ' · ' + mtT('statSpeed') + ' ' +
     Math.min.apply(null, pts.map(function (p) { return p[0]; })) + '–' +
-    Math.max.apply(null, pts.map(function (p) { return p[0]; })) + ' · torque ' +
+    Math.max.apply(null, pts.map(function (p) { return p[0]; })) +
+    ' · ' + mtT('statTorque') + ' ' +
     Math.min.apply(null, pts.map(function (p) { return p[1]; })) + '–' +
     Math.max.apply(null, pts.map(function (p) { return p[1]; })) +
-    (parsed.skipped ? ' · ' + parsed.skipped + ' line(s) skipped' : '');
+    (parsed.skipped ? ' · ' + mtT('statSkip').replace('{n}', parsed.skipped) : '');
   if (window.gaTrack) gaTrack('render_map', rows.length + 'pts');
 }
 
@@ -235,8 +267,11 @@ $('btnSample').addEventListener('click', function () {
   render();
 });
 
-/* re-render on theme switch so plot colors follow */
+/* re-render on theme/language switch so plot colors and messages follow */
 document.addEventListener('mt-theme-change', function () {
+  if (lastRendered) render();
+});
+document.addEventListener('mt-lang-change', function () {
   if (lastRendered) render();
 });
 })();

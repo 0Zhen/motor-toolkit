@@ -20,34 +20,50 @@
 </script>
 <link rel="stylesheet" href="shared/theme.css">
 </head>
-<body data-title="Motor Toolkit" data-sub="Engineering tools for motor design">
+<body data-title="Motor Toolkit" data-sub="Engineering tools for motor design"
+      data-title-zh="Motor Toolkit" data-sub-zh="馬達工程小工具集">
 <script src="shared/tools.js"></script>
 <script src="shared/shell.js"></script>
 
 <main class="mt-home">
-  <h1>Tools</h1>
-  <p class="mt-home-intro">
+  <h1 data-i18n="tools">Tools</h1>
+  <p class="mt-home-intro" data-i18n="intro">
     Browser-based tools for motor design and testing. Everything runs locally in
     your browser — no data is uploaded to any server.
   </p>
   <div class="mt-tool-grid" id="toolGrid"></div>
 </main>
 
-<footer class="mt-footer">Motor Toolkit · runs entirely in your browser</footer>
+<footer class="mt-footer" data-i18n="footer">Motor Toolkit · runs entirely in your browser</footer>
 
 <script>
+var MT_I18N = {
+  tools:  { en: 'Tools', zh: '工具' },
+  intro:  {
+    en: 'Browser-based tools for motor design and testing. Everything runs locally in your browser — no data is uploaded to any server.',
+    zh: '為馬達設計與測試打造的瀏覽器工具。所有計算都在你的瀏覽器本機完成，資料不會上傳到任何伺服器。',
+  },
+  footer: { en: 'Motor Toolkit · runs entirely in your browser', zh: 'Motor Toolkit · 完全在瀏覽器中執行' },
+};
+
 (function () {
   var grid = document.getElementById('toolGrid');
-  MT_TOOLS.forEach(function (t) {
-    var a = document.createElement('a');
-    a.className = 'mt-tool-card';
-    a.href = t.path + 'index.html';
-    a.innerHTML =
-      '<span class="mt-tool-icon">' + t.icon + '</span>' +
-      '<h2>' + t.name + '</h2>' +
-      '<p>' + t.desc + '</p>';
-    grid.appendChild(a);
-  });
+  function renderCards() {
+    var zh = window.mtLang && mtLang() === 'zh';
+    grid.innerHTML = '';
+    MT_TOOLS.forEach(function (t) {
+      var a = document.createElement('a');
+      a.className = 'mt-tool-card';
+      a.href = t.path + 'index.html';
+      a.innerHTML =
+        '<span class="mt-tool-icon">' + t.icon + '</span>' +
+        '<h2>' + ((zh && t.name_zh) || t.name) + '</h2>' +
+        '<p>' + ((zh && t.desc_zh) || t.desc) + '</p>';
+      grid.appendChild(a);
+    });
+  }
+  renderCards();
+  document.addEventListener('mt-lang-change', renderCards);
 })();
 </script>
 </body>

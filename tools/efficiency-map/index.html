@@ -17,7 +17,8 @@
 
 .em-panel { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .em-panel h2 { font-size: 14px; }
-.em-field { display: flex; flex-direction: column; gap: 4px; }
+.em-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.em-field .mt-input { width: 100%; min-width: 0; }
 .em-row { display: flex; gap: 8px; align-items: center; }
 .em-row .mt-input { flex: 1; min-width: 0; }
 #dataInput { width: 100%; height: 260px; resize: vertical; white-space: pre; }
@@ -32,59 +33,60 @@
 .em-plot-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 8px 4px 2px; }
 </style>
 </head>
-<body data-title="Efficiency Map Generator" data-sub="Contour map from speed / torque / efficiency points">
+<body data-title="Efficiency Map Generator" data-sub="Contour map from speed / torque / efficiency points"
+      data-title-zh="效率地圖產生器" data-sub-zh="由轉速／扭矩／效率資料點產生等高線圖">
 <script src="../../shared/tools.js"></script>
 <script src="../../shared/shell.js"></script>
 <script src="../../vendor/plotly-cartesian.min.js"></script>
 
 <main class="em-wrap">
   <section class="mt-card em-panel">
-    <h2>Data</h2>
+    <h2 data-i18n="data">Data</h2>
     <div class="em-field">
-      <label class="mt-label" for="dataInput">Paste data — 3 columns: speed, torque, efficiency</label>
-      <textarea id="dataInput" class="mt-textarea" spellcheck="false"
+      <label class="mt-label" for="dataInput" data-i18n="pasteLabel">Paste data — 3 columns: speed, torque, efficiency</label>
+      <textarea id="dataInput" class="mt-textarea" spellcheck="false" data-i18n-ph="pastePh"
         placeholder="1000  15  92.68&#10;1000  20  94.61&#10;1000  25  93.80&#10;…&#10;&#10;Separators: space / tab / comma / semicolon.&#10;A header row is skipped automatically."></textarea>
     </div>
     <div class="em-row">
       <input type="file" id="csvFile" accept=".csv,.txt,.tsv" style="display:none">
-      <button class="mt-btn-ghost" id="btnCsv">Load CSV…</button>
-      <button class="mt-btn-ghost" id="btnSample">Sample data</button>
+      <button class="mt-btn-ghost" id="btnCsv" data-i18n="loadCsv">Load CSV…</button>
+      <button class="mt-btn-ghost" id="btnSample" data-i18n="sample">Sample data</button>
     </div>
 
-    <h2>Options</h2>
+    <h2 data-i18n="options">Options</h2>
     <div class="em-field">
-      <label class="mt-label" for="optTitle">Title (optional)</label>
-      <input id="optTitle" class="mt-input" placeholder="e.g. Motor A — Total Efficiency">
+      <label class="mt-label" for="optTitle" data-i18n="title">Title (optional)</label>
+      <input id="optTitle" class="mt-input" data-i18n-ph="titlePh" placeholder="e.g. Motor A — Total Efficiency">
     </div>
     <div class="em-row">
       <div class="em-field" style="flex:1">
-        <label class="mt-label" for="optXLabel">X axis</label>
+        <label class="mt-label" for="optXLabel" data-i18n="xAxis">X axis</label>
         <input id="optXLabel" class="mt-input" value="Speed (RPM)">
       </div>
       <div class="em-field" style="flex:1">
-        <label class="mt-label" for="optYLabel">Y axis</label>
+        <label class="mt-label" for="optYLabel" data-i18n="yAxis">Y axis</label>
         <input id="optYLabel" class="mt-input" value="Torque (N·m)">
       </div>
     </div>
     <div class="em-row">
       <div class="em-field" style="flex:1">
-        <label class="mt-label" for="optUnit">Value unit</label>
+        <label class="mt-label" for="optUnit" data-i18n="unit">Value unit</label>
         <input id="optUnit" class="mt-input" value="%">
       </div>
       <div class="em-field" style="flex:1">
-        <label class="mt-label" for="optLabel">Value name</label>
+        <label class="mt-label" for="optLabel" data-i18n="valName">Value name</label>
         <input id="optLabel" class="mt-input" value="Efficiency">
       </div>
     </div>
-    <label class="em-check"><input type="checkbox" id="optPoints" checked> Show data points</label>
+    <label class="em-check"><input type="checkbox" id="optPoints" checked> <span data-i18n="showPts">Show data points</span></label>
 
     <div class="em-actions">
-      <button class="mt-btn" id="btnRender">Generate map</button>
-      <button class="mt-btn-ghost" id="btnPng">Download PNG</button>
+      <button class="mt-btn" id="btnRender" data-i18n="render">Generate map</button>
+      <button class="mt-btn-ghost" id="btnPng" data-i18n="png">Download PNG</button>
     </div>
     <div class="em-error" id="errBox"></div>
     <div class="em-stat" id="statBox"></div>
-    <p class="em-hint">
+    <p class="em-hint" data-i18n="hint">
       Points are triangulated (Delaunay) and interpolated onto a regular grid —
       irregular operating envelopes are supported; regions outside the measured
       envelope stay blank. All processing happens in your browser.

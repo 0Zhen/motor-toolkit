@@ -114,7 +114,8 @@
 <link rel="stylesheet" href="../../shared/theme.css">
 <link rel="stylesheet" href="styles.css">
 </head>
-<body data-title="FFT Analyser" data-sub="Harmonics · Window functions · THD">
+<body data-title="FFT Analyser" data-sub="Harmonics · Window functions · THD"
+      data-title-zh="FFT 頻譜分析工具" data-sub-zh="諧波分析・窗函數・THD">
 <script src="../../shared/tools.js"></script>
 <script src="../../shared/shell.js"></script>
 <script src="../../vendor/chart.umd.min.js"></script>
@@ -125,10 +126,10 @@
 
   <!-- Input -->
   <div class="card">
-    <div class="card-title" id="t-input">Input Data</div>
+    <div class="card-title" id="t-input" data-i18n="inputData">Input Data</div>
     <div class="tabs">
-      <div class="tab active" id="tab-csv" onclick="switchTab('csv')">Upload CSV</div>
-      <div class="tab" id="tab-manual" onclick="switchTab('manual')">Paste Data</div>
+      <div class="tab active" id="tab-csv" onclick="switchTab('csv')" data-i18n="uploadCsv">Upload CSV</div>
+      <div class="tab" id="tab-manual" onclick="switchTab('manual')" data-i18n="pasteData">Paste Data</div>
     </div>
 
     <div id="panel-csv" class="tab-panel active">
@@ -137,8 +138,8 @@
            ondragover="onDrag(event,true)" ondragleave="onDrag(event,false)" ondrop="onDrop(event)">
         <input type="file" id="file-input" accept=".csv,.txt" onchange="onFileSelect(event)">
         <div class="upload-icon">📂</div>
-        <p id="t-drop">Click to upload or drag &amp; drop a CSV file</p>
-        <div class="sub-hint" id="t-drop2">Tektronix format — column D = time, column E = voltage</div>
+        <p id="t-drop" data-i18n="dropMsg">Click to upload or drag &amp; drop a CSV file</p>
+        <div class="sub-hint" id="t-drop2" data-i18n="dropSub">Tektronix format — column D = time, column E = voltage</div>
         <div class="filename hidden" id="file-name"></div>
       </div>
     </div>
@@ -152,28 +153,28 @@ Index column (1, 2, 3 …) — enter sampling rate below:<br>
 &nbsp;&nbsp;1 &nbsp; 0.087 &nbsp;&nbsp;&nbsp; 2 &nbsp; 0.174 &nbsp; ...
       </div>
       <div class="sr-row">
-        <label for="sr-input" style="font-size:13px;color:var(--text2);white-space:nowrap" id="t-sr">Sampling rate (Hz):</label>
-        <input type="number" id="sr-input" placeholder="auto-detect from time column">
-        <span style="font-size:11px;color:var(--text3)" id="t-sr-hint">Leave blank to auto-detect</span>
+        <label for="sr-input" style="font-size:13px;color:var(--text2);white-space:nowrap" id="t-sr" data-i18n="srLabel">Sampling rate (Hz):</label>
+        <input type="number" id="sr-input" placeholder="auto-detect from time column" data-i18n-ph="srPh">
+        <span style="font-size:11px;color:var(--text3)" id="t-sr-hint" data-i18n="srHint">Leave blank to auto-detect</span>
       </div>
-      <textarea id="manual-input" placeholder="Paste data here…"></textarea>
+      <textarea id="manual-input" placeholder="Paste data here…" data-i18n-ph="manualPh"></textarea>
     </div>
   </div>
 
   <!-- Window -->
   <div class="card">
-    <div class="card-title" id="t-win">Window Function</div>
+    <div class="card-title" id="t-win" data-i18n="winFunc">Window Function</div>
     <div class="win-grid" id="win-grid"></div>
   </div>
 
   <!-- Run -->
   <div class="card">
     <div class="btn-row">
-      <button class="btn btn-primary" id="btn-analyse" onclick="runAnalysis()">▶ Analyse</button>
-      <button class="btn btn-dl hidden" id="btn-dl" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="btn btn-primary" id="btn-analyse" onclick="runAnalysis()" data-i18n="btnAnalyse">▶ Analyse</button>
+      <button class="btn btn-dl hidden" id="btn-dl" onclick="exportCSV()" data-i18n="btnExport">⬇ Export CSV</button>
       <div class="progress-wrap">
         <div class="progress-bar-bg"><div class="progress-bar-fill" id="prog-fill"></div></div>
-        <div class="progress-label" id="prog-label">Ready</div>
+        <div class="progress-label" id="prog-label" data-i18n="ready">Ready</div>
       </div>
     </div>
   </div>
@@ -182,27 +183,27 @@ Index column (1, 2, 3 …) — enter sampling rate below:<br>
   <div id="results" class="hidden">
     <div class="result-grid" id="metrics-row"></div>
     <div class="card">
-      <div class="card-title" id="t-preview">Preview</div>
+      <div class="card-title" id="t-preview" data-i18n="preview">Preview</div>
       <div class="charts-row">
         <div>
-          <div class="chart-label" id="t-bar-title">Harmonic amplitude (log scale)</div>
+          <div class="chart-label" id="t-bar-title" data-i18n="barTitle">Harmonic amplitude (log scale)</div>
           <div class="chart-wrap"><canvas id="chart-bar"></canvas></div>
         </div>
         <div>
-          <div class="chart-label" id="t-spec-title">Frequency spectrum</div>
+          <div class="chart-label" id="t-spec-title" data-i18n="specTitle">Frequency spectrum</div>
           <div class="chart-wrap"><canvas id="chart-spec"></canvas></div>
         </div>
       </div>
     </div>
     <div class="card">
-      <div class="card-title" id="t-summary">Harmonic Summary</div>
+      <div class="card-title" id="t-summary" data-i18n="summary">Harmonic Summary</div>
       <table>
         <thead>
           <tr>
-            <th id="th-order">Order</th>
-            <th id="th-freq">Frequency (Hz)</th>
-            <th id="th-amp">Amplitude (V)</th>
-            <th id="th-rel">Relative to fund.</th>
+            <th id="th-order" data-i18n="thOrder">Order</th>
+            <th id="th-freq" data-i18n="thFreq">Frequency (Hz)</th>
+            <th id="th-amp" data-i18n="thAmp">Amplitude (V)</th>
+            <th id="th-rel" data-i18n="thRel">Relative to fund.</th>
           </tr>
         </thead>
         <tbody id="harm-body"></tbody>
@@ -214,33 +215,33 @@ Index column (1, 2, 3 …) — enter sampling rate below:<br>
 <div style="max-width:1160px;margin:0 auto;padding:0 18px 48px 18px">
   <div style="border-top:1px solid var(--border);padding-top:32px">
 
-    <p style="font-size:13px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin:0 0 20px">
+    <p style="font-size:13px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin:0 0 20px" data-i18n="aboutLabel">
       About this tool
     </p>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px">
 
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">What it does</div>
-        <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px" data-i18n="whatDoesLabel">What it does</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.7" data-i18n="whatDoesText">
           Upload an oscilloscope CSV or paste time-domain data to compute the frequency spectrum,
           extract harmonic amplitudes (1x–10x), and calculate THD — all in your browser, no install needed.
         </div>
       </div>
 
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Window functions</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px" data-i18n="winFuncsLabel">Window functions</div>
         <div style="font-size:13px;color:var(--text2);line-height:1.7">
-          <strong style="color:var(--text)">Flat-top</strong> — best amplitude accuracy, ideal for THD measurement<br>
-          <strong style="color:var(--text)">Hann</strong> — general-purpose spectrum analysis<br>
-          <strong style="color:var(--text)">Hamming</strong> — low sidelobes, speech &amp; telecom<br>
-          <strong style="color:var(--text)">Rectangular</strong> — best frequency resolution
+          <strong style="color:var(--text)">Flat-top</strong> — <span data-i18n="seoFlatTop">best amplitude accuracy, ideal for THD measurement</span><br>
+          <strong style="color:var(--text)">Hann</strong> — <span data-i18n="seoHann">general-purpose spectrum analysis</span><br>
+          <strong style="color:var(--text)">Hamming</strong> — <span data-i18n="seoHamming">low sidelobes, speech &amp; telecom</span><br>
+          <strong style="color:var(--text)">Rectangular</strong> — <span data-i18n="seoRect">best frequency resolution</span>
         </div>
       </div>
 
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Use cases</div>
-        <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px" data-i18n="useCasesLabel">Use cases</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.7" data-i18n="useCasesText">
           Motor back-EMF harmonic analysis · Power quality THD measurement ·
           Audio distortion testing · Vibration analysis · FFT education
         </div>

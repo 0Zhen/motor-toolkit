@@ -5,6 +5,82 @@
    UI helpers、初始化。
    ══════════════════════════════════════════════════════════ */
 
+/* i18n 字典：中文詞條盡量還原自原始檔 Motor Working Point Explorer_v4.html；
+   原始檔沒有對應中文的項目（多為按鈕、警告訊息等英文專用字串）則自行翻譯，
+   已在委派回報中列出清單。 */
+var MT_I18N = {
+  wpHandle:           { en: 'Working Point',                    zh: '工作點' },
+  motorTitle:         { en: 'Motor',                             zh: '馬達' },
+  fixedSpeedTitle:    { en: 'Fixed Speed',                       zh: '固定轉速' },
+  fixedSpeedHint:     { en: '(look up a specific speed)',        zh: '（查詢指定轉速）' },
+  targetSpeedSub:     { en: 'Target speed',                      zh: '目標轉速' },
+  measuredValuesTitle:{ en: 'Measured Values',                   zh: '實測值' },
+  measuredValuesHint: { en: '(editable)',                        zh: '（可編輯）' },
+  refSpeedSub:        { en: 'Reference speed',                  zh: '參考轉速' },
+  refAeroLoadSub:     { en: 'Reference aero load',               zh: '參考氣動負載' },
+  calibrateKeBtn:     { en: '⚡ Calibrate Ke',                    zh: '⚡ 校正 Ke' },
+  oilTempTitle:       { en: 'Oil & Temperature',                 zh: '油品與溫度' },
+  oilLabel:           { en: 'Oil',                                zh: '油品' },
+  oilTypeSub:         { en: 'Oil Type',                          zh: '油品種類' },
+  ambientLabel:       { en: 'Ambient temp.',                      zh: '環境溫度' },
+  ambientSub:         { en: 'Ambient [°C]',                      zh: 'Ambient [°C]' },
+  riseLabel:          { en: 'Rise',                               zh: '溫升' },
+  riseSub:            { en: 'Rise [°C]',                         zh: 'Rise [°C]' },
+  paramsTitle:        { en: 'Parameters',                        zh: '參數' },
+  paramsHint:         { en: '(drag or type)',                    zh: '（拖曳或輸入）' },
+  saveWpBtn:          { en: '+ Save Working Point',              zh: '+ 儲存工作點' },
+  queryCardHint:      { en: 'Click data area to restore params', zh: '點擊卡片內容還原參數' },
+  sweepTitle:         { en: 'Parameter Sweep',                   zh: '參數掃描' },
+  sweepXAxisLabel:    { en: 'X axis — Parameter',                zh: 'X 軸 — 參數' },
+  sweepYAxisLabel:    { en: 'Y axis — Output',                   zh: 'Y 軸 — 輸出量' },
+  sweepMinLabel:      { en: 'min',                                zh: '最小' },
+  sweepMaxLabel:      { en: 'max',                                zh: '最大' },
+  runSweepBtn:        { en: '▶ Run Sweep',                        zh: '▶ 執行掃描' },
+  clearSweepBtn:      { en: '✕ Clear',                            zh: '✕ 清除' },
+  xLabelTamb:         { en: 'Ambient temp. [°C]',                 zh: '環境溫度 [°C]' },
+  xLabelTrise:        { en: 'Rise [°C]',                          zh: '溫升 [°C]' },
+
+  /* 曲線無解時的警告 */
+  warnNoSolution:     { en: 'No solution: V_sum cannot equal V_rated with current parameters',
+                         zh: '無解：目前參數下 V_sum 無法等於 V_rated' },
+  warnNoWorkingPoint: { en: 'No working point found: load curve does not intersect boundary',
+                         zh: '找不到工作點：負載曲線與邊界曲線無交點' },
+
+  /* 油品計算結果 */
+  oilFixedNoTemp:     { en: 'Vc = {v} mm²/s (fixed value, no temperature correction)',
+                         zh: 'Vc = {v} mm²/s（固定值，無溫度修正）' },
+  oilNeedCalib:       { en: 'Please provide calibration points (T1/v1/T2/v2) or Vc_ref',
+                         zh: '請填入標定點（T1/v1/T2/v2）或 Vc_ref' },
+  oilOutOfRange:      { en: 'Out of range',                      zh: '超出範圍' },
+
+  /* Calibrate Ke / Run Sweep 的 alert 訊息 */
+  alertNoRealSolution:{ en: 'No real solution: cannot calibrate Ke.\nTry adjusting R_C or V_rated.',
+                         zh: '沒有實數解：無法校正 Ke。\n請嘗試調整 R_C 或 V_rated。' },
+  alertKeOutOfRange:  { en: 'Calibrated Ke out of valid range.\nTry adjusting R_C or V_rated.',
+                         zh: '校正後的 Ke 超出合法範圍。\n請嘗試調整 R_C 或 V_rated。' },
+  alertInvalidRange:  { en: 'Invalid range: min must be less than max',
+                         zh: '範圍無效：最小值必須小於最大值' },
+  alertNoWpInRange:   { en: 'No working point found in this range',
+                         zh: '在此範圍內找不到工作點' },
+
+  /* Fixed Speed 面板：可運轉狀態 */
+  fsOperable:         { en: '✓ operable',                        zh: '✓ 可運轉' },
+  fsOverVrated:       { en: '✗ over V_rated',                    zh: '✗ 超過額定電壓' },
+
+  /* info-box / Fixed Speed 面板共用的數值說明（還原自原始檔） */
+  noteN:              { en: 'Working speed',                    zh: '工作轉速' },
+  noteTA:             { en: 'Aero load',                         zh: '氣動負載' },
+  noteTF:             { en: 'Friction load',                     zh: '摩擦負載' },
+  noteTsum:           { en: 'Total torque',                      zh: '總扭矩' },
+  noteIin:            { en: 'Input current',                     zh: '輸入電流' },
+  noteE:              { en: 'Back-EMF',                          zh: '反電動勢' },
+  noteVdrop:          { en: 'Voltage drop',                      zh: '電壓降' },
+  noteVsum:           { en: 'Total voltage',                     zh: '總電壓' },
+  notePin:            { en: 'Input power',                       zh: '輸入功率' },
+  noteEffTsum:        { en: 'Total efficiency (T_sum)',          zh: '總效率(T_sum)' },
+  noteEffTA:          { en: 'Aero efficiency (T_A)',             zh: '氣動效率(T_A)' },
+};
+
 /**
  * 全域狀態物件：
  *   - PARAMS 各 key：設計參數目前值
@@ -32,7 +108,7 @@ PARAMS.forEach(p => {
   const row = document.createElement('div');
   row.className = 'param-row';
   row.innerHTML = `
-    <span class="param-label" id="lbl_${p.key}">${p.label}<br><span style="font-size:7.5px;color:#9ca3af;font-weight:400">${p.zh || ''}</span></span>
+    <span class="param-label" id="lbl_${p.key}">${p.label}<br><span id="desc_${p.key}" style="font-size:7.5px;color:#9ca3af;font-weight:400"></span></span>
     <input type="range" id="sl_${p.key}"
            min="${p.min}" max="${p.max}" step="${p.step}" value="${p.init}"
            oninput="onSlider('${p.key}', this.value)">
@@ -43,6 +119,19 @@ PARAMS.forEach(p => {
 
 
 });
+
+/**
+ * 依目前語言更新每個參數列下方的中/英說明文字
+ * PARAMS[i].desc = { en, zh }（歷史上曾叫 zh 但值其實是英文，已改造為雙語物件）
+ */
+function updateParamDescs() {
+  const lang = window.mtLang ? window.mtLang() : 'en';
+  PARAMS.forEach(function(p) {
+    const el = document.getElementById('desc_' + p.key);
+    if (el && p.desc) el.textContent = p.desc[lang] || p.desc.en || '';
+  });
+}
+updateParamDescs();
 
 /**
  * 滑桿拖動事件：更新 state 與數字輸入框，觸發重算
@@ -284,9 +373,9 @@ function onOilChange() {
   // 若油品沒有標定點，直接用 Vc_ref 作為固定值
   if (oil.T1 === undefined || oil.v1 === undefined || oil.T2 === undefined || oil.v2 === undefined) {
     if (oil.Vc_ref !== undefined) {
-      resEl.textContent = `Vc = ${oil.Vc_ref.toFixed(2)} mm²/s (fixed value, no temperature correction)`;
+      resEl.textContent = mtT('oilFixedNoTemp').replace('{v}', oil.Vc_ref.toFixed(2));
     } else {
-      resEl.textContent = 'Please provide calibration points (T1/v1/T2/v2) or Vc_ref';
+      resEl.textContent = mtT('oilNeedCalib');
     }
     return;
   }
@@ -295,7 +384,7 @@ function onOilChange() {
   const Vc_calc  = waltherVc(A, B, T_op, C);
 
   if (!isFinite(Vc_calc) || Vc_calc <= 0) {
-    resEl.textContent = 'Out of range';
+    resEl.textContent = mtT('oilOutOfRange');
     return;
   }
 
@@ -516,7 +605,7 @@ function addQueryCard(q) {
       row('V_drop', r.V_drop.toFixed(4),        'V')    +
       row('V_sum',  r.V_sum.toFixed(4),         'V')    +
     '</table></div>' +
-    '<div class="query-card-hint">Click data area to restore params</div>';
+    '<div class="query-card-hint">' + mtT('queryCardHint') + '</div>';
 
   // 標題列點擊 → 展開/折疊（✕ 按鈕除外）
   card.querySelector('#qhdr-' + q.id).addEventListener('click', function(e) {
@@ -671,8 +760,8 @@ function _updateAllImpl() {
     chartData.datasets[0].data = boundary;
     chartData.datasets[1].data = load;
     showWarning(boundary.length === 0
-      ? 'No solution: V_sum cannot equal V_rated with current parameters'
-      : 'No working point found: load curve does not intersect boundary');
+      ? mtT('warnNoSolution')
+      : mtT('warnNoWorkingPoint'));
     chartData.datasets[2].data = [];
     chartData.datasets[3].data = [];
     chartData.datasets[4].data = [];
@@ -760,16 +849,16 @@ function _updateAllImpl() {
 
     document.getElementById('infoBody').innerHTML =
       '<table style="border-collapse:collapse">' +
-        row('N',      N_wp.toFixed(1),              'RPM',  'Working speed') +
-        row('T_A',    r.T_A.toFixed(4),             'uN·m', 'Aero load') +
-        row('T_F',    r.T_F.toFixed(4),             'uN·m', 'Friction load') +
-        row('T_sum',  r.T_sum.toFixed(4),           'uN·m', 'Total torque') +
-        row('I_in',   (r.I_in*1000).toFixed(3),     'mA',   'Input current') +
-        row('E',      r.E.toFixed(4),               'V',    'Back-EMF') +
-        row('V_drop', r.V_drop.toFixed(4),          'V',    'Voltage drop') +
-        row('V_sum',  r.V_sum.toFixed(4),           'V',    'Total voltage') +
-        row('P_in',   (r.P_in*1000).toFixed(3),     'mW',   'Input power') +
-        row('Eff',    r.eta_mech.toFixed(1),          '%',    'Total efficiency (T_sum)') +
+        row('N',      N_wp.toFixed(1),              'RPM',  mtT('noteN')) +
+        row('T_A',    r.T_A.toFixed(4),             'uN·m', mtT('noteTA')) +
+        row('T_F',    r.T_F.toFixed(4),             'uN·m', mtT('noteTF')) +
+        row('T_sum',  r.T_sum.toFixed(4),           'uN·m', mtT('noteTsum')) +
+        row('I_in',   (r.I_in*1000).toFixed(3),     'mA',   mtT('noteIin')) +
+        row('E',      r.E.toFixed(4),               'V',    mtT('noteE')) +
+        row('V_drop', r.V_drop.toFixed(4),          'V',    mtT('noteVdrop')) +
+        row('V_sum',  r.V_sum.toFixed(4),           'V',    mtT('noteVsum')) +
+        row('P_in',   (r.P_in*1000).toFixed(3),     'mW',   mtT('notePin')) +
+        row('Eff',    r.eta_mech.toFixed(1),          '%',    mtT('noteEffTsum')) +
       '</table>' + torqueBar;
   })();
   document.getElementById('infoBox').style.display = 'block';
@@ -801,7 +890,7 @@ function calibrateKe() {
   const discriminant = state.V_rated * state.V_rated - 4 * a * b;
 
   if (discriminant < 0) {
-    alert('No real solution: cannot calibrate Ke.\nTry adjusting R_C or V_rated.');
+    alert(mtT('alertNoRealSolution'));
     return;
   }
 
@@ -813,7 +902,7 @@ function calibrateKe() {
   const candidates = [Ke1, Ke2].filter(k => k > 0 && k >= p.min && k <= p.max);
 
   if (!candidates.length) {
-    alert('Calibrated Ke out of valid range.\nTry adjusting R_C or V_rated.');
+    alert(mtT('alertKeOutOfRange'));
     return;
   }
 
@@ -846,6 +935,7 @@ const SWEEP_LINE_COLORS = [
 ];
 let sweepLineIdx = 0;
 let sweepLines   = [];
+let lastSweepXKey = null; // 記錄上次 Run Sweep 的 X 軸參數，供語言切換時重繪軸標籤
 
 // 溫度參數的預設掃描範圍
 const TEMP_SWEEP_RANGE = {
@@ -912,7 +1002,7 @@ function runSweep() {
   const xMax = parseFloat(document.getElementById('swXMax').value);
 
   if (isNaN(xMin) || isNaN(xMax) || xMin >= xMax) {
-    alert('Invalid range: min must be less than max');
+    alert(mtT('alertInvalidRange'));
     return;
   }
 
@@ -992,10 +1082,11 @@ function runSweep() {
   }
 
   if (!pts.length) {
-    alert('No working point found in this range');
+    alert(mtT('alertNoWpInRange'));
     return;
   }
 
+  lastSweepXKey = xKey; // 記錄供語言切換時重繪軸標籤
   const label = xKey + ' → ' + yKey;
 
   // 加軌跡線
@@ -1019,11 +1110,17 @@ function runSweep() {
   sweepLineIdx++;
 
   // 更新軸標籤並顯示第二張圖
-  const X_LABELS = { T_amb: 'Ambient temp. [°C]', T_rise: 'Rise [°C]' };
-  sweepChart.options.scales.x.title.text = X_LABELS[xKey] || xKey;
+  sweepChart.options.scales.x.title.text = sweepXLabel(xKey);
   sweepChart.options.scales.y.title.text = Y_LABELS[yKey] || yKey;
   document.getElementById('sweepChartWrap').style.display = 'flex';
   sweepChart.update('none');
+}
+
+/** X 軸標籤：溫度參數需要雙語文字，其餘設計參數維持技術符號（兩語言相同） */
+function sweepXLabel(key) {
+  if (key === 'T_amb')  return mtT('xLabelTamb');
+  if (key === 'T_rise') return mtT('xLabelTrise');
+  return key;
 }
 
 /** 清除所有 Sweep 線，隱藏第二張圖 */
@@ -1115,7 +1212,7 @@ function updateFixedSpeedMarker(d) {
   const onBoundary = V_sum <= state.V_rated + 0.001;
   fixedSpeedOperable = onBoundary; // 更新全域，供 plugin 讀色
   const statusColor = onBoundary ? '#10b981' : '#ef4444';
-  const statusText  = onBoundary ? '✓ operable' : '✗ over V_rated';
+  const statusText  = onBoundary ? mtT('fsOperable') : mtT('fsOverVrated');
 
   function panelRow(sym, val, unit, note) {
     return '<tr>' +
@@ -1139,15 +1236,15 @@ function updateFixedSpeedMarker(d) {
       '<tr><td colspan="4" style="padding-bottom:4px;font-family:var(--mono);font-size:9px;color:#6b7280">' +
         'N = <b style="color:#10b981">' + N.toFixed(0) + ' RPM</b>&nbsp;&nbsp;' + statusBadge +
       '</td></tr>' +
-      panelRow('T_A',    T_A.toFixed(4),         'μN·m', 'Aero load') +
-      panelRow('T_F',    T_F.toFixed(4),         'μN·m', 'Friction load') +
-      panelRow('T_sum',  T_sum.toFixed(4),       'μN·m', 'Total torque'  ) +
-      panelRow('I_in',   (I_in*1000).toFixed(3), 'mA',   'Input current') +
-      panelRow('E',      E.toFixed(4),           'V',    'Back-EMF') +
-      panelRow('V_drop', V_drop.toFixed(4),      'V',    'Voltage drop'  ) +
-      panelRow('V_sum',  V_sum.toFixed(4),       'V',    'Total voltage'  ) +
-      panelRow('P_in',   (P_in*1000).toFixed(3), 'mW',   'Input power') +
-      panelRow('Eff',    eff_fs.toFixed(1),       '%',    'Aero efficiency (T_A)');
+      panelRow('T_A',    T_A.toFixed(4),         'μN·m', mtT('noteTA')) +
+      panelRow('T_F',    T_F.toFixed(4),         'μN·m', mtT('noteTF')) +
+      panelRow('T_sum',  T_sum.toFixed(4),       'μN·m', mtT('noteTsum')  ) +
+      panelRow('I_in',   (I_in*1000).toFixed(3), 'mA',   mtT('noteIin')) +
+      panelRow('E',      E.toFixed(4),           'V',    mtT('noteE')) +
+      panelRow('V_drop', V_drop.toFixed(4),      'V',    mtT('noteVdrop')  ) +
+      panelRow('V_sum',  V_sum.toFixed(4),       'V',    mtT('noteVsum')  ) +
+      panelRow('P_in',   (P_in*1000).toFixed(3), 'mW',   mtT('notePin')) +
+      panelRow('Eff',    eff_fs.toFixed(1),       '%',    mtT('noteEffTA'));
     // 扭矩比例條
     const pctA_fs = (T_A / T_sum * 100).toFixed(1);
     const pctF_fs = (T_F / T_sum * 100).toFixed(1);
@@ -1217,6 +1314,33 @@ function toggleSection(id) {
    ══════════════════════════════════════════════════════════ */
 document.addEventListener('mt-theme-change', function(e) {
   applyChartTheme(e.detail.theme === 'dark');
+});
+
+
+/* ══════════════════════════════════════════════════════════
+   語言（en / zh）
+   ══════════════════════════════════════════════════════════
+   語言由 shared/shell.js 統一管理（data-i18n* 屬性 + mtT()，
+   localStorage key 'mt-lang'）。本工具需要重繪的動態內容：
+     1. 參數列下方中/英說明（updateParamDescs）
+     2. info-box / Fixed Speed 面板數值說明、警告訊息、油品計算
+        結果（皆由 updateAll() / onOilChange() 內部呼叫 mtT() 取得，
+        重新呼叫一次即可換語言重繪）
+     3. Sweep 圖已顯示時的 X 軸標籤（若掃描的是溫度參數）
+     4. 已存在的 Query 圖卡：卡片內容全為符號/數值/單位，沒有
+        需要翻譯的敘述文字；僅底部提示文字 queryCardHint 需要重繪
+   ══════════════════════════════════════════════════════════ */
+document.addEventListener('mt-lang-change', function() {
+  updateParamDescs();
+  onOilChange(); // 重新計算/顯示油品結果文字（含未進入 updateAll 分支的早退情況）
+  updateAll();   // 重繪 info-box、警告、Fixed Speed 面板
+  if (lastSweepXKey !== null && document.getElementById('sweepChartWrap').style.display !== 'none') {
+    sweepChart.options.scales.x.title.text = sweepXLabel(lastSweepXKey);
+    sweepChart.update('none');
+  }
+  document.querySelectorAll('.query-card-hint').forEach(function(el) {
+    el.textContent = mtT('queryCardHint');
+  });
 });
 
 

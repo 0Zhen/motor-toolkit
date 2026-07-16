@@ -44,14 +44,14 @@ const MOTORS = [
 
 /** 可調設計參數定義（使用者透過滑桿或輸入框調整） */
 const PARAMS = [
-  { key: 'D_shaft', label: 'D_shaft [mm]',  min: 0.1, max: 5,   init: 0.80, step: 0.05, zh: 'Shaft diameter'       },
-  { key: 'L_shaft', label: 'L_shaft [mm]',  min: 0.5, max: 10,  init: 2.10, step: 0.10, zh: 'Shaft length'       },
-  { key: 'G_film',  label: 'G_film [μm]',   min: 0.5, max: 20,  init: 2.50, step: 0.10, zh: 'Oil film gap'   },
-  { key: 'Vc',      label: 'Vc [mm²/s]',    min: 1,   max: 1500, init: 44.1, step: 0.5,  zh: 'Kinematic viscosity'   },
-  { key: 'D_oil',   label: 'D_oil [-]',     min: 0.5, max: 2,   init: 0.89, step: 0.01, zh: 'Oil specific gravity'   },
-  { key: 'Ke',      label: 'Ke [mV/krpm]',  min: 10,  max: 200, init: 50.8, step: 1.0,  zh: 'Back-EMF constant' },
-  { key: 'R_C',     label: 'R_C [Ω]',       min: 1,   max: 80,  init: 16.5, step: 0.5,  zh: 'Coil resistance'   },
-  { key: 'V_rated', label: 'V_rated [V]',   min: 1.5, max: 12,  init: 3.0,  step: 0.1,  zh: 'Rated voltage'   },
+  { key: 'D_shaft', label: 'D_shaft [mm]',  min: 0.1, max: 5,   init: 0.80, step: 0.05, desc: { en: 'Shaft diameter',       zh: '軸徑' } },
+  { key: 'L_shaft', label: 'L_shaft [mm]',  min: 0.5, max: 10,  init: 2.10, step: 0.10, desc: { en: 'Shaft length',         zh: '軸長' } },
+  { key: 'G_film',  label: 'G_film [μm]',   min: 0.5, max: 20,  init: 2.50, step: 0.10, desc: { en: 'Oil film gap',         zh: '油膜間隙' } },
+  { key: 'Vc',      label: 'Vc [mm²/s]',    min: 1,   max: 1500, init: 44.1, step: 0.5,  desc: { en: 'Kinematic viscosity',  zh: '運動黏度' } },
+  { key: 'D_oil',   label: 'D_oil [-]',     min: 0.5, max: 2,   init: 0.89, step: 0.01, desc: { en: 'Oil specific gravity', zh: '油品比重' } },
+  { key: 'Ke',      label: 'Ke [mV/krpm]',  min: 10,  max: 200, init: 50.8, step: 1.0,  desc: { en: 'Back-EMF constant',    zh: '反電動勢常數' } },
+  { key: 'R_C',     label: 'R_C [Ω]',       min: 1,   max: 80,  init: 16.5, step: 0.5,  desc: { en: 'Coil resistance',      zh: '線圈電阻' } },
+  { key: 'V_rated', label: 'V_rated [V]',   min: 1.5, max: 12,  init: 3.0,  step: 0.1,  desc: { en: 'Rated voltage',        zh: '額定電壓' } },
 ];
 
 /** 曲線掃描上限（內部使用），不給使用者調整 */
