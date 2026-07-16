@@ -1,0 +1,111 @@
+/* FFT Analyser — tool-specific styles.
+   Variables, reset, body, and header styles that duplicate
+   shared/theme.css are NOT repeated here — see shared/theme.css. */
+
+/* ── Tool-specific CSS variables (not present in shared/theme.css) ── */
+:root {
+  --prog-lbl: #64748b;
+}
+[data-theme="dark"] {
+  --prog-lbl: #94a3b8;
+}
+
+/* container */
+.container{max-width:1160px;margin:0 auto;padding:22px 18px}
+.card{background:var(--surface);border-radius:12px;border:1px solid var(--border);
+      padding:18px 22px;margin-bottom:18px;transition:background .2s,border-color .2s}
+.card-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;
+            letter-spacing:.06em;margin-bottom:12px}
+
+/* tabs */
+.tabs{display:flex;gap:4px;margin-bottom:14px}
+.tab{padding:6px 16px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);
+     font-size:13px;cursor:pointer;color:var(--text2);transition:all .15s}
+.tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* upload zone */
+.upload-zone{border:2px dashed var(--border);border-radius:10px;padding:28px;
+             text-align:center;cursor:pointer;transition:border-color .2s,background .2s}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:var(--hover-bg)}
+.upload-zone input{display:none}
+.upload-icon{font-size:28px;margin-bottom:6px}
+.upload-zone p{font-size:13px;color:var(--text2)}
+.upload-zone .sub-hint{font-size:11px;color:var(--text3);margin-top:3px}
+.filename{font-size:12px;color:var(--accent);margin-top:6px;font-weight:500}
+
+/* hint box */
+.hint-box{background:var(--hint-bg);border:1px solid var(--border);border-radius:8px;
+          padding:10px 13px;font-family:"Courier New",monospace;font-size:11.5px;
+          color:var(--text2);margin-bottom:10px;line-height:1.75}
+
+/* form elements */
+textarea,input[type=number]{
+  background:var(--input-bg);color:var(--text);border:1px solid var(--border);
+  border-radius:8px;outline:none;transition:border-color .15s,box-shadow .15s}
+textarea{width:100%;height:110px;font-family:"Courier New",monospace;font-size:11.5px;
+         padding:9px 11px;resize:vertical}
+input[type=number]{padding:6px 10px;font-size:13px;width:190px}
+textarea:focus,input[type=number]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-l)}
+
+/* window cards */
+.win-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:9px}
+.win-card{border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;
+          cursor:pointer;transition:all .15s}
+.win-card:hover{border-color:#93c5fd;background:var(--hover-bg)}
+.win-card.selected{border-color:var(--accent);background:var(--hover-bg)}
+.win-card .wname{font-size:13px;font-weight:600;margin-bottom:3px}
+.win-card .wdesc{font-size:11px;color:var(--text2);line-height:1.4}
+
+/* buttons */
+.btn-row{display:flex;gap:9px;align-items:center}
+.btn{padding:9px 26px;border-radius:8px;border:none;font-size:13px;font-weight:600;
+     cursor:pointer;transition:opacity .15s,transform .1s;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{opacity:.88}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-dl{background:var(--green);color:#fff}
+.btn-dl:hover{opacity:.88}
+
+/* progress */
+.progress-wrap{flex:1;min-width:0}
+.progress-bar-bg{height:5px;background:var(--bar-bg);border-radius:3px;overflow:hidden}
+.progress-bar-fill{height:100%;background:var(--accent);border-radius:3px;width:0%;transition:width .3s}
+.progress-label{font-size:11.5px;color:var(--prog-lbl);margin-top:4px;
+                white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* metrics */
+.result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+.metric{background:var(--metric-bg);border:1px solid var(--border);border-radius:10px;padding:13px 15px}
+.metric .mlabel{font-size:11px;color:var(--text2);margin-bottom:3px}
+.metric .mvalue{font-size:20px;font-weight:700}
+.metric .munit{font-size:11px;color:var(--text3);margin-left:2px}
+
+/* charts */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:680px){.charts-row{grid-template-columns:1fr}}
+.chart-wrap{position:relative;height:260px}
+.chart-label{font-size:11.5px;color:var(--text2);margin-bottom:5px;font-weight:600}
+
+/* table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--metric-bg);padding:9px 11px;text-align:left;font-weight:600;
+   color:var(--text2);border-bottom:1px solid var(--border)}
+td{padding:8px 11px;border-bottom:1px solid var(--border);color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--hover-bg)}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
+.badge-fund{background:var(--accent-l);color:var(--accent)}
+.badge-harm{background:#fee2e2;color:#b91c1c}
+[data-theme="dark"] .badge-harm{background:#450a0a;color:var(--red)}
+
+/* custom tooltip */
+#tt{position:fixed;background:var(--tooltip-bg);color:var(--tooltip-t);
+    padding:9px 13px;border-radius:9px;font-size:12px;line-height:1.65;
+    pointer-events:none;display:none;z-index:9999;
+    box-shadow:0 4px 16px rgba(0,0,0,.25);white-space:nowrap;
+    border:1px solid rgba(255,255,255,.08)}
+
+.sr-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.hidden{display:none!important}

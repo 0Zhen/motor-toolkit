@@ -1,0 +1,608 @@
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ══════════════════════════════════════════════════════════
+   整體版面：頁首 + 主版面（左圖 + 右控制欄）
+   ══════════════════════════════════════════════════════════ */
+html { height: 100%; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;   /* 整頁不捲動，各區塊各自管理捲動 */
+}
+body > * { min-width: 0; }
+
+/* 主版面：左側圖表欄 + 右側控制欄 */
+.layout {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  padding: 0 10px 8px;
+  overflow: hidden;
+  width: 100%;
+  align-items: stretch;
+}
+
+/* 左側圖表欄：防止縮太小 */
+.charts-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  flex: 1;
+  min-width: 300px;
+  margin-right: 8px;
+  overflow: hidden;
+}
+
+/* 右側控制欄：固定寬度，整欄可捲動 */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 6px 2px 0;
+  min-height: 0;
+  width: 300px;
+  flex-shrink: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+.panel::-webkit-scrollbar { width: 5px; }
+.panel::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+.panel::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+[data-theme="dark"] .panel { scrollbar-color: #374151 transparent; }
+[data-theme="dark"] .panel::-webkit-scrollbar-thumb { background: #374151; }
+
+/* ══════════════════════════════════════════════════════════
+   圖表區
+   ══════════════════════════════════════════════════════════ */
+
+/* 第一張主圖（Boundary + Load curve） */
+.chart-wrap {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px 8px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;              /* 吃掉左欄剩餘高度 */
+}
+
+/* 第二張 Sweep 圖（隱藏，Run Sweep 後才顯示） */
+.sweep-chart-wrap {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 280px;
+  flex-shrink: 0;
+}
+
+/* Canvas 填滿父容器 */
+canvas { flex: 1; min-height: 0; }
+
+/* ── 可拖曳工作點資訊框（浮在主圖上） ── */
+.info-box {
+  position: absolute;
+  top: 30px; right: 20px;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.55;
+  color: #1a1d23;
+  background: rgba(248,250,252,0.96);
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  display: none;         /* 有工作點才顯示 */
+  cursor: grab;
+  user-select: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  z-index: 10;
+  overflow: hidden;
+}
+.info-box.dragging { cursor: grabbing; box-shadow: 0 6px 20px rgba(0,0,0,0.18); }
+.info-box-handle {
+  background: #e8edf3;
+  border-bottom: 1px solid #cbd5e1;
+  border-radius: 6px 6px 0 0;
+  padding: 3px 8px;
+  font-size: 9px;
+  color: #6b7280;
+  font-family: var(--sans);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.info-box-handle::before { content: '⠿'; font-size: 11px; color: #9ca3af; }
+.info-box-body { padding: 6px 10px 7px; white-space: pre; }
+
+/* ══════════════════════════════════════════════════════════
+   Oil & Temperature 區塊
+   ══════════════════════════════════════════════════════════ */
+.oil-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 8px 8px;
+  flex-shrink: 0;
+}
+.oil-row {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+.oil-label {
+  font-size: 9.5px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* ══════════════════════════════════════════════════════════
+   右側控制欄：共用區塊樣式
+   ══════════════════════════════════════════════════════════ */
+
+/* 各區塊標題 */
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: center;
+  letter-spacing: 0.04em;
+  padding: 2px 0;
+}
+
+/* 各區塊外框（motor-group / fixed-box / params-box / query-box / sweep-box） */
+.motor-group,
+.fixed-box,
+.params-box,
+.query-box,
+.sweep-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 8px 8px;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════
+   Motor 選擇器
+   ══════════════════════════════════════════════════════════ */
+.motor-select {
+  width: 100%;
+  margin-top: 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  border: 1.5px solid var(--accent);
+  border-radius: 5px;
+  padding: 5px 8px;
+  background: #f0f6ff;
+  color: #1e3a8a;
+  outline: none;
+  cursor: pointer;
+}
+
+/* ══════════════════════════════════════════════════════════
+   Measured Values（固定實測值輸入）
+   ══════════════════════════════════════════════════════════ */
+.fixed-row {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+.fixed-label {
+  font-size: 9.5px;
+  color: var(--text);
+  font-weight: 500;
+}
+/* 實測值輸入框：可點擊編輯 */
+.fixed-val {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: #f0f6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  padding: 2px 6px;
+  text-align: right;
+  width: 100%;
+  outline: none;
+  cursor: text;
+  transition: border-color 0.15s;
+}
+.fixed-val:focus { border-color: var(--accent); background: #fff; }
+
+/* ══════════════════════════════════════════════════════════
+   Parameters（設計參數滑桿）
+   ══════════════════════════════════════════════════════════ */
+.param-row {
+  display: grid;
+  grid-template-columns: 88px 1fr 46px;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+/* 參數標籤：與馬達預設值不同時變橘色並加 * */
+.param-label {
+  font-size: 9.5px;
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+.param-label.modified        { color: var(--amber); font-weight: 700; }
+.param-label.modified::after { content: ' *'; }
+
+/* 滑桿樣式 */
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%; height: 5px;
+  border-radius: 3px;
+  background: var(--track);
+  outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+/* 數值輸入框 */
+.param-input {
+  font-family: var(--mono);
+  font-size: 9.5px; font-weight: 600;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 4px;
+  color: #1a1d23;
+  text-align: right;
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.param-input:focus { border-color: var(--accent); background: #fff; }
+
+/* ══════════════════════════════════════════════════════════
+   警告框（邊界曲線無解時顯示）
+   ══════════════════════════════════════════════════════════ */
+.warning-box {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: #dc2626;
+  background: #fff5f5;
+  border: 1px solid #fca5a5;
+  border-radius: 5px;
+  padding: 5px 8px;
+  display: none;         /* 有警告才顯示 */
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════
+   通用按鈕（藍色）
+   ══════════════════════════════════════════════════════════ */
+.query-btn {
+  width: 100%;
+  margin-top: 5px;
+  padding: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.query-btn:hover { background: var(--accent-d); }
+
+/* ══════════════════════════════════════════════════════════
+   Query 圖卡（Save Working Point）
+   ══════════════════════════════════════════════════════════ */
+
+/* 圖卡列表：固定最大高度，超出時出現捲軸 */
+.query-cards-wrap {
+  max-height: 180px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.query-cards { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+
+/* 單張圖卡 */
+.query-card {
+  border-radius: 6px;
+  border: 1.5px solid var(--border);
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.query-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+
+/* 圖卡標題列（點擊展開/折疊） */
+.query-card-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 7px;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+/* 展開箭頭（展開時旋轉 90°） */
+.query-card-chevron {
+  font-size: 9px;
+  color: #9ca3af;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.query-card.expanded .query-card-chevron { transform: rotate(90deg); }
+
+/* 顏色圓點 */
+.query-card-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* 圖卡標題文字 */
+.query-card-title {
+  flex: 1;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 600;
+  color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* 刪除按鈕 */
+.query-card-del {
+  background: none; border: none; font-size: 12px;
+  color: #9ca3af; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0;
+}
+.query-card-del:hover { color: var(--red); }
+
+/* 圖卡內容（預設折疊，展開後顯示） */
+.query-card-body {
+  font-family: var(--mono); font-size: 9.5px; line-height: 1.7;
+  padding: 5px 9px 6px;
+  color: var(--text); background: var(--surface);
+  display: none;
+}
+.query-card.expanded .query-card-body { display: block; }
+.query-card.expanded .query-card-hint { display: block; }
+.query-card-body table { border-collapse: collapse; width: 100%; }
+.query-card-body td { padding: 0 4px 0 0; white-space: nowrap; }
+.query-card-body td:first-child { color: #6b7280; font-size: 9px; }
+.query-card-body td:last-child  { text-align: right; }
+
+/* 圖卡底部提示（預設折疊，展開後顯示） */
+.query-card-hint {
+  font-family: var(--sans); font-size: 8px; color: #9ca3af;
+  padding: 0 9px 4px; background: var(--surface);
+  display: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   Parameter Sweep 區塊
+   ══════════════════════════════════════════════════════════ */
+
+/* 掃描範圍輸入框 */
+.sweep-range-input {
+  width: 42px;
+  font-family: var(--mono);
+  font-size: 9px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 3px;
+  text-align: right;
+  background: #fafafa;
+  color: var(--text);
+  outline: none;
+}
+
+/* Sweep 執行按鈕（紫色） */
+.sweep-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 5px;
+  background: #7c3aed;
+  color: #fff;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.sweep-btn:hover       { background: #6d28d9; }
+.sweep-btn.clear       { background: #6b7280; margin-top: 3px; }
+.sweep-btn.clear:hover { background: #4b5563; }
+
+/* 主圖游標 */
+#chart { cursor: default; }
+/* ══════════════════════════════════════════════════════════
+   Fixed Speed Mode
+   ══════════════════════════════════════════════════════════ */
+.fixed-speed-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 8px 8px;
+  flex-shrink: 0;
+}
+.fixed-speed-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+}
+
+.fixed-speed-row {
+  display: grid;
+  grid-template-columns: 88px 1fr 46px;
+  align-items: center;
+  gap: 5px; margin-top: 5px;
+}
+/* 固定轉速浮動標記 */
+.speed-marker-box {
+  position: absolute;
+  background: rgba(248,250,252,0.97);
+  border: 1.5px solid #10b981;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  line-height: 1.55;
+  color: #1a1d23;
+  padding: 5px 10px 6px;
+  pointer-events: none;
+  z-index: 9;
+  display: none;
+  box-shadow: 0 2px 8px rgba(16,185,129,0.2);
+  min-width: 170px;
+}
+[data-theme="dark"] .speed-marker-box {
+  background: rgba(26,29,39,0.97);
+  color: #c9d1e0;
+  border-color: #10b981;
+}
+.speed-marker-box table { border-collapse: collapse; width: 100%; }
+.speed-marker-box td { padding: 1px 0; white-space: nowrap; }
+.speed-marker-box .sm-sym  { font-size: 9px; color: #6b7280; padding-right: 6px; }
+.speed-marker-box .sm-val  { font-size: 10px; font-weight: 600; color: #10b981; text-align: right; padding-right: 5px; }
+.speed-marker-box .sm-unit { font-size: 8.5px; color: #9ca3af; }
+
+
+/* ══════════════════════════════════════════════════════════
+   Collapsible 區塊
+   ══════════════════════════════════════════════════════════ */
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  padding-bottom: 2px;
+}
+.collapsible-header:hover .section-title { color: var(--accent); }
+.collapsible-arrow {
+  font-size: 9px;
+  color: #9ca3af;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+.collapsed .collapsible-arrow { transform: rotate(-90deg); }
+.collapsible-body { overflow: hidden; }
+.collapsed .collapsible-body { display: none; }
+
+/* ══════════════════════════════════════════════════════════
+   Torque 分析欄
+   ══════════════════════════════════════════════════════════ */
+.torque-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 8px 8px;
+  flex-shrink: 0;
+}
+.torque-bar-wrap { margin-top: 6px; }
+.torque-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.torque-bar-track {
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  display: flex;
+  background: #e5e7eb;
+  border: 1px solid var(--border);
+}
+[data-theme="dark"] .torque-bar-track { background: #2d3148; }
+.torque-seg-a {
+  background: #2563eb;
+  height: 100%;
+  transition: width 0.3s ease;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 8px; color: #fff; font-weight: 600;
+  overflow: hidden; white-space: nowrap;
+}
+.torque-seg-f {
+  background: #f59e0b;
+  height: 100%;
+  transition: width 0.3s ease;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 8px; color: #fff; font-weight: 600;
+  overflow: hidden; white-space: nowrap;
+}
+.torque-legend {
+  display: flex;
+  gap: 12px;
+  margin-top: 5px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--text);
+}
+.torque-legend-item { display: flex; align-items: center; gap: 4px; }
+.torque-legend-dot {
+  width: 9px; height: 9px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.torque-detail {
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--text);
+  line-height: 1.7;
+}
+.torque-ratio {
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--accent);
+}
+[data-theme="dark"] .torque-ratio { color: #93b4ff; }
+
+/* ══════════════════════════════════════════════════════════
+   Dark theme: element-specific overrides (hand-tuned, not
+   expressible purely via shared CSS variables)
+   ══════════════════════════════════════════════════════════ */
+[data-theme="dark"] .chart-wrap,
+[data-theme="dark"] .sweep-chart-wrap   { background: #13151f; }
+[data-theme="dark"] .info-box           { background: rgba(26,29,39,0.96); border-color: #2d3148; }
+[data-theme="dark"] .info-box-handle    { background: #1e2235; border-color: #2d3148; color: #6b7a99; }
+[data-theme="dark"] .info-box-body      { color: #c9d1e0; }
+[data-theme="dark"] .param-input        { background: #1e2235; color: #c9d1e0; border-color: #2d3148; }
+[data-theme="dark"] .param-input:focus  { background: #252840; }
+[data-theme="dark"] .motor-select       { background: #1e2235; color: #93b4ff; border-color: #4d8fff; }
+[data-theme="dark"] .fixed-val          { background: #1a2235; color: #93b4ff; border-color: #2d3148; }
+[data-theme="dark"] .fixed-val:focus    { background: #252840; }
+[data-theme="dark"] .sweep-range-input  { background: #1e2235; color: #c9d1e0; }
+[data-theme="dark"] .warning-box        { background: #2d1515; border-color: #7f1d1d; color: #f87171; }
+[data-theme="dark"] .query-card-header  { background: #1e2235; }
+[data-theme="dark"] .query-card-body    { color: #c9d1e0; }
+/* info-box torque bar in dark */
+[data-theme="dark"] .info-box-body .torque-bg { background: #252840; border-color: #2d3148; }
+[data-theme="dark"] .query-card-body td:first-child { color: #6b7a99; }

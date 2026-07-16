@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motor Working Point Explorer | Motor Toolkit</title>
+<meta name="description"
+  content="Solve the stable working point of a motor (boundary curve vs. load parabola intersection) and sweep design parameters. Free, browser-based, runs entirely client-side.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/working-point/">
+<link rel="icon" type="image/png" href="../../favicon.png">
+<link rel="stylesheet" href="../../shared/theme.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-title="Working Point Explorer" data-sub="Stable working point · Parameter sweep">
+<script src="../../shared/tools.js"></script>
+<script src="../../shared/shell.js"></script>
+<script src="../../vendor/chart.umd.min.js"></script>
+
+<!-- 主版面：左側圖表 + 右側控制欄 -->
+<div class="layout">
+
+  <!-- ── 左側：兩張圖上下排列 ── -->
+  <div class="charts-col">
+
+    <!-- 第一張：主圖（Boundary + Load curve + Working point） -->
+    <div class="chart-wrap" id="chartWrap">
+      <canvas id="chart"></canvas>
+      <!-- 固定轉速標記框 -->
+      <div class="speed-marker-box" id="speedMarkerBox"></div>
+
+      <!-- 可拖曳工作點資訊框 -->
+      <div class="info-box" id="infoBox">
+        <div class="info-box-handle" id="infoHandle">Working Point</div>
+        <div class="info-box-body" id="infoBody"></div>
+      </div>
+    </div>
+
+    <!-- 第二張：Sweep 圖（Run Sweep 後才顯示） -->
+    <div class="sweep-chart-wrap" id="sweepChartWrap" style="display:none">
+      <canvas id="sweepChart"></canvas>
+    </div>
+
+  </div>
+
+  <!-- ── 右側：控制欄 ── -->
+  <div class="panel">
+
+    <!-- Motor 選擇器 -->
+    <div class="motor-group">
+      <div class="section-title">Motor</div>
+      <select class="motor-select" id="motorSelect" onchange="onMotorSelect(this.value)"></select>
+    </div>
+
+    <!-- 固定轉速模式 -->
+    <div class="fixed-speed-box" id="fixedSpeedBox">
+      <div class="collapsible-header" onclick="toggleSection('fixedSpeedBox')">
+        <div class="section-title">
+          Fixed Speed
+          <span style="font-weight:400;color:#9ca3af;font-size:9px">(look up a specific speed)</span>
+        </div>
+        <span class="collapsible-arrow">▾</span>
+      </div>
+      <div class="collapsible-body">
+        <div class="fixed-speed-row">
+          <span class="fixed-label">Target N [RPM]<br><span style="font-size:8px;color:#9ca3af">Target speed</span></span>
+          <input type="range" id="slFixedN" min="1000" max="80000" step="100" value="15000"
+                 oninput="document.getElementById('inFixedN').value=this.value; onFixedSpeedChange()">
+          <input type="text" id="inFixedN" class="param-input" value="15000"
+                 onchange="document.getElementById('slFixedN').value=parseFloat(this.value)||15000; onFixedSpeedChange()">
+        </div>
+        <div id="fixedSpeedResult" style="margin-top:6px;display:none">
+          <div style="font-family:var(--mono);font-size:8.5px;color:#6b7280;
+               border-top:1px solid var(--border);padding-top:5px;margin-top:2px">
+            <table style="border-collapse:collapse;width:100%" id="fixedSpeedTable"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 固定實測值（可收合） -->
+    <div class="fixed-box" id="measuredBox">
+      <div class="collapsible-header" onclick="toggleSection('measuredBox')">
+        <div class="section-title">
+          Measured Values
+          <span style="font-weight:400;color:#9ca3af;font-size:9px">(editable)</span>
+        </div>
+        <span class="collapsible-arrow">▾</span>
+      </div>
+      <div class="collapsible-body">
+      <div class="fixed-row">
+        <span class="fixed-label">N_ref [RPM]<br><span style="font-size:8px;color:#9ca3af">Reference speed</span></span>
+        <input type="text" class="fixed-val" id="dispNref" value="—"
+               onchange="onFixedInput('N_ref', this.value)">
+      </div>
+      <div class="fixed-row">
+        <span class="fixed-label">T_A_ref [μN·m]<br><span style="font-size:8px;color:#9ca3af">Reference aero load</span></span>
+        <input type="text" class="fixed-val" id="dispTAref" value="—"
+               onchange="onFixedInput('TA_ref', this.value)">
+      </div>
+      <!-- Calibrate Ke 按鈕：反推使 working point = REF 點的 Ke 值 -->
+      <button class="query-btn" style="margin-top:6px;background:#10b981"
+              onclick="calibrateKe()">⚡ Calibrate Ke</button>
+      </div><!-- end collapsible-body -->
+    </div>
+
+    <!-- 油品選擇與溫度設定（可收合） -->
+    <div class="oil-box" id="oilBox">
+      <div class="collapsible-header" onclick="toggleSection('oilBox')">
+        <div class="section-title">Oil &amp; Temperature</div>
+        <span class="collapsible-arrow">▾</span>
+      </div>
+      <div class="collapsible-body">
+
+      <!-- 油品選擇 -->
+      <div class="oil-row">
+        <span class="oil-label">Oil<br><span style="font-size:8px;color:#9ca3af">Oil Type</span></span>
+        <select class="motor-select" id="oilSelect" onchange="onOilChange()" style="margin-top:0"></select>
+      </div>
+
+      <!-- 環境溫度 -->
+      <div class="oil-row" style="grid-template-columns:88px 1fr 46px">
+        <span class="oil-label">Ambient temp.<br><span style="font-size:8px;color:#9ca3af">Ambient [°C]</span></span>
+        <input type="range" id="slTamb" min="-20" max="85" step="1" value="28"
+               oninput="document.getElementById('inTamb').value=this.value; onOilChange()">
+        <input type="text" id="inTamb" class="param-input" value="28"
+               onchange="document.getElementById('slTamb').value=parseFloat(this.value)||28; onOilChange()">
+      </div>
+
+      <!-- 溫升 -->
+      <div class="oil-row" style="grid-template-columns:88px 1fr 46px">
+        <span class="oil-label">Rise<br><span style="font-size:8px;color:#9ca3af">Rise [°C]</span></span>
+        <input type="range" id="slTrise" min="0" max="60" step="1" value="0"
+               oninput="document.getElementById('inTrise').value=this.value; onOilChange()">
+        <input type="text" id="inTrise" class="param-input" value="0"
+               onchange="document.getElementById('slTrise').value=parseFloat(this.value)||0; onOilChange()">
+      </div>
+
+      <!-- 計算結果 -->
+      <div id="oilResult" style="font-family:var(--mono);font-size:9px;color:#10b981;
+           text-align:right;margin-top:4px;min-height:13px"></div>
+      </div><!-- end collapsible-body -->
+    </div>
+
+    <!-- 可調設計參數（可收合） -->
+    <div class="params-box" id="paramsBox">
+      <div class="collapsible-header" onclick="toggleSection('paramsBox')">
+        <div class="section-title">
+          Parameters
+          <span style="font-weight:400;color:#9ca3af;font-size:9px">(drag or type)</span>
+        </div>
+        <span class="collapsible-arrow">▾</span>
+      </div>
+      <div class="collapsible-body" id="paramsBoxBody">
+        <div id="paramRows"></div>
+        <button class="query-btn" onclick="doQuery()" style="margin-top:8px">+ Save Working Point</button>
+        <div class="query-cards-wrap">
+          <div class="query-cards" id="queryCards"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 邊界曲線無解時的警告框 -->
+    <div class="warning-box" id="curveWarning"></div>
+
+    <!-- Parameter Sweep：可收合 -->
+    <div class="sweep-box" id="sweepBox">
+      <div class="collapsible-header" onclick="toggleSection('sweepBox')">
+        <div class="section-title">Parameter Sweep</div>
+        <span class="collapsible-arrow">▾</span>
+      </div>
+
+      <div class="collapsible-body">
+      <!-- X 軸：選擇要掃描的參數及範圍 -->
+      <div style="margin-top:5px">
+        <div style="font-size:9px;color:#6b7280;margin-bottom:2px">X axis — Parameter</div>
+        <select class="motor-select" id="swXParam" style="margin-top:0"
+                onchange="onSwXParamChange()">
+          <option value="D_shaft">D_shaft [mm]</option>
+          <option value="L_shaft">L_shaft [mm]</option>
+          <option value="G_film">G_film [μm]</option>
+          <option value="Vc">Vc [mm²/s]</option>
+          <option value="D_oil">D_oil [-]</option>
+          <option value="Ke">Ke [mV/krpm]</option>
+          <option value="R_C">R_C [Ω]</option>
+          <option value="V_rated">V_rated [V]</option>
+          <option value="T_amb">Ambient temp. [°C]</option>
+          <option value="T_rise">Rise [°C]</option>
+        </select>
+        <div style="display:flex;gap:4px;margin-top:4px;align-items:center">
+          <span style="font-size:9px;color:#6b7280">min</span>
+          <input type="text" class="sweep-range-input" id="swXMin" value="" style="flex:1">
+          <span style="font-size:9px;color:#6b7280">max</span>
+          <input type="text" class="sweep-range-input" id="swXMax" value="" style="flex:1">
+        </div>
+      </div>
+
+      <!-- Y 軸：選擇要觀察的輸出量 -->
+      <div style="margin-top:6px">
+        <div style="font-size:9px;color:#6b7280;margin-bottom:2px">Y axis — Output</div>
+        <select class="motor-select" id="swYParam" style="margin-top:0">
+          <option value="N_wp">N_wp [RPM]</option>
+          <option value="T_A">T_A [μN·m]</option>
+          <option value="I_in">I_in [mA]</option>
+          <option value="P_in">P_in [mW]</option>
+          <option value="Eff_Tsum">Eff T_sum [%]</option>
+          <option value="Eff_TA">Eff T_A [%]</option>
+        </select>
+      </div>
+
+      <button class="sweep-btn" onclick="runSweep()">▶ Run Sweep</button>
+      <button class="sweep-btn clear" onclick="clearSweep()">✕ Clear</button>
+      </div><!-- end collapsible-body -->
+    </div>
+
+  </div><!-- end .panel -->
+</div><!-- end .layout -->
+
+<script src="physics.js"></script>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

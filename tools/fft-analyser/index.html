@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="../../favicon.png">
+<link rel="apple-touch-icon" href="../../favicon.png">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<!-- ═══ SEO ═══════════════════════════════════════════════════════════════ -->
+<title>Free Online FFT Analyser | Harmonic Analysis & THD Calculator | Motor Toolkit</title>
+<meta name="description"
+  content="Free online FFT analyser — no install needed. Upload oscilloscope CSV or paste data to measure harmonic amplitudes and THD. Supports Flat-top, Hann, Hamming, Rectangular window functions. Used for motor back-EMF analysis, signal quality testing, and audio harmonic distortion measurement.">
+<meta name="keywords"
+  content="FFT analyser,FFT calculator,spectrum analyser,harmonic analysis,THD calculator,total harmonic distortion,window function,Flat-top window,Hann window,Hamming window,oscilloscope CSV,signal analysis,frequency spectrum,spectral leakage,FFT tool,online FFT,free FFT,motor back EMF analysis">
+<meta name="author" content="FFT Spectrum Analyser">
+<meta name="robots" content="index, follow">
+<meta name="google-site-verification" content="2xkq-0_CVzzZipr93exNmzvhRA7WxKZrWkYaChxWxpc">
+<link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/fft-analyser/">
+
+<!-- Open Graph (Facebook / LINE 分享預覽) -->
+<meta property="og:type"        content="website">
+<meta property="og:title"       content="FFT Spectrum Analyser | Harmonic Analysis & THD Calculator">
+<meta property="og:description" content="Free online FFT spectrum analyser. Calculate harmonic amplitudes and THD with Flat-top, Hann, Hamming window functions.">
+<meta property="og:url"         content="https://0zhen.github.io/motor-toolkit/tools/fft-analyser/">
+<meta property="og:locale"      content="en_US">
+
+<!-- Twitter Card -->
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="Free Online FFT Analyser | Harmonic & THD">
+<meta name="twitter:description" content="Free online FFT spectrum analysis. Calculate harmonic amplitudes and THD with multiple window functions.">
+
+<!-- Structured Data (JSON-LD) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "FFT Spectrum Analyser",
+  "alternateName": ["FFT Spectrum Analyser", "FFT Tool", "Harmonic Analyser", "THD Calculator"],
+  "url": "https://0zhen.github.io/motor-toolkit/tools/fft-analyser/",
+  "description": "Free online FFT spectrum analyser for harmonic analysis and THD calculation. Supports Flat-top, Hann, Hamming, Rectangular window functions. Used for motor back-EMF analysis, power quality testing, audio distortion measurement, and vibration analysis.",
+  "keywords": "FFT analyser, FFT calculator, online FFT, free FFT tool, THD calculator, harmonic analyser, spectrum analyser, Flat-top window, motor back EMF, signal analysis",
+  "applicationCategory": "EngineeringApplication",
+  "operatingSystem": "Web Browser",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "featureList": [
+    "FFT spectrum analysis",
+    "Harmonic extraction (1x–10x)",
+    "THD calculation",
+    "Flat-top / Hann / Hamming / Rectangular window functions",
+    "CSV upload and manual data input",
+    "Dark mode"
+  ]
+}
+</script>
+
+<!-- FAQ Schema — helps AI engines find and cite this page -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is the best free online FFT spectrum analyser?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "This FFT Spectrum Analyser is a free browser-based tool that requires no installation. It supports CSV upload from oscilloscopes, manual data input, four window functions (Flat-top, Hann, Hamming, Rectangular), harmonic extraction up to 10th order, and THD calculation."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which window function should I use for THD measurement?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Flat-top window is the best choice for THD measurement because it provides the highest amplitude accuracy (less than 0.01 dB error) regardless of whether the signal frequency aligns with FFT bins. This makes harmonic amplitude measurements reliable and THD calculations accurate."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I calculate THD from oscilloscope data using FFT?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Upload your oscilloscope CSV file to this tool, select Flat-top window function, and click Analyse. The tool automatically computes FFT, extracts harmonic amplitudes (1x to 10x), and calculates THD using the formula: THD = sqrt(A2² + A3² + ... + A10²) / A1, where A1 is the fundamental amplitude."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is spectral leakage in FFT analysis?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Spectral leakage occurs when a signal frequency does not align exactly with an FFT bin. FFT assumes the signal repeats infinitely, so a discontinuity at the boundaries causes energy to spread across all frequency bins, distorting the spectrum. Window functions solve this by smoothly tapering the signal to zero at both ends."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the difference between Hann and Flat-top window functions?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Hann window provides good frequency resolution and low sidelobes (-31 dB), making it suitable for general spectrum analysis. Flat-top window sacrifices frequency resolution for superior amplitude accuracy (less than 0.01 dB), making it ideal for precise harmonic amplitude measurement and THD calculation."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I analyse motor back-EMF with this FFT tool?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. This tool is designed for motor back-EMF harmonic analysis. Upload oscilloscope measurements as CSV or paste raw data, select Flat-top window for accurate amplitude measurement, and the tool will identify the fundamental frequency and calculate each harmonic component up to the 10th order along with total THD."
+      }
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="../../shared/theme.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-title="FFT Analyser" data-sub="Harmonics · Window functions · THD">
+<script src="../../shared/tools.js"></script>
+<script src="../../shared/shell.js"></script>
+<script src="../../vendor/chart.umd.min.js"></script>
+
+<div id="tt"></div>
+
+<div class="container">
+
+  <!-- Input -->
+  <div class="card">
+    <div class="card-title" id="t-input">Input Data</div>
+    <div class="tabs">
+      <div class="tab active" id="tab-csv" onclick="switchTab('csv')">Upload CSV</div>
+      <div class="tab" id="tab-manual" onclick="switchTab('manual')">Paste Data</div>
+    </div>
+
+    <div id="panel-csv" class="tab-panel active">
+      <div class="upload-zone" id="drop-zone"
+           onclick="document.getElementById('file-input').click()"
+           ondragover="onDrag(event,true)" ondragleave="onDrag(event,false)" ondrop="onDrop(event)">
+        <input type="file" id="file-input" accept=".csv,.txt" onchange="onFileSelect(event)">
+        <div class="upload-icon">📂</div>
+        <p id="t-drop">Click to upload or drag &amp; drop a CSV file</p>
+        <div class="sub-hint" id="t-drop2">Tektronix format — column D = time, column E = voltage</div>
+        <div class="filename hidden" id="file-name"></div>
+      </div>
+    </div>
+
+    <div id="panel-manual" class="tab-panel">
+      <div class="hint-box" id="t-hint">
+Two columns (time or index + voltage), tab or space separated:<br>
+&nbsp;&nbsp;-2.00E-02 &nbsp; 1.82E-01<br>
+&nbsp;&nbsp;-1.99E-02 &nbsp; 1.81E-01 &nbsp; ...<br><br>
+Index column (1, 2, 3 …) — enter sampling rate below:<br>
+&nbsp;&nbsp;1 &nbsp; 0.087 &nbsp;&nbsp;&nbsp; 2 &nbsp; 0.174 &nbsp; ...
+      </div>
+      <div class="sr-row">
+        <label for="sr-input" style="font-size:13px;color:var(--text2);white-space:nowrap" id="t-sr">Sampling rate (Hz):</label>
+        <input type="number" id="sr-input" placeholder="auto-detect from time column">
+        <span style="font-size:11px;color:var(--text3)" id="t-sr-hint">Leave blank to auto-detect</span>
+      </div>
+      <textarea id="manual-input" placeholder="Paste data here…"></textarea>
+    </div>
+  </div>
+
+  <!-- Window -->
+  <div class="card">
+    <div class="card-title" id="t-win">Window Function</div>
+    <div class="win-grid" id="win-grid"></div>
+  </div>
+
+  <!-- Run -->
+  <div class="card">
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-analyse" onclick="runAnalysis()">▶ Analyse</button>
+      <button class="btn btn-dl hidden" id="btn-dl" onclick="exportCSV()">⬇ Export CSV</button>
+      <div class="progress-wrap">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="prog-fill"></div></div>
+        <div class="progress-label" id="prog-label">Ready</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results" class="hidden">
+    <div class="result-grid" id="metrics-row"></div>
+    <div class="card">
+      <div class="card-title" id="t-preview">Preview</div>
+      <div class="charts-row">
+        <div>
+          <div class="chart-label" id="t-bar-title">Harmonic amplitude (log scale)</div>
+          <div class="chart-wrap"><canvas id="chart-bar"></canvas></div>
+        </div>
+        <div>
+          <div class="chart-label" id="t-spec-title">Frequency spectrum</div>
+          <div class="chart-wrap"><canvas id="chart-spec"></canvas></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="t-summary">Harmonic Summary</div>
+      <table>
+        <thead>
+          <tr>
+            <th id="th-order">Order</th>
+            <th id="th-freq">Frequency (Hz)</th>
+            <th id="th-amp">Amplitude (V)</th>
+            <th id="th-rel">Relative to fund.</th>
+          </tr>
+        </thead>
+        <tbody id="harm-body"></tbody>
+      </table>
+    </div>
+</div>
+
+<!-- SEO content block -->
+<div style="max-width:1160px;margin:0 auto;padding:0 18px 48px 18px">
+  <div style="border-top:1px solid var(--border);padding-top:32px">
+
+    <p style="font-size:13px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin:0 0 20px">
+      About this tool
+    </p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px">
+
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">What it does</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.7">
+          Upload an oscilloscope CSV or paste time-domain data to compute the frequency spectrum,
+          extract harmonic amplitudes (1x–10x), and calculate THD — all in your browser, no install needed.
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Window functions</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.7">
+          <strong style="color:var(--text)">Flat-top</strong> — best amplitude accuracy, ideal for THD measurement<br>
+          <strong style="color:var(--text)">Hann</strong> — general-purpose spectrum analysis<br>
+          <strong style="color:var(--text)">Hamming</strong> — low sidelobes, speech &amp; telecom<br>
+          <strong style="color:var(--text)">Rectangular</strong> — best frequency resolution
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Use cases</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.7">
+          Motor back-EMF harmonic analysis · Power quality THD measurement ·
+          Audio distortion testing · Vibration analysis · FFT education
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</div><!-- /container -->
+
+<script src="app.js"></script>
+</body>
+</html>

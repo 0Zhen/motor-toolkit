@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Efficiency Map Generator | Motor Toolkit</title>
+<meta name="description"
+  content="Generate a motor efficiency map (contour plot) from speed / torque / efficiency data points. Free, browser-based, PNG export. Data never leaves your machine.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/efficiency-map/">
+<link rel="icon" type="image/png" href="../../favicon.png">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+.em-wrap { max-width: 1200px; margin: 0 auto; padding: 20px 24px 60px;
+           display: grid; grid-template-columns: 320px 1fr; gap: 18px; align-items: start; }
+@media (max-width: 900px) { .em-wrap { grid-template-columns: 1fr; } }
+
+.em-panel { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.em-panel h2 { font-size: 14px; }
+.em-field { display: flex; flex-direction: column; gap: 4px; }
+.em-row { display: flex; gap: 8px; align-items: center; }
+.em-row .mt-input { flex: 1; min-width: 0; }
+#dataInput { width: 100%; height: 260px; resize: vertical; white-space: pre; }
+.em-hint { font-size: 11.5px; color: var(--text3); line-height: 1.6; }
+.em-check { display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; }
+.em-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.em-error { color: var(--red); font-size: 12.5px; display: none; }
+.em-stat { font-size: 12px; color: var(--text2); }
+
+.em-plot-card { padding: 12px; }
+#plot { width: 100%; height: 560px; }
+.em-plot-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 8px 4px 2px; }
+</style>
+</head>
+<body data-title="Efficiency Map Generator" data-sub="Contour map from speed / torque / efficiency points">
+<script src="../../shared/tools.js"></script>
+<script src="../../shared/shell.js"></script>
+<script src="../../vendor/plotly-cartesian.min.js"></script>
+
+<main class="em-wrap">
+  <section class="mt-card em-panel">
+    <h2>Data</h2>
+    <div class="em-field">
+      <label class="mt-label" for="dataInput">Paste data — 3 columns: speed, torque, efficiency</label>
+      <textarea id="dataInput" class="mt-textarea" spellcheck="false"
+        placeholder="1000  15  92.68&#10;1000  20  94.61&#10;1000  25  93.80&#10;…&#10;&#10;Separators: space / tab / comma / semicolon.&#10;A header row is skipped automatically."></textarea>
+    </div>
+    <div class="em-row">
+      <input type="file" id="csvFile" accept=".csv,.txt,.tsv" style="display:none">
+      <button class="mt-btn-ghost" id="btnCsv">Load CSV…</button>
+      <button class="mt-btn-ghost" id="btnSample">Sample data</button>
+    </div>
+
+    <h2>Options</h2>
+    <div class="em-field">
+      <label class="mt-label" for="optTitle">Title (optional)</label>
+      <input id="optTitle" class="mt-input" placeholder="e.g. Motor A — Total Efficiency">
+    </div>
+    <div class="em-row">
+      <div class="em-field" style="flex:1">
+        <label class="mt-label" for="optXLabel">X axis</label>
+        <input id="optXLabel" class="mt-input" value="Speed (RPM)">
+      </div>
+      <div class="em-field" style="flex:1">
+        <label class="mt-label" for="optYLabel">Y axis</label>
+        <input id="optYLabel" class="mt-input" value="Torque (N·m)">
+      </div>
+    </div>
+    <div class="em-row">
+      <div class="em-field" style="flex:1">
+        <label class="mt-label" for="optUnit">Value unit</label>
+        <input id="optUnit" class="mt-input" value="%">
+      </div>
+      <div class="em-field" style="flex:1">
+        <label class="mt-label" for="optLabel">Value name</label>
+        <input id="optLabel" class="mt-input" value="Efficiency">
+      </div>
+    </div>
+    <label class="em-check"><input type="checkbox" id="optPoints" checked> Show data points</label>
+
+    <div class="em-actions">
+      <button class="mt-btn" id="btnRender">Generate map</button>
+      <button class="mt-btn-ghost" id="btnPng">Download PNG</button>
+    </div>
+    <div class="em-error" id="errBox"></div>
+    <div class="em-stat" id="statBox"></div>
+    <p class="em-hint">
+      Points are triangulated (Delaunay) and interpolated onto a regular grid —
+      irregular operating envelopes are supported; regions outside the measured
+      envelope stay blank. All processing happens in your browser.
+    </p>
+  </section>
+
+  <section class="mt-card em-plot-card">
+    <div id="plot"></div>
+    <div class="em-plot-actions"></div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
