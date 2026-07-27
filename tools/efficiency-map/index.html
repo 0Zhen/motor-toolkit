@@ -31,6 +31,28 @@
 .em-plot-card { padding: 12px; }
 #plot { width: 100%; height: 560px; }
 .em-plot-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 8px 4px 2px; }
+
+.ie-wrap { max-width: 1200px; margin: 18px auto 60px; padding: 0 24px; }
+.ie-card { padding: 16px; }
+.ie-card h2 { font-size: 14px; margin-bottom: 4px; }
+.ie-sub { font-size: 12px; color: var(--text3); margin-bottom: 12px; }
+.ie-fields { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 10px; }
+.ie-field { display: flex; flex-direction: column; gap: 4px; min-width: 130px; }
+.ie-field .mt-input { width: 100%; }
+.ie-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.ie-error { color: var(--red); font-size: 12.5px; display: none; margin-bottom: 8px; }
+.ie-result { display: none; }
+.ie-badge {
+  display: inline-block; padding: 4px 12px; border-radius: 6px;
+  font-size: 15px; font-weight: 700; background: var(--accent-l); color: var(--accent-d);
+  border: 1px solid var(--accent); margin-bottom: 10px;
+}
+.ie-badge.none { background: var(--hover-bg); color: var(--text2); border-color: var(--border); }
+.ie-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 10px; }
+.ie-table th, .ie-table td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--border); }
+.ie-table th:first-child, .ie-table td:first-child { text-align: left; }
+.ie-table tr.achieved { background: var(--accent-l); font-weight: 700; }
+.ie-hint { font-size: 11.5px; color: var(--text3); line-height: 1.6; }
 </style>
 </head>
 <body data-title="Efficiency Map Generator" data-sub="Contour map from speed / torque / efficiency points"
@@ -99,6 +121,45 @@
   </section>
 </main>
 
+<div class="ie-wrap">
+  <section class="mt-card ie-card">
+    <h2 data-i18n="ieTitle">IE Class Calculator (indicative)</h2>
+    <p class="ie-sub" data-i18n="ieSub">IEC TS 60034-30-2 — for variable-speed motors (incl. PMSM). Not an official compliance statement.</p>
+
+    <div class="ie-fields">
+      <div class="ie-field">
+        <label class="mt-label" for="ieSpeed" data-i18n="ieSpeed">Candidate speed (rpm)</label>
+        <input id="ieSpeed" class="mt-input" type="number" placeholder="e.g. 3000">
+      </div>
+      <div class="ie-field">
+        <label class="mt-label" for="ieTorque" data-i18n="ieTorque">Candidate torque (N·m)</label>
+        <input id="ieTorque" class="mt-input" type="number" placeholder="e.g. 5">
+      </div>
+      <div class="ie-field">
+        <label class="mt-label" for="ieEta90" data-i18n="ieEta90">η90 — efficiency at 90% speed, same torque (%)</label>
+        <input id="ieEta90" class="mt-input" type="number" placeholder="e.g. 88.5">
+      </div>
+      <button class="mt-btn-ghost" id="btnIeFill" data-i18n="ieFill">Fill η90 from map data</button>
+      <button class="mt-btn" id="btnIeClassify" data-i18n="ieClassify">Classify</button>
+    </div>
+
+    <div class="ie-error" id="ieErr"></div>
+
+    <div class="ie-result" id="ieResult">
+      <div id="ieBadge"></div>
+      <table class="ie-table" id="ieTable"></table>
+    </div>
+
+    <p class="ie-hint" data-i18n="ieHint">
+      Classification uses the actual formulas from IEC TS 60034-30-2 (Table 7/8 interpolation,
+      harmonic-loss-corrected threshold), covering 0.12–200 kW and 600–6000 rpm. Scope conditions
+      not checked here: rated voltage, cooling method (IC4xx), duty type, and the servo-motor
+      exclusion test — a real compliance determination needs those too.
+    </p>
+  </section>
+</div>
+
+<script src="ie-class.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

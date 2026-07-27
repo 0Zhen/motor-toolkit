@@ -33,6 +33,35 @@ var MT_I18N = {
   statSpeed: { en: 'speed', zh: '轉速' },
   statTorque:{ en: 'torque', zh: '扭矩' },
   statSkip:  { en: '{n} line(s) skipped', zh: '略過 {n} 行' },
+
+  /* IE Class Calculator */
+  ieTitle:   { en: 'IE Class Calculator (indicative)', zh: 'IE 效率等級計算器（假設性）' },
+  ieSub:     { en: "IEC TS 60034-30-2 — for variable-speed motors (incl. PMSM). Not an official compliance statement.",
+               zh: 'IEC TS 60034-30-2——適用變頻驅動馬達（含 PMSM）。非官方合規判定。' },
+  ieSpeed:   { en: 'Candidate speed (rpm)', zh: '候選轉速（rpm）' },
+  ieTorque:  { en: 'Candidate torque (N·m)', zh: '候選轉矩（N·m）' },
+  ieEta90:   { en: 'η90 — efficiency at 90% speed, same torque (%)', zh: 'η90——90% 轉速、同轉矩下的效率（%）' },
+  ieFill:    { en: 'Fill η90 from map data', zh: '從地圖資料自動填入 η90' },
+  ieClassify:{ en: 'Classify', zh: '判定' },
+  ieHint:    {
+    en: "Classification uses the actual formulas from IEC TS 60034-30-2 (Table 7/8 interpolation, harmonic-loss-corrected threshold), covering 0.12–200 kW and 600–6000 rpm. Scope conditions not checked here: rated voltage, cooling method (IC4xx), duty type, and the servo-motor exclusion test — a real compliance determination needs those too.",
+    zh: '判定邏輯採用 IEC TS 60034-30-2 原文公式（Table 7/8 內插、諧波損耗修正門檻），覆蓋 0.12～200kW、600～6000rpm。以下條件本工具未檢查：額定電壓、冷卻方式（IC4xx）、實際運轉型態、servo 排除判定式——真正的合規判定還需要這些條件。',
+  },
+  ieErrInput:{ en: 'Enter candidate speed and torque (both > 0).', zh: '請輸入候選轉速與轉矩（皆須大於 0）。' },
+  ieErrEta:  { en: 'Enter η90, or use "Fill η90 from map data" after generating the map.', zh: '請輸入 η90，或先產生地圖後點「從地圖資料自動填入 η90」。' },
+  ieErrNoMap:{ en: 'Need at least 3 valid map data points first (paste data or load sample data above).',
+               zh: '請先在上方貼上或載入至少 3 筆有效的地圖資料。' },
+  ieErrShift:{ en: '90% × speed = {v} rpm falls outside the loaded map\'s covered range — cannot interpolate η90 here.',
+               zh: '90% × 轉速 = {v} rpm，落在目前地圖資料涵蓋範圍之外，無法內插出 η90。' },
+  ieNone:    { en: 'Below IE1', zh: '未達 IE1' },
+  ieSpeedRange: { en: 'Cannot classify — rated speed outside standard\'s covered range (600–6000 rpm).',
+                  zh: '無法判定——額定轉速超出標準涵蓋範圍（600～6000 rpm）。' },
+  iePowerRange: { en: 'Cannot classify — rated power ({p} kW) outside standard\'s covered range (0.12–200 kW).',
+                  zh: '無法判定——額定功率（{p} kW）超出標準涵蓋範圍（0.12～200 kW）。' },
+  ieResultHead: { en: 'Power {p} kW · band {b} rpm', zh: '功率 {p} kW · 頻段 {b} rpm' },
+  ieColClass: { en: 'Class', zh: '等級' },
+  ieColThr:   { en: 'Threshold η_n (%)', zh: '門檻 η_n（%）' },
+  ieColEta:   { en: 'Your η90 (%)', zh: '你的 η90（%）' },
 };
 
 (function () {
@@ -273,5 +302,99 @@ document.addEventListener('mt-theme-change', function () {
 });
 document.addEventListener('mt-lang-change', function () {
   if (lastRendered) render();
+  if (lastIeResult) renderIeResult(lastIeResult);
 });
+
+/* ── IE Class Calculator ─────────────────────────────────────────
+   Single-point indicative classification (IEC TS 60034-30-2), kept
+   deliberately separate from the full-map contour above — one panel
+   showing every candidate point's class at once turned out to need a
+   lot of machinery (grey "can't classify" background, hollow markers
+   for isolated unclassifiable points, etc., see the write-up on
+   0zhen.github.io) that isn't worth it for a small toolkit widget.
+   This just answers "what class does THIS point reach". ────────── */
+var lastIeResult = null;
+
+function ieShowError(msg) {
+  var box = $('ieErr');
+  box.textContent = msg;
+  box.style.display = msg ? 'block' : 'none';
+}
+
+function renderIeResult(r) {
+  lastIeResult = r;
+  $('ieResult').style.display = 'block';
+
+  var badge = $('ieBadge');
+  if (r.reason === 'speed-range') {
+    badge.innerHTML = '<span class="ie-badge none">' + mtT('ieSpeedRange') + '</span>';
+    $('ieTable').innerHTML = '';
+    return;
+  }
+  if (r.reason === 'power-range') {
+    badge.innerHTML = '<span class="ie-badge none">' + mtT('iePowerRange').replace('{p}', r.powerKw.toFixed(3)) + '</span>';
+    $('ieTable').innerHTML = '';
+    return;
+  }
+
+  var achievedLabel = r.achieved || mtT('ieNone');
+  badge.innerHTML =
+    '<div style="font-size:11.5px;color:var(--text3);margin-bottom:6px">' +
+      mtT('ieResultHead').replace('{p}', r.powerKw.toFixed(3)).replace('{b}', r.band) +
+    '</div>' +
+    '<span class="ie-badge' + (r.achieved ? '' : ' none') + '">' + achievedLabel + '</span>';
+
+  var rows = ['<tr><th>' + mtT('ieColClass') + '</th><th>' + mtT('ieColThr') + '</th><th>' + mtT('ieColEta') + '</th></tr>'];
+  IEClass.IE_CLASSES.forEach(function (ie) {
+    var isAchieved = ie === r.achieved;
+    rows.push('<tr' + (isAchieved ? ' class="achieved"' : '') + '>' +
+      '<td>' + ie + '</td>' +
+      '<td>' + r.thresholds[ie].toFixed(1) + '</td>' +
+      '<td>' + (isAchieved ? r.eta90.toFixed(1) : '') + '</td>' +
+      '</tr>');
+  });
+  $('ieTable').innerHTML = rows.join('');
+}
+
+function ieClassifyClick() {
+  ieShowError('');
+  $('ieResult').style.display = 'none';
+
+  var speed = parseFloat($('ieSpeed').value);
+  var torque = parseFloat($('ieTorque').value);
+  var eta90 = parseFloat($('ieEta90').value);
+
+  if (!(speed > 0) || !(torque > 0)) { ieShowError(mtT('ieErrInput')); return; }
+  if (isNaN(eta90)) { ieShowError(mtT('ieErrEta')); return; }
+
+  var powerKw = torque * speed / 9550;
+  var result = IEClass.classify(powerKw, speed, eta90);
+  result.powerKw = powerKw;
+  result.eta90 = eta90;
+  renderIeResult(result);
+  if (window.gaTrack) gaTrack('ie_classify', result.achieved || 'none');
+}
+
+function ieFillClick() {
+  ieShowError('');
+  var speed = parseFloat($('ieSpeed').value);
+  var torque = parseFloat($('ieTorque').value);
+  if (!(speed > 0) || !(torque > 0)) { ieShowError(mtT('ieErrInput')); return; }
+
+  var parsed = parseData($('dataInput').value);
+  if (parsed.rows.length < 3) { ieShowError(mtT('ieErrNoMap')); return; }
+
+  var pts = parsed.rows.map(function (r) { return [r.speed, r.torque]; });
+  var vals = parsed.rows.map(function (r) { return r.eff; });
+  var eta90 = IEClass.queryAtPoint(pts, vals, 0.9 * speed, torque);
+  if (eta90 == null) {
+    ieShowError(mtT('ieErrShift').replace('{v}', (0.9 * speed).toFixed(0)));
+    return;
+  }
+  $('ieEta90').value = Math.round(eta90 * 100) / 100;
+  if (window.gaTrack) gaTrack('ie_fill_eta90', 'ok');
+}
+
+$('btnIeClassify').addEventListener('click', ieClassifyClick);
+$('btnIeFill').addEventListener('click', ieFillClick);
 })();
