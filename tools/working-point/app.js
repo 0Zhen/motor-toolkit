@@ -29,6 +29,9 @@ var MT_I18N = {
   paramsTitle:        { en: 'Parameters',                        zh: '參數' },
   paramsHint:         { en: '(drag or type)',                    zh: '（拖曳或輸入）' },
   saveWpBtn:          { en: '+ Save Working Point',              zh: '+ 儲存工作點' },
+  exportQueryBtn:     { en: '⬇ Export Queries CSV',               zh: '⬇ 匯出比較表 CSV' },
+  alertNoQuery:       { en: 'No saved query yet — click "Save Working Point" first.',
+                         zh: '尚未儲存任何工作點，請先按「+ 儲存工作點」。' },
   queryCardHint:      { en: 'Click data area to restore params', zh: '點擊卡片內容還原參數' },
   sweepTitle:         { en: 'Parameter Sweep',                   zh: '參數掃描' },
   sweepXAxisLabel:    { en: 'X axis — Parameter',                zh: 'X 軸 — 參數' },
@@ -653,6 +656,27 @@ function doQuery() {
 
   // 讓 updateAll 統一處理縮放、資料填入、重繪
   updateAll();
+}
+
+/**
+ * 匯出所有已儲存的 Query 為 CSV（比較表）
+ * 欄位對齊 addQueryCard 表格 + P_in/Eff（來自 opDetails 的 r.P_in / r.eta_mech）
+ */
+function exportQueryCSV() {
+  if (!queryList.length) { alert(mtT('alertNoQuery')); return; }
+  const header = ['#', 'N (rpm)', 'T_A (uN.m)', 'T_F (uN.m)', 'T_sum (uN.m)',
+                   'I_in (mA)', 'E (V)', 'V_drop (V)', 'V_sum (V)', 'P_in (mW)', 'Eff (%)'];
+  const rows = queryList.map(function(q, i) {
+    const r = q.result;
+    return [i + 1, q.N.toFixed(0), r.T_A.toFixed(4), r.T_F.toFixed(4), r.T_sum.toFixed(4),
+            (r.I_in * 1000).toFixed(3), r.E.toFixed(4), r.V_drop.toFixed(4), r.V_sum.toFixed(4),
+            (r.P_in * 1000).toFixed(3), r.eta_mech.toFixed(2)];
+  });
+  const csvContent = [header, ...rows].map(function(r) { return r.join(','); }).join('\r\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+  a.download = 'working_point_queries.csv';
+  a.click();
 }
 
 
