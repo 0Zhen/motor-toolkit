@@ -33,4 +33,13 @@ const MT_TOOLS = [
     icon:    '⚙️',
     path:    'tools/working-point/',
   },
+  {
+    id:      'dcr-calculator',
+    name:    'DCR Calculator',
+    name_zh: 'DCR 換算工具',
+    desc:    'Convert between winding turns, wire diameter, DCR and slot fill factor. Quick calibration or full geometry mode with a wire-diameter sweep table.',
+    desc_zh: '匝數／線徑／DCR／槽滿率互算，支援快速校準或完整幾何模式，含線徑掃描表。',
+    icon:    '🧵',
+    path:    'tools/dcr-calculator/',
+  },
 ];

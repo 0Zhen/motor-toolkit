@@ -1,0 +1,286 @@
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { height: 100%; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+body > * { min-width: 0; }
+
+/* ══════════════════════════════════════════════════════════
+   主版面：左側輸入欄（固定寬）＋ 右側結果欄（吃剩餘寬度）
+   ══════════════════════════════════════════════════════════ */
+.layout {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  padding: 0 10px 8px;
+  overflow: hidden;
+  width: 100%;
+  gap: 8px;
+}
+
+.input-panel {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 6px 8px 0;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+.input-panel::-webkit-scrollbar { width: 5px; }
+.input-panel::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+[data-theme="dark"] .input-panel { scrollbar-color: #374151 transparent; }
+[data-theme="dark"] .input-panel::-webkit-scrollbar-thumb { background: #374151; }
+
+.results-col {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 2px 4px 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   模式切換 tabs
+   ══════════════════════════════════════════════════════════ */
+.mode-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 3px;
+}
+.mode-tab {
+  flex: 1;
+  padding: 6px 4px;
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text);
+  background: none;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.mode-tab:hover { background: rgba(0,0,0,0.04); }
+.mode-tab.active { background: var(--accent); color: #fff; }
+[data-theme="dark"] .mode-tab:hover { background: rgba(255,255,255,0.06); }
+
+/* ══════════════════════════════════════════════════════════
+   輸入區塊（沿用 working-point 的視覺語言）
+   ══════════════════════════════════════════════════════════ */
+.params-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 8px 8px;
+  flex-shrink: 0;
+}
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: center;
+  letter-spacing: 0.04em;
+  padding: 2px 0;
+}
+.param-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 88px;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+.param-label {
+  font-size: 9.5px;
+  color: var(--text);
+  font-weight: 500;
+}
+.param-input {
+  font-family: var(--mono);
+  font-size: 9.5px; font-weight: 600;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 5px;
+  color: #1a1d23;
+  text-align: right;
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.param-input:focus { border-color: var(--accent); background: #fff; }
+[data-theme="dark"] .param-input { background: #1e2235; color: #c9d1e0; border-color: #2d3148; }
+[data-theme="dark"] .param-input:focus { background: #252840; }
+
+.mini-select {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 4px;
+  background: #fafafa;
+  color: #1a1d23;
+  outline: none;
+  cursor: pointer;
+}
+[data-theme="dark"] .mini-select { background: #1e2235; color: #c9d1e0; border-color: #2d3148; }
+
+.hint-text {
+  font-size: 8.5px;
+  color: #9ca3af;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+.target-select-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 5px;
+  font-size: 9.5px;
+  color: var(--text);
+}
+.target-select-row label { display: flex; align-items: center; gap: 3px; cursor: pointer; }
+
+.sweep-range-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  font-size: 9px;
+  color: #6b7280;
+}
+.sweep-mini { width: 46px; }
+
+.query-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.query-btn:hover { background: var(--accent-d); }
+
+/* ══════════════════════════════════════════════════════════
+   Collapsible
+   ══════════════════════════════════════════════════════════ */
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+.collapsible-arrow { font-size: 9px; color: #9ca3af; transition: transform 0.2s; }
+.collapsed .collapsible-arrow { transform: rotate(-90deg); }
+.collapsible-body { overflow: hidden; margin-top: 2px; }
+.collapsed .collapsible-body { display: none; }
+
+.result-line {
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text);
+  text-align: right;
+}
+.result-line b { color: var(--accent); font-size: 12px; }
+
+/* ══════════════════════════════════════════════════════════
+   結果卡片
+   ══════════════════════════════════════════════════════════ */
+.result-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px 12px;
+}
+.result-card.highlight {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+.result-card-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #6b7280;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.result-card-body {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--text);
+}
+.result-card-body .rv { font-weight: 700; color: var(--accent); }
+[data-theme="dark"] .result-card-body .rv { color: #93b4ff; }
+.result-card-body .ru { font-size: 10px; color: #9ca3af; margin-left: 2px; }
+
+/* ══════════════════════════════════════════════════════════
+   線徑掃描表
+   ══════════════════════════════════════════════════════════ */
+.sweep-table-wrap {
+  max-height: 320px;
+  overflow-y: auto;
+  margin-top: 2px;
+}
+.sweep-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+.sweep-table th {
+  position: sticky; top: 0;
+  background: var(--surface);
+  color: #6b7280;
+  font-weight: 600;
+  text-align: right;
+  padding: 4px 6px;
+  border-bottom: 1.5px solid var(--border);
+}
+.sweep-table th:first-child, .sweep-table td:first-child { text-align: left; }
+.sweep-table td {
+  text-align: right;
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.sweep-table tr.na td { color: #9ca3af; }
+.sweep-table tr.current { background: rgba(37,99,235,0.08); font-weight: 700; }
+[data-theme="dark"] .sweep-table tr.current { background: rgba(147,180,255,0.12); }
+
+/* ══════════════════════════════════════════════════════════
+   Dark theme overrides
+   ══════════════════════════════════════════════════════════ */
+[data-theme="dark"] .mode-tabs   { background: #13151f; }

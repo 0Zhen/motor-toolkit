@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCR Calculator | Motor Toolkit</title>
+<meta name="description"
+  content="Convert between winding turns, wire diameter, DCR and slot fill factor. Quick calibration mode from a single measured point, or full geometry mode with absolute slot fill and a wire-diameter sweep table. Free, browser-based, runs entirely client-side.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/dcr-calculator/">
+<link rel="icon" type="image/png" href="../../favicon.png">
+<link rel="stylesheet" href="../../shared/theme.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-title="DCR Calculator" data-sub="Turns · Wire · DCR · Slot fill"
+      data-title-zh="DCR 換算工具" data-sub-zh="匝數 · 線徑 · DCR · 槽滿率">
+<script src="../../shared/tools.js"></script>
+<script src="../../shared/shell.js"></script>
+
+<div class="layout">
+
+  <!-- ── 左側：輸入欄 ── -->
+  <div class="panel input-panel">
+
+    <!-- 模式切換 -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tabQuick" onclick="switchMode('quick')">
+        <span data-i18n="tabQuick">Quick (calibration)</span>
+      </button>
+      <button class="mode-tab" id="tabFull" onclick="switchMode('full')">
+        <span data-i18n="tabFull">Full (geometry)</span>
+      </button>
+    </div>
+
+    <!-- ═══ Quick 模式 ═══ -->
+    <div id="quickPanel">
+      <div class="params-box">
+        <div class="section-title" data-i18n="quickBaseTitle">Reference Design (measured point)</div>
+        <div class="param-row-2">
+          <span class="param-label" data-i18n="baseTurns">N₀ — turns</span>
+          <input type="text" class="param-input" id="q_N0" value="66">
+        </div>
+        <div class="param-row-2">
+          <span class="param-label" data-i18n="baseWire">d₀ — wire dia. [mm]</span>
+          <input type="text" class="param-input" id="q_d0" value="0.7">
+        </div>
+        <div class="param-row-2">
+          <span class="param-label" data-i18n="baseDcr">R₀ — DCR phase [Ω]</span>
+          <input type="text" class="param-input" id="q_R0" value="1.9">
+        </div>
+        <div class="param-row-2">
+          <span class="param-label" data-i18n="wireStepLabel">Wire step [mm]</span>
+          <input type="text" class="param-input" id="q_step" value="0.1">
+        </div>
+        <div class="hint-text" data-i18n="quickBaseHint">
+          10p12s, outer rotor, single-layer concentrated, 3ph Y, fully series (example default).
+        </div>
+      </div>
+
+      <div class="params-box">
+        <div class="section-title" data-i18n="quickTargetTitle">Change one value</div>
+        <div class="target-select-row">
+          <label><input type="radio" name="qTarget" value="turns" checked> <span data-i18n="targetTurns">Turns</span></label>
+          <label><input type="radio" name="qTarget" value="wire"> <span data-i18n="targetWire">Wire dia.</span></label>
+          <label><input type="radio" name="qTarget" value="dcr"> <span data-i18n="targetDcr">DCR</span></label>
+        </div>
+        <div class="param-row-2">
+          <span class="param-label" id="qTargetLabel" data-i18n="targetTurns">Turns</span>
+          <input type="text" class="param-input" id="q_targetVal" value="80">
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Full 模式 ═══ -->
+    <div id="fullPanel" style="display:none">
+
+      <div class="params-box">
+        <div class="section-title" data-i18n="windingTitle">Winding Configuration</div>
+        <div class="param-row-2"><span class="param-label" data-i18n="poles">Poles</span>
+          <input type="text" class="param-input" id="f_poles" value="10"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="slots">Slots</span>
+          <input type="text" class="param-input" id="f_slots" value="12"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="phases">Phases</span>
+          <input type="text" class="param-input" id="f_phases" value="3"></div>
+        <div class="hint-text" id="f_windingInfo">—</div>
+        <div class="param-row-2"><span class="param-label" data-i18n="connection">Connection</span>
+          <select class="mini-select" id="f_conn"><option value="Y">Y</option><option value="D">Δ</option></select></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="parallelPaths">Parallel paths a</span>
+          <input type="text" class="param-input" id="f_a" value="1"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="turnsPerSlot">Turns / slot</span>
+          <input type="text" class="param-input" id="f_Nslot" value="66"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="coilsPerSlot">Coils / slot</span>
+          <input type="text" class="param-input" id="f_coilsSlot" value="1"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="seriesCoils">Series coils / phase</span>
+          <input type="text" class="param-input" id="f_seriesCoils" value="4"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="strandsPerTurn">Strands / turn</span>
+          <input type="text" class="param-input" id="f_strands" value="1"></div>
+      </div>
+
+      <div class="params-box">
+        <div class="section-title" data-i18n="wireTitle">Wire</div>
+        <div class="param-row-2"><span class="param-label" data-i18n="bareDia">Bare copper dia. [mm]</span>
+          <input type="text" class="param-input" id="f_dbare" value="0.7"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="enamelThk">Enamel thk., one side [mm]</span>
+          <input type="text" class="param-input" id="f_enamel" value="0.025"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="material">Material</span>
+          <select class="mini-select" id="f_material"><option value="cu">Cu</option><option value="al">Al</option></select></div>
+      </div>
+
+      <div class="params-box">
+        <div class="section-title" data-i18n="geomTitle">Geometry</div>
+        <div class="param-row-2"><span class="param-label" data-i18n="stackLength">Stack length [mm]</span>
+          <input type="text" class="param-input" id="f_stack" value="61.95"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="mlt">MLT [mm] (blank=est.)</span>
+          <input type="text" class="param-input" id="f_mlt" value=""></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="mltFactor">MLT factor (if blank)</span>
+          <input type="text" class="param-input" id="f_mltFactor" value="2.5"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="slotArea">Slot area [mm²]</span>
+          <input type="text" class="param-input" id="f_slotArea" value="45"></div>
+      </div>
+
+      <div class="params-box">
+        <div class="section-title" data-i18n="condTitle">Condition</div>
+        <div class="param-row-2"><span class="param-label" data-i18n="temp">Temperature [°C]</span>
+          <input type="text" class="param-input" id="f_temp" value="20"></div>
+        <div class="hint-text" data-i18n="fullHint">
+          Generic placeholder values — replace with your own design/CAD data.
+        </div>
+      </div>
+
+      <!-- 線徑掃描表 -->
+      <div class="params-box">
+        <div class="section-title" data-i18n="sweepTitle">Wire Diameter Sweep</div>
+        <div class="param-row-2"><span class="param-label" data-i18n="sweepTargetFill">Target fill [%]</span>
+          <input type="text" class="param-input" id="s_targetFill" value="75"></div>
+        <div class="sweep-range-row">
+          <span data-i18n="sweepMinLabel">min</span>
+          <input type="text" class="param-input sweep-mini" id="s_dMin" value="0.3">
+          <span data-i18n="sweepMaxLabel">max</span>
+          <input type="text" class="param-input sweep-mini" id="s_dMax" value="1.0">
+          <span data-i18n="sweepStepLabel">step</span>
+          <input type="text" class="param-input sweep-mini" id="s_dStep" value="0.05">
+        </div>
+        <button class="query-btn" onclick="renderSweepTable()" data-i18n="runSweepBtn">▶ Run Sweep</button>
+      </div>
+    </div>
+
+    <!-- 溫度換算（兩模式共用） -->
+    <div class="params-box" id="tempBox">
+      <div class="collapsible-header" onclick="toggleSection('tempBox')">
+        <div class="section-title" data-i18n="tempCorrTitle">Temperature Correction</div>
+        <span class="collapsible-arrow">▾</span>
+      </div>
+      <div class="collapsible-body">
+        <div class="param-row-2"><span class="param-label" data-i18n="tcR1">R @ T1 [Ω]</span>
+          <input type="text" class="param-input" id="t_R1" value=""></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="tcT1">T1 [°C]</span>
+          <input type="text" class="param-input" id="t_T1" value="20"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="tcT2">T2 [°C]</span>
+          <input type="text" class="param-input" id="t_T2" value="120"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="tcMaterial">Material</span>
+          <select class="mini-select" id="t_material"><option value="cu">Cu</option><option value="al">Al</option></select></div>
+        <div class="result-line"><span data-i18n="tcResult">R @ T2</span>: <b id="t_result">—</b> Ω</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── 右側：結果欄 ── -->
+  <div class="results-col">
+
+    <div id="quickResults" class="result-cards">
+      <div class="result-card">
+        <div class="result-card-label" data-i18n="ideal">Theoretical (continuous)</div>
+        <div class="result-card-body" id="q_idealOut">—</div>
+      </div>
+      <div class="result-card highlight">
+        <div class="result-card-label" data-i18n="practical">Practical (achievable)</div>
+        <div class="result-card-body" id="q_practicalOut">—</div>
+      </div>
+      <div class="result-card">
+        <div class="result-card-label" data-i18n="fillRatio">Slot-fill ratio (vs. reference)</div>
+        <div class="result-card-body" id="q_fillOut">—</div>
+      </div>
+    </div>
+
+    <div id="fullResults" class="result-cards" style="display:none">
+      <div class="result-card highlight">
+        <div class="result-card-label" data-i18n="fullOutTitle">Result</div>
+        <div class="result-card-body" id="f_out">—</div>
+      </div>
+
+      <div class="result-card">
+        <div class="result-card-label" data-i18n="sweepResultTitle">Wire Diameter ↔ DCR Table</div>
+        <div class="sweep-table-wrap">
+          <table class="sweep-table" id="sweepTable"></table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="physics.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

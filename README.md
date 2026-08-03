@@ -13,6 +13,7 @@ Works both on GitHub Pages and opened directly from disk (`file://`).
 | Efficiency Map | `tools/efficiency-map/` | Contour efficiency map from speed / torque / efficiency points, PNG export |
 | FFT Analyser | `tools/fft-analyser/` | Spectrum analysis, harmonic extraction, THD, window functions |
 | Working Point Explorer | `tools/working-point/` | Solve motor stable working point, sweep design parameters |
+| DCR Calculator | `tools/dcr-calculator/` | Convert turns / wire diameter / DCR / slot fill factor, quick calibration or full geometry mode, wire-diameter sweep table |
 
 ## Architecture
 
