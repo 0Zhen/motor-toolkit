@@ -15,6 +15,7 @@ var MT_I18N = {
   winFunc:    { en: 'Window Function', zh: '窗函數' },
   btnAnalyse: { en: '▶ Analyse', zh: '▶ 開始分析' },
   btnExport:  { en: '⬇ Export CSV', zh: '⬇ 匯出 CSV' },
+  btnSample:  { en: 'Sample data', zh: '範例資料' },
   preview:    { en: 'Preview', zh: '預覽' },
   barTitle:   { en: 'Harmonic amplitude (log scale)', zh: '諧波振幅（對數刻度）' },
   specTitle:  { en: 'Frequency spectrum', zh: '頻譜圖' },
@@ -144,6 +145,7 @@ function buildWinCards() {
       selectedWindow = name;
       document.querySelectorAll(".win-card").forEach(c => c.classList.remove("selected"));
       el.classList.add("selected");
+      if (window.gaTrack) gaTrack('select_window', name);
     };
     grid.appendChild(el);
   });
@@ -231,6 +233,34 @@ function parseManual() {
   }
   if(voltages.length<8){alert(window.mtT("alertFewPts").replace("{n}", voltages.length)); return null;}
   return {voltages, sr};
+}
+
+function loadSampleData() {
+  const sr = 10000;      // Hz — sampling rate
+  const N  = 4096;       // samples — power of 2, avoids FFT zero-padding shift
+  const f0 = 50;         // Hz — fundamental frequency
+  const harmonics = [
+    { order: 1, amp: 1.0  },   // fundamental
+    { order: 3, amp: 0.15 },   // 3rd harmonic, 15% of fundamental
+    { order: 5, amp: 0.08 },   // 5th harmonic, 8% of fundamental
+  ];
+  const noiseAmp = 0.01; // uniform noise, +/-0.01 V on top of the signal
+
+  const lines = [];
+  for (let i = 0; i < N; i++) {
+    const t = i / sr;
+    let v = 0;
+    for (const h of harmonics) v += h.amp * Math.sin(2 * Math.PI * f0 * h.order * t);
+    v += (Math.random() - 0.5) * 2 * noiseAmp;
+    lines.push(t.toFixed(6) + "\t" + v.toFixed(6));
+  }
+
+  document.getElementById("sr-input").value = sr;
+  document.getElementById("manual-input").value = lines.join("\n");
+  // Must switch tab before running: runAnalysis() decides CSV-vs-manual by
+  // checking whether #panel-csv has the "active" class.
+  switchTab("manual");
+  runAnalysis();
 }
 
 // ── FFT ────────────────────────────────────────────────────────────────────
@@ -384,6 +414,7 @@ function runAnalysis(){
       setProgress(90, window.mtT("renderingChart"));
       lastResult = d.result;
       renderResults(d.result);
+      if (window.gaTrack) gaTrack('run_analysis', selectedWindow);
       setProgress(100, window.mtT("doneMsg")
         .replace("{f}", d.result.freqFund.toFixed(2))
         .replace("{t}", (d.result.thd*100).toFixed(2)));
@@ -567,6 +598,7 @@ function exportCSV(){
   const a=document.createElement("a");
   a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csvContent);
   a.download="fft_result.csv";a.click();
+  if (window.gaTrack) gaTrack('export_csv', 'fft-analyser');
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
