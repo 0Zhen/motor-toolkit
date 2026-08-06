@@ -42,4 +42,13 @@ const MT_TOOLS = [
     icon:    '🧵',
     path:    'tools/dcr-calculator/',
   },
+  {
+    id:      'cpk-analysis',
+    name:    'CPK Analysis',
+    name_zh: 'CPK 製程能力分析',
+    desc:    'Process capability (Cp / Cpk) from a single measured parameter. IQR outlier removal, USL/LSL, histogram with sigma lines, PNG export.',
+    desc_zh: '單一量測參數的製程能力分析（Cp／Cpk），IQR離群值過濾、USL/LSL、含sigma參考線的直方圖，可匯出PNG。',
+    icon:    '📐',
+    path:    'tools/cpk-analysis/',
+  },
 ];

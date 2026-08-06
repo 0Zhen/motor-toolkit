@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPK Analysis | Motor Toolkit</title>
+<meta name="description"
+  content="Process capability (Cp / Cpk) from a single measured parameter. IQR outlier removal, USL/LSL, histogram with sigma lines, PNG export. Free, browser-based, data never leaves your machine.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/cpk-analysis/">
+<link rel="icon" type="image/png" href="../../favicon.png">
+<link rel="stylesheet" href="../../shared/theme.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-title="CPK Analysis" data-sub="Process capability from a single measured parameter"
+      data-title-zh="CPK 製程能力分析" data-sub-zh="單一量測參數的製程能力分析">
+<script src="../../shared/tools.js"></script>
+<script src="../../shared/shell.js"></script>
+<script src="../../vendor/chart.umd.min.js"></script>
+
+<div class="layout">
+
+  <!-- ── 左側：輸入欄 ── -->
+  <div class="panel input-panel">
+
+    <div class="params-box">
+      <div class="section-title" data-i18n="data">Data</div>
+      <textarea id="dataInput" class="mt-textarea cpk-textarea" spellcheck="false" data-i18n-ph="pastePh"
+        placeholder="7813.9&#10;7820.1&#10;7809.6&#10;…&#10;&#10;One value per line (or comma/tab/space separated).&#10;Non-numeric header rows are skipped automatically."></textarea>
+      <div class="cpk-row">
+        <input type="file" id="csvFile" accept=".csv,.txt,.tsv" style="display:none">
+        <button class="mt-btn-ghost" id="btnCsv" data-i18n="loadCsv">Load CSV…</button>
+        <button class="mt-btn-ghost" id="btnSample" data-i18n="sample">Sample data</button>
+      </div>
+    </div>
+
+    <div class="params-box">
+      <div class="section-title" data-i18n="specTitle">Specification Limits</div>
+      <div class="param-row-2">
+        <span class="param-label" data-i18n="uslLabel">USL — upper limit</span>
+        <input type="text" class="param-input" id="uslInput" value="">
+      </div>
+      <div class="param-row-2">
+        <span class="param-label" data-i18n="lslLabel">LSL — lower limit</span>
+        <input type="text" class="param-input" id="lslInput" value="">
+      </div>
+      <button class="query-btn" id="btnCalc" data-i18n="calcBtn">Calculate</button>
+      <div class="cpk-error" id="errBox"></div>
+      <p class="hint-text" data-i18n="hint">
+        Outliers are removed with the IQR rule (values outside Q1 − 1.5×IQR … Q3 + 1.5×IQR) before
+        computing statistics. All processing happens in your browser.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── 右側：結果欄 ── -->
+  <div class="results-col">
+
+    <div class="cpk-empty" id="emptyState" data-i18n="emptyState">
+      Paste data, enter USL/LSL, then click Calculate.
+    </div>
+
+    <div class="result-cards" id="resultsWrap" style="display:none">
+
+      <div class="result-card">
+        <div class="result-card-label" data-i18n="statsTitle">Statistics</div>
+        <div class="result-card-body">
+          <div><span data-i18n="statN">n (after outlier removal)</span>: <b class="rv" id="outN">—</b></div>
+          <div><span data-i18n="statMean">Mean</span>: <b class="rv" id="outMean">—</b></div>
+          <div><span data-i18n="statSd">Std. dev.</span>: <b class="rv" id="outSd">—</b></div>
+          <div><span data-i18n="statAbove">Above USL</span>: <b class="rv" id="outAbove">—</b></div>
+          <div><span data-i18n="statBelow">Below LSL</span>: <b class="rv" id="outBelow">—</b></div>
+        </div>
+      </div>
+
+      <div class="result-card highlight">
+        <div class="result-card-label" data-i18n="capTitle">Process Capability</div>
+        <div class="cpk-pill-row" id="pillRow"></div>
+      </div>
+
+      <div class="result-card">
+        <div class="cpk-chart-wrap">
+          <canvas id="chartCanvas" height="320"></canvas>
+        </div>
+        <div class="cpk-chart-actions">
+          <button class="mt-btn-ghost" id="btnPng" data-i18n="pngBtn">Download chart PNG</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
