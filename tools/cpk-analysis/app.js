@@ -24,6 +24,7 @@ var MT_I18N = {
   emptyState:  { en: 'Paste data, enter USL/LSL, then click Calculate.', zh: '貼上資料、輸入USL/LSL後按下計算。' },
   errNeedData: { en: 'Need at least 2 numeric values. Parsed {n}.', zh: '至少需要2筆數值資料，目前解析到{n}筆。' },
   errNeedLimits:{ en: 'Enter at least one of USL / LSL.', zh: '請至少輸入USL或LSL其中一個。' },
+  errLimitOrder:{ en: 'USL must be greater than LSL.', zh: 'USL（上限）必須大於 LSL（下限），請確認兩者是否填反了。' },
 
   statsTitle:  { en: 'Statistics', zh: '統計量' },
   statN:       { en: 'n (after outlier removal)', zh: 'n（離群值過濾後）' },
@@ -380,6 +381,10 @@ function runCalculate() {
   }
   var usl = hasUsl ? parseFloat(uslStr) : null;
   var lslVal = hasLsl ? parseFloat(lslStr) : null;
+  if (hasUsl && hasLsl && usl <= lslVal) {
+    showError(mtT('errLimitOrder'));
+    return;
+  }
 
   var r = compute(values, usl, lslVal, hasUsl, hasLsl);
 
