@@ -39,6 +39,7 @@ var MT_I18N = {
   sweepMinLabel:      { en: 'min',                                zh: '最小' },
   sweepMaxLabel:      { en: 'max',                                zh: '最大' },
   runSweepBtn:        { en: '▶ Run Sweep',                        zh: '▶ 執行掃描' },
+  exportSweepBtn:     { en: '⬇ Export Sweep CSV',                 zh: '⬇ 匯出掃描 CSV' },
   clearSweepBtn:      { en: '✕ Clear',                            zh: '✕ 清除' },
   xLabelTamb:         { en: 'Ambient temp. [°C]',                 zh: '環境溫度 [°C]' },
   xLabelTrise:        { en: 'Rise [°C]',                          zh: '溫升 [°C]' },
@@ -65,6 +66,8 @@ var MT_I18N = {
                          zh: '範圍無效：最小值必須小於最大值' },
   alertNoWpInRange:   { en: 'No working point found in this range',
                          zh: '在此範圍內找不到工作點' },
+  alertNoSweep:       { en: 'No sweep data yet — click "Run Sweep" first.',
+                         zh: '尚未執行掃描，請先按「執行掃描」。' },
 
   /* Fixed Speed 面板：可運轉狀態 */
   fsOperable:         { en: '✓ operable',                        zh: '✓ 可運轉' },
@@ -960,6 +963,7 @@ const SWEEP_LINE_COLORS = [
 let sweepLineIdx = 0;
 let sweepLines   = [];
 let lastSweepXKey = null; // 記錄上次 Run Sweep 的 X 軸參數，供語言切換時重繪軸標籤
+let currentSweepData = null; // { xKey, yKey, pts } 目前掃描軌跡的原始資料，供 CSV 匯出
 
 // 溫度參數的預設掃描範圍
 const TEMP_SWEEP_RANGE = {
@@ -1111,6 +1115,7 @@ function runSweep() {
   }
 
   lastSweepXKey = xKey; // 記錄供語言切換時重繪軸標籤
+  currentSweepData = { xKey, yKey, pts: pts.slice() }; // 存原始資料供 CSV 匯出
   const label = xKey + ' → ' + yKey;
 
   // 加軌跡線
@@ -1152,8 +1157,28 @@ function clearSweep() {
   sweepChart.data.datasets = [];
   sweepLines   = [];
   sweepLineIdx = 0;
+  currentSweepData = null;
   sweepChart.update('none');
   document.getElementById('sweepChartWrap').style.display = 'none';
+}
+
+/**
+ * 匯出目前 Sweep 軌跡的原始資料為 CSV（X 軸值、Y 軸值逐點列出）
+ */
+function exportSweepCSV() {
+  if (!currentSweepData || !currentSweepData.pts.length) {
+    alert(mtT('alertNoSweep'));
+    return;
+  }
+  const { xKey, yKey, pts } = currentSweepData;
+  const xHeader = (xKey === 'T_amb' || xKey === 'T_rise') ? sweepXLabel(xKey) : xKey;
+  const header  = [xHeader, Y_LABELS[yKey] || yKey];
+  const rows    = pts.map(function(pt) { return [pt.x, pt.y]; });
+  const csvContent = [header, ...rows].map(function(r) { return r.join(','); }).join('\r\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+  a.download = 'parameter_sweep_' + xKey + '_' + yKey + '.csv';
+  a.click();
 }
 
 
