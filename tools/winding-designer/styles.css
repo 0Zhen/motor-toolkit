@@ -206,6 +206,53 @@ body > * { min-width: 0; }
 }
 
 /* ══════════════════════════════════════════════════════════
+   槽極比較表
+   ══════════════════════════════════════════════════════════ */
+.table-range-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  font-size: 9.5px;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.param-input.mini { width: 42px; flex: none; }
+
+.wd-table-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.wd-table {
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.wd-table th {
+  padding: 4px 8px;
+  color: var(--text2);
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  white-space: nowrap;
+}
+.wd-table td {
+  padding: 4px 8px;
+  text-align: center;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.wd-cell {
+  cursor: pointer;
+  font-weight: 700;
+  transition: filter 0.1s;
+}
+.wd-cell:hover { filter: brightness(1.08); }
+.wd-cell-na { background: #111827; }
+[data-theme="dark"] .wd-cell-na { background: #05070d; }
+
+/* ══════════════════════════════════════════════════════════
    Dark theme overrides
    ══════════════════════════════════════════════════════════ */
 [data-theme="dark"] .winding-diagram-wrap { background: transparent; }

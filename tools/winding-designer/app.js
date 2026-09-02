@@ -27,6 +27,15 @@ var MT_I18N = {
                           zh: '無法組成對稱三相繞組：槽數 (Q) 須為 3 的倍數。' },
   warnInvalidSpan:     { en: 'Coil span must be an integer between 1 and Q−1.',
                           zh: '線圈節距須為 1 到 Q−1 之間的整數。' },
+  warnSingleLayerNotConstructible: {
+                          en: 'This slot/pole combination cannot form a real single-layer winding (the star-of-slots assignment degenerates). Try double layer instead.',
+                          zh: '此槽極組合無法組成真正可繞製的單層繞組（星形圖分配會退化）。請改用雙層繞組。' },
+  tableTitle:          { en: 'Pole–Slot Comparison — Max Fundamental Winding Factor',
+                          zh: '槽極比較表 — 最大基波繞組係數' },
+  slotsRangeLabel:     { en: 'Slots',                    zh: '槽數' },
+  polesRangeLabel:     { en: 'Poles',                    zh: '極數' },
+  tableHint:           { en: 'Click a cell to load that combination above. Red = k_w1 ≥ 0.999, orange = ≥ 0.9, green = feasible, black = no symmetric 3-phase winding exists.',
+                          zh: '點擊儲存格可套用該組合到上方設定。紅 = k_w1 ≥ 0.999，橘 = ≥ 0.9，綠 = 可行，黑 = 無法組成對稱三相繞組。' },
   qSlotsPerPolePerPhase:{ en: 'Slots / pole / phase (q)', zh: '每極每相槽數 (q)' },
   tSymmetry:           { en: 'Symmetry units (t)',       zh: '對稱單元數 (t)' },
   elecStep:            { en: 'Slot electrical angle',    zh: '槽電機角' },
@@ -243,6 +252,57 @@ function update() {
 
 
 /* ══════════════════════════════════════════════════════════
+   槽極比較表
+   ══════════════════════════════════════════════════════════ */
+
+function tableCellColor(value) {
+  if (value >= 0.999) return { bg: '#ef4444', fg: '#fff' };
+  if (value >= 0.9)   return { bg: '#f59e0b', fg: '#fff' };
+  return { bg: '#84cc16', fg: '#1a1d23' };
+}
+
+function renderTable() {
+  const qMin = parseInt(document.getElementById('tblQMin').value, 10) || 3;
+  const qMax = parseInt(document.getElementById('tblQMax').value, 10) || 21;
+  const pMin = parseInt(document.getElementById('tblPMin').value, 10) || 4;
+  const pMax = parseInt(document.getElementById('tblPMax').value, 10) || 16;
+
+  const slotsList = [];
+  for (let Q = Math.max(3, Math.ceil(qMin / 3) * 3); Q <= qMax; Q += 3) slotsList.push(Q);
+  const polesList = [];
+  for (let P = Math.max(2, Math.ceil(pMin / 2) * 2); P <= pMax; P += 2) polesList.push(P);
+
+  let html = '<tr><th></th>' + polesList.map(function (P) { return '<th>' + P + '</th>'; }).join('') + '</tr>';
+  slotsList.forEach(function (Q) {
+    html += '<tr><th>' + Q + '</th>';
+    polesList.forEach(function (P) {
+      const r = bestWindingFactor(Q, P);
+      if (!r.feasible) {
+        html += '<td class="wd-cell-na"></td>';
+      } else {
+        const c = tableCellColor(r.value);
+        const title = r.layers + (r.span ? (' span=' + r.span) : '');
+        html += '<td class="wd-cell" style="background:' + c.bg + ';color:' + c.fg + '" ' +
+          'title="' + title + '" onclick="loadCombo(' + Q + ',' + P + ')">' + r.value.toFixed(3) + '</td>';
+      }
+    });
+    html += '</tr>';
+  });
+  document.getElementById('wdTable').innerHTML = html;
+}
+
+/** 點擊比較表儲存格：把該槽極組合套用到上方設定並捲動過去 */
+function loadCombo(Q, P) {
+  document.getElementById('in_Q').value = Q;
+  document.getElementById('in_P').value = P;
+  onPQChange();
+  const cards = document.getElementById('resultCards');
+  (cards.style.display !== 'none' ? cards : document.getElementById('feasWarning'))
+    .scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+/* ══════════════════════════════════════════════════════════
    語言切換
    ══════════════════════════════════════════════════════════ */
 document.addEventListener('mt-lang-change', function () {
@@ -256,3 +316,4 @@ document.addEventListener('mt-lang-change', function () {
    ══════════════════════════════════════════════════════════ */
 renderLegend();
 onLayersChange(); // 依預設值（雙層）設定節距欄可見性、建議節距，並觸發第一次 update()
+renderTable();

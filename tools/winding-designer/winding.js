@@ -52,6 +52,27 @@ function computeWinding(cfg) {
   const qDenRaw = 2 * p * m;
   const g = gcd(Q, qDenRaw);
   const q = { num: Q / g, den: qDenRaw / g, value: Q / qDenRaw };
+
+  /* 對稱三相繞組存在的充要條件：q（最簡分數）的分母不可被 m 整除。
+     分母被 m 整除時，60° 相帶會系統性地只落在部分相上，
+     產生不平衡繞組（某相導體數為 0），無法組成對稱三相繞組。 */
+  if (q.den % m === 0) {
+    return { feasible: false, reason: 'unbalancedWinding' };
+  }
+
+  /* 單層繞組另有額外充要條件（每槽僅 1 導體邊，需能兩兩配對成線圈，
+     經對照多組已知繞組係數標準值反推得出）：
+       - 槽數必須為偶數（奇數槽無法把每槽 1 邊兩兩配成線圈）
+       - q 為整數（分母=1）時恆可行（標準整數槽單層繞組）
+       - q 為真分數時，最簡分子若為 1 或可被 m 整除，會退化成
+         每相導體集中在單一電機角、算出虛高且不可實際繞製的係數，
+         此時單層不可行；分子為其他值時可行 */
+  const singleLayerValid = (Q % 2 === 0) &&
+    (q.den === 1 || (q.num !== 1 && q.num % m !== 0));
+  if (layers === 'single' && !singleLayerValid) {
+    return { feasible: false, reason: 'singleLayerNotConstructible' };
+  }
+
   const elecStepDeg = (p * 360) / Q;  // 相鄰槽電機角差
   const fullPitchSlots = Q / P;       // 理論全節距（槽數，可能非整數）
 
@@ -119,4 +140,37 @@ function computeWinding(cfg) {
 /** 雙層繞組建議節距（四捨五入到最近整數槽，clamp 到合法範圍） */
 function suggestSpan(Q, P) {
   return Math.max(1, Math.min(Q - 1, Math.round(Q / P)));
+}
+
+/**
+ * 慣例節距：q<1（分數槽集中繞組）恆用單齒節距 1；
+ * q≥1（整數槽／重疊分數槽）用最接近全節距的整數槽
+ * （chording 只會讓 kw1 變小，故最接近全節距即為該類型下的最大值）
+ */
+function conventionalSpan(Q, P) {
+  const p = P / 2, m = 3;
+  const qVal = Q / (2 * p * m);
+  return qVal < 1 ? 1 : suggestSpan(Q, P);
+}
+
+/**
+ * 給定槽極組合，取雙層（慣例節距）與單層（若可行）中較高的基波繞組係數，
+ * 供槽極比較表使用。
+ * @returns {{feasible:boolean, value?:number, layers?:'single'|'double', span?:number}}
+ */
+function bestWindingFactor(Q, P) {
+  if (!Number.isInteger(Q) || Q < 3 || !Number.isInteger(P) || P < 2 || P % 2 !== 0) {
+    return { feasible: false };
+  }
+  const span = conventionalSpan(Q, P);
+  const dbl = computeWinding({ Q, P, layers: 'double', span });
+  const sgl = computeWinding({ Q, P, layers: 'single' });
+
+  let best = null;
+  if (dbl.feasible) best = { value: dbl.windingFactor, layers: 'double', span };
+  if (sgl.feasible && (!best || sgl.windingFactor > best.value)) {
+    best = { value: sgl.windingFactor, layers: 'single' };
+  }
+  if (!best) return { feasible: false };
+  return Object.assign({ feasible: true }, best);
 }

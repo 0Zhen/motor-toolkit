@@ -76,6 +76,26 @@
       </div>
     </div>
 
+    <div class="result-card">
+      <div class="result-card-label" data-i18n="tableTitle">Pole–Slot Comparison — Max Fundamental Winding Factor</div>
+      <div class="table-range-row">
+        <span data-i18n="slotsRangeLabel">Slots</span>
+        <input type="text" class="param-input mini" id="tblQMin" value="3" onchange="renderTable()">
+        <span>–</span>
+        <input type="text" class="param-input mini" id="tblQMax" value="21" onchange="renderTable()">
+        <span data-i18n="polesRangeLabel">Poles</span>
+        <input type="text" class="param-input mini" id="tblPMin" value="4" onchange="renderTable()">
+        <span>–</span>
+        <input type="text" class="param-input mini" id="tblPMax" value="16" onchange="renderTable()">
+      </div>
+      <div class="wd-table-wrap">
+        <table class="wd-table" id="wdTable"></table>
+      </div>
+      <div class="hint-text" data-i18n="tableHint">
+        Click a cell to load that combination above. Red = k_w1 ≥ 0.999, orange = ≥ 0.9, green = feasible, black = no symmetric 3-phase winding exists.
+      </div>
+    </div>
+
   </div>
 </div>
 
