@@ -14,8 +14,8 @@ var MT_I18N = {
   coilSpan:            { en: 'Coil span [slots]',        zh: '線圈節距 [槽]' },
   phaseFixedHint:      { en: 'Three-phase (m = 3) only.', zh: '固定三相 (m = 3)。' },
   legendTitle:         { en: 'Legend',                   zh: '圖例' },
-  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Arcs below the linear diagram trace each coil (double layer only); coils that wrap past the last slot are not drawn.',
-                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。展開圖下方弧線表示線圈連接（僅雙層繞組顯示）；跨越最後一槽回捲的線圈不繪出。' },
+  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Curves trace each coil (double layer only): below the strip in the linear view, outside the stator in the cross-section view (which also shows coils that wrap around, unlike the linear view).',
+                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。弧線表示線圈連接（僅雙層繞組顯示）：線性展開圖畫在下方，馬達剖面圖畫在定子外側（剖面圖也能正確顯示回捲的線圈，展開圖則不行）。' },
   keyNumbersTitle:     { en: 'Key Numbers',              zh: '關鍵數值' },
   diagramTitle:        { en: 'Winding Layout',           zh: '繞組展開圖' },
   viewLinear:          { en: 'Linear',                    zh: '展開圖' },
@@ -246,6 +246,17 @@ function annularSectorPath(cx, cy, rInner, rOuter, startDeg, endDeg) {
     ' Z';
 }
 
+/** 線圈連接弧線：從來源槽（外側）繞到目的槽（外側），彎曲程度隨角距增加 */
+function radialConnectionPath(cx, cy, r0, aStart, aEnd) {
+  const delta = ((aEnd - aStart + 540) % 360) - 180; // 正規化到 (-180,180]，取較短角距方向
+  const mid = aStart + delta / 2;
+  const bulge = r0 + 14 + Math.min(60, Math.abs(delta) * 0.5);
+  const p0 = polarPt(cx, cy, r0, aStart);
+  const p1 = polarPt(cx, cy, r0, aEnd);
+  const cp = polarPt(cx, cy, bulge, mid);
+  return 'M ' + p0.x + ' ' + p0.y + ' Q ' + cp.x + ' ' + cp.y + ' ' + p1.x + ' ' + p1.y;
+}
+
 /** 電流方向符號：⊙ = 流出（+），⊗ = 流入（−），為剖面圖慣用符號 */
 function currentDirSymbol(svg, cx, cy, r, sign) {
   const color = '#fff';
@@ -266,12 +277,13 @@ function renderRadialDiagram(result) {
 
   const Q = result.Q;
   const isDouble = result.slots[0].bottom !== null;
-  const size = 520;
+  const W = result.span || 0;
+  const size = 600;
   const cx = size / 2, cy = size / 2;
   const IRON = '#94a3b8', IRON_STROKE = '#475569';
-  const rYoke = 222, rOuter = 190, rMid = isDouble ? 150 : 170, rInner = 110, rRotor = 78;
+  const rYoke = 200, rOuter = 175, rMid = isDouble ? 140 : 160, rInner = 100, rRotor = 70;
   const step = 360 / Q;
-  const gapDeg = Math.min(4, step * 0.16); // 槽間留白角度（露出鐵芯，形成齒）
+  const gapDeg = Math.min(7, step * 0.22); // 槽間留白角度（露出鐵芯，形成齒），比例隨槽數自動縮小避免槽被吃光
 
   svg.setAttribute('width', size);
   svg.setAttribute('height', size);
@@ -285,6 +297,12 @@ function renderRadialDiagram(result) {
   svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: rRotor, fill: IRON, opacity: 0.45, stroke: IRON_STROKE, 'stroke-width': 1.5 }));
   svg.appendChild(textEl(cx, cy + 3, 'rotor', { fill: 'var(--text3)', 'font-size': 9 }));
 
+  // 方向符號半徑：依實際像素（徑向band厚度、弧長）換算，避免符號過大互相蓋住
+  const arcAtMid = (rOuter - rInner) / 2 * (step - gapDeg) * Math.PI / 180;
+  function symbolR(bandThk) {
+    return Math.max(3, Math.min(9, Math.min(bandThk, arcAtMid) * 0.32));
+  }
+
   result.slots.forEach(function (s, k) {
     const a0 = -90 + k * step + gapDeg / 2;
     const a1 = -90 + (k + 1) * step - gapDeg / 2;
@@ -296,26 +314,40 @@ function renderRadialDiagram(result) {
         fill: PHASE_COLOR[s.top.phase], opacity: 0.9,
       }));
       const pOuter = polarPt(cx, cy, (rMid + rOuter) / 2, aMid);
-      currentDirSymbol(svg, pOuter.x, pOuter.y, Math.max(4, step * 1.4), s.top.sign);
+      currentDirSymbol(svg, pOuter.x, pOuter.y, symbolR(rOuter - rMid), s.top.sign);
 
       svg.appendChild(svgEl('path', {
         d: annularSectorPath(cx, cy, rInner, rMid, a0, a1),
         fill: PHASE_COLOR[s.bottom.phase], opacity: 0.6,
       }));
       const pInner = polarPt(cx, cy, (rInner + rMid) / 2, aMid);
-      currentDirSymbol(svg, pInner.x, pInner.y, Math.max(4, step * 1.4), s.bottom.sign);
+      currentDirSymbol(svg, pInner.x, pInner.y, symbolR(rMid - rInner), s.bottom.sign);
     } else {
       svg.appendChild(svgEl('path', {
         d: annularSectorPath(cx, cy, rInner, rMid, a0, a1),
         fill: PHASE_COLOR[s.top.phase], opacity: 0.9,
       }));
       const pMid = polarPt(cx, cy, (rInner + rMid) / 2, aMid);
-      currentDirSymbol(svg, pMid.x, pMid.y, Math.max(4, step * 1.6), s.top.sign);
+      currentDirSymbol(svg, pMid.x, pMid.y, symbolR(rMid - rInner), s.top.sign);
     }
 
     const pLabel = polarPt(cx, cy, rYoke + 14, aMid);
     svg.appendChild(textEl(pLabel.x, pLabel.y + 3, String(k + 1), { fill: 'var(--text3)', 'font-size': 8 }));
   });
+
+  // 線圈連接弧線（僅雙層）：定子外側，來源槽（top）→ 目的槽（bottom），沿圓周自然處理繞回
+  if (isDouble && W > 0) {
+    for (let k = 0; k < Q; k++) {
+      const srcK = (((k - W) % Q) + Q) % Q;
+      const s = result.slots[k];
+      const aSrc = -90 + srcK * step + step / 2;
+      const aDst = -90 + k * step + step / 2;
+      svg.appendChild(svgEl('path', {
+        d: radialConnectionPath(cx, cy, rYoke + 6, aSrc, aDst),
+        fill: 'none', stroke: PHASE_COLOR[s.bottom.phase], 'stroke-width': 1.1, opacity: 0.45,
+      }));
+    }
+  }
 }
 
 
