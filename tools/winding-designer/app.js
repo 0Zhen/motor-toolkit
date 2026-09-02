@@ -14,8 +14,8 @@ var MT_I18N = {
   coilSpan:            { en: 'Coil span [slots]',        zh: '線圈節距 [槽]' },
   phaseFixedHint:      { en: 'Three-phase (m = 3) only.', zh: '固定三相 (m = 3)。' },
   legendTitle:         { en: 'Legend',                   zh: '圖例' },
-  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Curves trace each phase’s coils wired in series as one continuous path (double layer only; all coils in a single parallel path — no wave-winding reordering or multi-path splitting yet), alternating "front" (above the strip / outside the stator) and "rear" (below / — same idea in both views). Use the coil-path filter to isolate one phase.',
-                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。弧線表示該相所有線圈串成一條 path 的接線順序（僅雙層繞組；目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流），front（上方／定子外側）與 rear（下方）交替。可用線圈接線濾鏡只看單一相。' },
+  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). In the cross-section view, single-layer windings are drawn as a coil symbol on each tooth (concentrated-winding style); double-layer windings merge consecutive same-phase, same-direction slots into one arc (distributed-winding style). The inner ring shows the rotor\'s alternating N/S poles (illustrative only). Curves trace each phase\'s coils wired in series as one continuous path (double layer only; all coils in a single parallel path — no wave-winding reordering or multi-path splitting yet), alternating "front" (above the strip / outside the stator) and "rear" (below). Use the coil-path filter to isolate one phase.',
+                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。馬達剖面圖中，單層繞組在每齒畫成線圈符號（集中繞組風格）；雙層繞組把相鄰同相同方向的槽合併成一段弧（分佈繞組風格）。內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。弧線表示該相所有線圈串成一條 path 的接線順序（僅雙層繞組；目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流），front（上方／定子外側）與 rear（下方）交替。可用線圈接線濾鏡只看單一相。' },
   keyNumbersTitle:     { en: 'Key Numbers',              zh: '關鍵數值' },
   diagramTitle:        { en: 'Winding Layout',           zh: '繞組展開圖' },
   viewLinear:          { en: 'Linear',                    zh: '展開圖' },
@@ -281,16 +281,57 @@ function currentDirSymbol(svg, cx, cy, r, sign) {
   }
 }
 
+/** 把連續槽依「同相同方向」合併成一組（僅比對相鄰，不處理跨越槽1的回捲合併） */
+function groupConsecutiveSlots(Q, sideAt) {
+  const groups = [];
+  let i = 0;
+  while (i < Q) {
+    const cur = sideAt(i);
+    let j = i;
+    while (j + 1 < Q) {
+      const nxt = sideAt(j + 1);
+      if (nxt.phase === cur.phase && nxt.sign === cur.sign) j++;
+      else break;
+    }
+    groups.push({ startK: i, endK: j, phase: cur.phase, sign: cur.sign });
+    i = j + 1;
+  }
+  return groups;
+}
+
+/** 集中繞組（單層）線圈符號：齒上的旗形線圈，斜線代表繞線圈數，中心疊方向符號 */
+function drawConcentratedCoil(svg, cx, cy, aMid, rIn, rOut, phase, sign, symR) {
+  const rMid = (rIn + rOut) / 2;
+  const p = polarPt(cx, cy, rMid, aMid);
+  const len = (rOut - rIn) * 0.92;
+  const wid = Math.max(12, len * 0.5);
+  const g = svgEl('g', { transform: 'translate(' + p.x + ',' + p.y + ') rotate(' + (aMid + 90) + ')' });
+  g.appendChild(svgEl('rect', {
+    x: -wid / 2, y: -len / 2, width: wid, height: len, rx: wid * 0.3,
+    fill: PHASE_COLOR[phase], opacity: 0.28, stroke: PHASE_COLOR[phase], 'stroke-width': 1.4,
+  }));
+  const stripes = 4;
+  for (let i = 1; i <= stripes; i++) {
+    const yy = -len / 2 + (len * i) / (stripes + 1);
+    g.appendChild(svgEl('line', {
+      x1: -wid / 2 + 2, y1: yy - wid * 0.32, x2: wid / 2 - 2, y2: yy + wid * 0.32,
+      stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: 0.8,
+    }));
+  }
+  svg.appendChild(g);
+  currentDirSymbol(svg, p.x, p.y, symR, sign);
+}
+
 function renderRadialDiagram(result) {
   const svg = document.getElementById('wdSvg');
   svg.innerHTML = '';
 
-  const Q = result.Q;
+  const Q = result.Q, P = result.P;
   const isDouble = result.slots[0].bottom !== null;
   const size = 600;
   const cx = size / 2, cy = size / 2;
   const IRON = '#94a3b8', IRON_STROKE = '#475569';
-  const rYoke = 200, rOuter = 175, rMid = isDouble ? 140 : 160, rInner = 100, rRotor = 70;
+  const rYoke = 200, rOuter = 175, rMid = isDouble ? 140 : 160, rInner = 100, rRotor = 70, rRotorCore = 56;
   const step = 360 / Q;
   const gapDeg = Math.min(7, step * 0.22); // 槽間留白角度（露出鐵芯，形成齒），比例隨槽數自動縮小避免槽被吃光
 
@@ -302,8 +343,16 @@ function renderRadialDiagram(result) {
   svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: rYoke, fill: IRON, stroke: IRON_STROKE, 'stroke-width': 1.5 }));
   svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: rInner, fill: 'var(--bg)', stroke: IRON_STROKE, 'stroke-width': 1 }));
 
-  // 轉子（僅示意，無功能意義）與氣隙
-  svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: rRotor, fill: IRON, opacity: 0.45, stroke: IRON_STROKE, 'stroke-width': 1.5 }));
+  // 轉子磁極環（僅示意：交替 N/S，無實際磁極角位置意義）＋轉子鐵芯與氣隙
+  for (let pi = 0; pi < P; pi++) {
+    const pa0 = -90 + pi * (360 / P) + 1;
+    const pa1 = -90 + (pi + 1) * (360 / P) - 1;
+    svg.appendChild(svgEl('path', {
+      d: annularSectorPath(cx, cy, rRotorCore, rRotor, pa0, pa1),
+      fill: pi % 2 === 0 ? '#f3b4c4' : '#a9c6f0',
+    }));
+  }
+  svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: rRotorCore, fill: IRON, opacity: 0.45, stroke: IRON_STROKE, 'stroke-width': 1.5 }));
   svg.appendChild(textEl(cx, cy + 3, 'rotor', { fill: 'var(--text3)', 'font-size': 9 }));
 
   // 方向符號半徑：依實際像素（徑向band厚度、弧長）換算，避免符號過大互相蓋住
@@ -312,34 +361,38 @@ function renderRadialDiagram(result) {
     return Math.max(3, Math.min(9, Math.min(bandThk, arcAtMid) * 0.32));
   }
 
+  if (isDouble) {
+    // 雙層：同相同方向的相鄰槽合併成一組，畫成一段連續弧（仿 JMAG 風格），
+    // 組內不再顯示每槽的齒縫，只在組中心疊一個方向符號
+    const groupA0 = function (startK) { return -90 + startK * step + gapDeg / 2; };
+    const groupA1 = function (endK) { return -90 + (endK + 1) * step - gapDeg / 2; };
+
+    groupConsecutiveSlots(Q, function (k) { return result.slots[k].top; }).forEach(function (g) {
+      const a0 = groupA0(g.startK), a1 = groupA1(g.endK);
+      svg.appendChild(svgEl('path', { d: annularSectorPath(cx, cy, rMid, rOuter, a0, a1), fill: PHASE_COLOR[g.phase], opacity: 0.9 }));
+      const p = polarPt(cx, cy, (rMid + rOuter) / 2, (a0 + a1) / 2);
+      currentDirSymbol(svg, p.x, p.y, symbolR(rOuter - rMid), g.sign);
+    });
+    groupConsecutiveSlots(Q, function (k) { return result.slots[k].bottom; }).forEach(function (g) {
+      const a0 = groupA0(g.startK), a1 = groupA1(g.endK);
+      svg.appendChild(svgEl('path', { d: annularSectorPath(cx, cy, rInner, rMid, a0, a1), fill: PHASE_COLOR[g.phase], opacity: 0.6 }));
+      const p = polarPt(cx, cy, (rInner + rMid) / 2, (a0 + a1) / 2);
+      currentDirSymbol(svg, p.x, p.y, symbolR(rMid - rInner), g.sign);
+    });
+  } else {
+    // 單層（集中繞組）：每齒一個線圈旗形符號
+    result.slots.forEach(function (s, k) {
+      const a0 = -90 + k * step + gapDeg / 2;
+      const a1 = -90 + (k + 1) * step - gapDeg / 2;
+      const aMid = (a0 + a1) / 2;
+      drawConcentratedCoil(svg, cx, cy, aMid, rInner, rOuter, s.top.phase, s.top.sign, symbolR(rOuter - rInner));
+    });
+  }
+
   result.slots.forEach(function (s, k) {
     const a0 = -90 + k * step + gapDeg / 2;
     const a1 = -90 + (k + 1) * step - gapDeg / 2;
     const aMid = (a0 + a1) / 2;
-
-    if (isDouble) {
-      svg.appendChild(svgEl('path', {
-        d: annularSectorPath(cx, cy, rMid, rOuter, a0, a1),
-        fill: PHASE_COLOR[s.top.phase], opacity: 0.9,
-      }));
-      const pOuter = polarPt(cx, cy, (rMid + rOuter) / 2, aMid);
-      currentDirSymbol(svg, pOuter.x, pOuter.y, symbolR(rOuter - rMid), s.top.sign);
-
-      svg.appendChild(svgEl('path', {
-        d: annularSectorPath(cx, cy, rInner, rMid, a0, a1),
-        fill: PHASE_COLOR[s.bottom.phase], opacity: 0.6,
-      }));
-      const pInner = polarPt(cx, cy, (rInner + rMid) / 2, aMid);
-      currentDirSymbol(svg, pInner.x, pInner.y, symbolR(rMid - rInner), s.bottom.sign);
-    } else {
-      svg.appendChild(svgEl('path', {
-        d: annularSectorPath(cx, cy, rInner, rMid, a0, a1),
-        fill: PHASE_COLOR[s.top.phase], opacity: 0.9,
-      }));
-      const pMid = polarPt(cx, cy, (rInner + rMid) / 2, aMid);
-      currentDirSymbol(svg, pMid.x, pMid.y, symbolR(rMid - rInner), s.top.sign);
-    }
-
     const pLabel = polarPt(cx, cy, rYoke + 14, aMid);
     svg.appendChild(textEl(pLabel.x, pLabel.y + 3, String(k + 1), { fill: 'var(--text3)', 'font-size': 8 }));
   });
