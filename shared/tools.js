@@ -51,4 +51,13 @@ const MT_TOOLS = [
     icon:    '📐',
     path:    'tools/cpk-analysis/',
   },
+  {
+    id:      'winding-designer',
+    name:    'Winding Designer',
+    name_zh: '繞組設計工具',
+    desc:    'Pick poles, slots and layers to get the winding layout diagram and fundamental winding factor. Integer- and fractional-slot windings.',
+    desc_zh: '輸入極數／槽數／層數，產生繞組展開圖與基波繞組係數，支援整數槽與分數槽繞組。',
+    icon:    '🌀',
+    path:    'tools/winding-designer/',
+  },
 ];

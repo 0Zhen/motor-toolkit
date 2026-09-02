@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Winding Designer | Motor Toolkit</title>
+<meta name="description"
+  content="Design three-phase motor windings: pick poles, slots and layers, get the winding layout diagram and fundamental winding factor. Free, browser-based, runs entirely client-side.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/winding-designer/">
+<link rel="icon" type="image/png" href="../../favicon.png">
+<link rel="stylesheet" href="../../shared/theme.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-title="Winding Designer" data-sub="Slots · Poles · Layout · Winding factor"
+      data-title-zh="繞組設計工具" data-sub-zh="槽極配合 · 繞組展開圖 · 繞組係數">
+<script src="../../shared/tools.js"></script>
+<script src="../../shared/shell.js"></script>
+
+<div class="layout">
+
+  <!-- ── 左側：輸入欄 ── -->
+  <div class="panel input-panel">
+
+    <div class="params-box">
+      <div class="section-title" data-i18n="configTitle">Winding Configuration</div>
+      <div class="param-row-2">
+        <span class="param-label" data-i18n="poles">Poles (2p)</span>
+        <input type="text" class="param-input" id="in_P" value="10" onchange="onPQChange()">
+      </div>
+      <div class="param-row-2">
+        <span class="param-label" data-i18n="slots">Slots (Q)</span>
+        <input type="text" class="param-input" id="in_Q" value="12" onchange="onPQChange()">
+      </div>
+      <div class="param-row-2">
+        <span class="param-label" data-i18n="layers">Layers</span>
+        <select class="mini-select" id="in_layers" onchange="onLayersChange()">
+          <option value="double" data-i18n="doubleLayer">Double layer</option>
+          <option value="single" data-i18n="singleLayer">Single layer</option>
+        </select>
+      </div>
+      <div class="param-row-2" id="spanRow">
+        <span class="param-label" data-i18n="coilSpan">Coil span [slots]</span>
+        <input type="text" class="param-input" id="in_span" value="1" onchange="onSpanChange()">
+      </div>
+      <div class="hint-text" id="spanHint">—</div>
+      <div class="hint-text" data-i18n="phaseFixedHint">Three-phase (m = 3) only.</div>
+    </div>
+
+    <div class="params-box">
+      <div class="section-title" data-i18n="legendTitle">Legend</div>
+      <div class="wd-legend" id="wdLegend"></div>
+      <div class="hint-text" data-i18n="legendHint">
+        Block color = phase. "+" / "−" = current direction (EMF phasor sign). Arcs below the slots trace each coil (double layer only).
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── 右側：結果欄 ── -->
+  <div class="results-col">
+
+    <div class="warning-box" id="feasWarning"></div>
+
+    <div class="result-cards" id="resultCards" style="display:none">
+      <div class="result-card highlight">
+        <div class="result-card-label" data-i18n="keyNumbersTitle">Key Numbers</div>
+        <div class="result-card-body" id="keyNumbersOut">—</div>
+      </div>
+
+      <div class="result-card">
+        <div class="result-card-label" data-i18n="diagramTitle">Winding Layout</div>
+        <div class="winding-diagram-wrap">
+          <svg id="wdSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="winding.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

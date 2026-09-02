@@ -14,6 +14,7 @@ Works both on GitHub Pages and opened directly from disk (`file://`).
 | FFT Analyser | `tools/fft-analyser/` | Spectrum analysis, harmonic extraction, THD, window functions |
 | Working Point Explorer | `tools/working-point/` | Solve motor stable working point, sweep design parameters |
 | DCR Calculator | `tools/dcr-calculator/` | Convert turns / wire diameter / DCR / slot fill factor, quick calibration or full geometry mode, wire-diameter sweep table |
+| Winding Designer | `tools/winding-designer/` | Star-of-slots winding layout for any pole/slot/layer combination (integer- and fractional-slot), fundamental winding factor |
 
 ## Architecture
 
