@@ -266,18 +266,23 @@ function renderRadialDiagram(result) {
 
   const Q = result.Q;
   const isDouble = result.slots[0].bottom !== null;
-  const size = 440;
+  const size = 520;
   const cx = size / 2, cy = size / 2;
-  const rOuter = 190, rMid = isDouble ? 150 : 170, rInner = 110, rRotor = 78;
+  const IRON = '#94a3b8', IRON_STROKE = '#475569';
+  const rYoke = 222, rOuter = 190, rMid = isDouble ? 150 : 170, rInner = 110, rRotor = 78;
   const step = 360 / Q;
-  const gapDeg = Math.min(3, step * 0.12); // 槽間留白角度
+  const gapDeg = Math.min(4, step * 0.16); // 槽間留白角度（露出鐵芯，形成齒）
 
   svg.setAttribute('width', size);
   svg.setAttribute('height', size);
   svg.setAttribute('viewBox', '0 0 ' + size + ' ' + size);
 
-  // 轉子（僅示意，無功能意義）
-  svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: rRotor, fill: 'var(--bg)', stroke: 'var(--border)', 'stroke-width': 1.5 }));
+  // 定子鐵芯本體（軛部＋齒）：先畫實心圓盤，槽扇形與槽間隙分別覆蓋出槽口與齒
+  svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: rYoke, fill: IRON, stroke: IRON_STROKE, 'stroke-width': 1.5 }));
+  svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: rInner, fill: 'var(--bg)', stroke: IRON_STROKE, 'stroke-width': 1 }));
+
+  // 轉子（僅示意，無功能意義）與氣隙
+  svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: rRotor, fill: IRON, opacity: 0.45, stroke: IRON_STROKE, 'stroke-width': 1.5 }));
   svg.appendChild(textEl(cx, cy + 3, 'rotor', { fill: 'var(--text3)', 'font-size': 9 }));
 
   result.slots.forEach(function (s, k) {
@@ -308,7 +313,7 @@ function renderRadialDiagram(result) {
       currentDirSymbol(svg, pMid.x, pMid.y, Math.max(4, step * 1.6), s.top.sign);
     }
 
-    const pLabel = polarPt(cx, cy, rOuter + 14, aMid);
+    const pLabel = polarPt(cx, cy, rYoke + 14, aMid);
     svg.appendChild(textEl(pLabel.x, pLabel.y + 3, String(k + 1), { fill: 'var(--text3)', 'font-size': 8 }));
   });
 }
