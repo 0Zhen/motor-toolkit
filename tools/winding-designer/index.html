@@ -76,6 +76,13 @@
             <button class="view-toggle-btn" id="viewRadialBtn" onclick="setDiagramView('radial')" data-i18n="viewRadial">Cross-section</button>
           </div>
         </div>
+        <div class="view-toggle phase-filter-row" id="phaseFilterRow" style="display:none">
+          <span class="phase-filter-label" data-i18n="phaseFilterLabel">Coil path:</span>
+          <button class="view-toggle-btn phase-filter-btn active" data-phase="all" onclick="setPhaseFilter('all')" data-i18n="phaseAll">All</button>
+          <button class="view-toggle-btn phase-filter-btn" data-phase="A" onclick="setPhaseFilter('A')">A</button>
+          <button class="view-toggle-btn phase-filter-btn" data-phase="B" onclick="setPhaseFilter('B')">B</button>
+          <button class="view-toggle-btn phase-filter-btn" data-phase="C" onclick="setPhaseFilter('C')">C</button>
+        </div>
         <div class="winding-diagram-wrap">
           <svg id="wdSvg" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
@@ -105,7 +112,7 @@
   </div>
 </div>
 
-<script src="winding.js?v=3"></script>
-<script src="app.js?v=3"></script>
+<script src="winding.js?v=4"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

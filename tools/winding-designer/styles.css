@@ -209,6 +209,18 @@ body > * { min-width: 0; }
 .view-toggle-btn:hover { background: var(--hover-bg); }
 .view-toggle-btn.active { background: var(--accent); color: #fff; }
 
+.phase-filter-row {
+  margin-top: 6px;
+  align-self: flex-start;
+  gap: 6px;
+}
+.phase-filter-label {
+  font-size: 9.5px;
+  color: var(--text2);
+  padding: 0 2px 0 4px;
+  align-self: center;
+}
+
 .winding-diagram-wrap {
   overflow-x: auto;
   overflow-y: hidden;

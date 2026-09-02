@@ -154,6 +154,34 @@ function conventionalSpan(Q, P) {
 }
 
 /**
+ * 依相別把雙層繞組的所有線圈串成一條序列（MVP：只支援 1 條 parallel path，
+ * 線圈依「回程邊所在槽」由小到大排序後首尾相接，不做 wave 繞法的重排）。
+ * 每個線圈以 { goK, retK } 表示去程／回程邊所在槽索引。
+ * @returns {{A:Array, B:Array, C:Array}|null} 單層繞組無此結構，回傳 null
+ */
+function buildPhaseChains(result) {
+  if (!result.feasible || !result.slots.length || !result.slots[0].bottom) return null;
+  const Q = result.Q, W = result.span;
+  const chains = { A: [], B: [], C: [] };
+  for (let k = 0; k < Q; k++) {
+    const b = result.slots[k].bottom;
+    const goK = (((k - W) % Q) + Q) % Q;
+    chains[b.phase].push({ goK, retK: k });
+  }
+  return chains;
+}
+
+/**
+ * 給定相別的線圈序列，展開成頭尾相接的槽索引序列
+ * [coil0.go, coil0.ret, coil1.go, coil1.ret, ...]，相鄰兩點即為一段連接弧
+ */
+function phaseWaypoints(coils) {
+  const wp = [];
+  coils.forEach(function (c) { wp.push(c.goK); wp.push(c.retK); });
+  return wp;
+}
+
+/**
  * 給定槽極組合，取雙層（慣例節距）與單層（若可行）中較高的基波繞組係數，
  * 供槽極比較表使用。
  * @returns {{feasible:boolean, value?:number, layers?:'single'|'double', span?:number}}

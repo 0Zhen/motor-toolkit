@@ -14,12 +14,14 @@ var MT_I18N = {
   coilSpan:            { en: 'Coil span [slots]',        zh: '線圈節距 [槽]' },
   phaseFixedHint:      { en: 'Three-phase (m = 3) only.', zh: '固定三相 (m = 3)。' },
   legendTitle:         { en: 'Legend',                   zh: '圖例' },
-  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Curves trace each coil (double layer only): below the strip in the linear view, outside the stator in the cross-section view (which also shows coils that wrap around, unlike the linear view).',
-                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。弧線表示線圈連接（僅雙層繞組顯示）：線性展開圖畫在下方，馬達剖面圖畫在定子外側（剖面圖也能正確顯示回捲的線圈，展開圖則不行）。' },
+  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Curves trace each phase’s coils wired in series as one continuous path (double layer only; all coils in a single parallel path — no wave-winding reordering or multi-path splitting yet), alternating "front" (above the strip / outside the stator) and "rear" (below / — same idea in both views). Use the coil-path filter to isolate one phase.',
+                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。弧線表示該相所有線圈串成一條 path 的接線順序（僅雙層繞組；目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流），front（上方／定子外側）與 rear（下方）交替。可用線圈接線濾鏡只看單一相。' },
   keyNumbersTitle:     { en: 'Key Numbers',              zh: '關鍵數值' },
   diagramTitle:        { en: 'Winding Layout',           zh: '繞組展開圖' },
   viewLinear:          { en: 'Linear',                    zh: '展開圖' },
   viewRadial:          { en: 'Cross-section',              zh: '馬達剖面' },
+  phaseFilterLabel:    { en: 'Coil path:',                 zh: '線圈接線：' },
+  phaseAll:            { en: 'All',                         zh: '全部' },
   spanHintFullPitch:   { en: 'Full pitch = {v} slots',   zh: '全節距 = {v} 槽' },
   warnInvalidQ:        { en: 'Slots (Q) must be an integer ≥ 3.',
                           zh: '槽數 (Q) 須為 ≥ 3 的整數。' },
@@ -154,16 +156,16 @@ function renderLinearDiagram(result) {
   const isDouble = result.slots[0].bottom !== null;
   const slotW = 30, gapW = 10, pitch = slotW + gapW;
   const blockH = isDouble ? 34 : 60;
-  const marginTop = 8, labelGap = 4, labelH = 10;
-  const W = result.span || 0;
-  const arcH = isDouble ? Math.min(90, 26 + (W - 1) * 8) : 0;
+  const labelGap = 4, labelH = 10;
+  const frontAreaH = isDouble ? 120 : 0, rearAreaH = isDouble ? 120 : 0;
+  const marginTop = frontAreaH + 8;
 
   const width = Q * pitch + gapW;
   const bodyTop = marginTop;
   const bodyBottom = bodyTop + blockH * (isDouble ? 2 : 1);
   const labelY = bodyBottom + labelGap + labelH;
-  const arcTop = labelY + 8;
-  const height = isDouble ? arcTop + arcH + 6 : labelY + 6;
+  const rearTop = labelY + 8;
+  const height = isDouble ? rearTop + rearAreaH + 6 : labelY + 6;
 
   svg.setAttribute('width', width);
   svg.setAttribute('height', height);
@@ -208,18 +210,26 @@ function renderLinearDiagram(result) {
   });
 
   if (isDouble) {
-    for (let k = 0; k < Q; k++) {
-      const srcK = k - W;
-      if (srcK < 0) continue; // 回捲到頭尾的線圈不繪製（避免圖面混亂）
-      const s = result.slots[k];
-      const x1 = gapW / 2 + srcK * pitch + slotW / 2;
-      const x2 = gapW / 2 + k * pitch + slotW / 2;
-      const path = 'M ' + x1 + ' ' + arcTop + ' C ' + x1 + ' ' + (arcTop + arcH) + ', ' +
-                   x2 + ' ' + (arcTop + arcH) + ', ' + x2 + ' ' + arcTop;
-      svg.appendChild(svgEl('path', {
-        d: path, fill: 'none', stroke: PHASE_COLOR[s.bottom.phase], 'stroke-width': 1.3, opacity: 0.55,
-      }));
-    }
+    const slotX = function (k) { return gapW / 2 + k * pitch + slotW / 2; };
+    const chains = buildPhaseChains(result);
+    ['A', 'B', 'C'].forEach(function (phase) {
+      if (phaseFilter !== 'all' && phaseFilter !== phase) return;
+      const wp = phaseWaypoints(chains[phase]);
+      const dimmed = phaseFilter !== 'all'; // 單相模式下其餘相已被濾掉，此處不用再淡化
+      const opacity = dimmed ? 0.85 : 0.5;
+      for (let i = 0; i < wp.length - 1; i++) {
+        const front = i % 2 === 0; // 交替 front（去程，上方）／rear（回程接下一圈，下方）
+        const x1 = slotX(wp[i]), x2 = slotX(wp[i + 1]);
+        const span = Math.abs(wp[i + 1] - wp[i]);
+        const h = Math.min(front ? frontAreaH - 10 : rearAreaH - 10, 16 + span * 6);
+        const path = front
+          ? 'M ' + x1 + ' ' + bodyTop + ' C ' + x1 + ' ' + (bodyTop - h) + ', ' + x2 + ' ' + (bodyTop - h) + ', ' + x2 + ' ' + bodyTop
+          : 'M ' + x1 + ' ' + rearTop + ' C ' + x1 + ' ' + (rearTop + h) + ', ' + x2 + ' ' + (rearTop + h) + ', ' + x2 + ' ' + rearTop;
+        svg.appendChild(svgEl('path', {
+          d: path, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
+        }));
+      }
+    });
   }
 }
 
@@ -277,7 +287,6 @@ function renderRadialDiagram(result) {
 
   const Q = result.Q;
   const isDouble = result.slots[0].bottom !== null;
-  const W = result.span || 0;
   const size = 600;
   const cx = size / 2, cy = size / 2;
   const IRON = '#94a3b8', IRON_STROKE = '#475569';
@@ -335,24 +344,30 @@ function renderRadialDiagram(result) {
     svg.appendChild(textEl(pLabel.x, pLabel.y + 3, String(k + 1), { fill: 'var(--text3)', 'font-size': 8 }));
   });
 
-  // 線圈連接弧線（僅雙層）：定子外側，來源槽（top）→ 目的槽（bottom），沿圓周自然處理繞回
-  if (isDouble && W > 0) {
-    for (let k = 0; k < Q; k++) {
-      const srcK = (((k - W) % Q) + Q) % Q;
-      const s = result.slots[k];
-      const aSrc = -90 + srcK * step + step / 2;
-      const aDst = -90 + k * step + step / 2;
-      svg.appendChild(svgEl('path', {
-        d: radialConnectionPath(cx, cy, rYoke + 6, aSrc, aDst),
-        fill: 'none', stroke: PHASE_COLOR[s.bottom.phase], 'stroke-width': 1.1, opacity: 0.45,
-      }));
-    }
+  // 線圈連接弧線（僅雙層）：定子外側，依相別把整條 path 的線圈依序串接，
+  // 沿圓周自然處理回捲，不像展開圖需要擔心跨過頭尾
+  if (isDouble) {
+    const slotAngle = function (k) { return -90 + k * step + step / 2; };
+    const chains = buildPhaseChains(result);
+    ['A', 'B', 'C'].forEach(function (phase) {
+      if (phaseFilter !== 'all' && phaseFilter !== phase) return;
+      const wp = phaseWaypoints(chains[phase]);
+      const opacity = phaseFilter !== 'all' ? 0.75 : 0.4;
+      for (let i = 0; i < wp.length - 1; i++) {
+        svg.appendChild(svgEl('path', {
+          d: radialConnectionPath(cx, cy, rYoke + 6, slotAngle(wp[i]), slotAngle(wp[i + 1])),
+          fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.1, opacity: opacity,
+        }));
+      }
+    });
   }
 }
 
 
 /** 目前選擇的展開圖顯示模式：'linear' | 'radial' */
 let diagramView = 'linear';
+/** 目前選擇的線圈接線相別濾鏡：'all' | 'A' | 'B' | 'C'（僅雙層繞組有作用） */
+let phaseFilter = 'all';
 
 function renderDiagram(result) {
   if (diagramView === 'radial') renderRadialDiagram(result);
@@ -363,6 +378,14 @@ function setDiagramView(view) {
   diagramView = view;
   document.getElementById('viewLinearBtn').classList.toggle('active', view === 'linear');
   document.getElementById('viewRadialBtn').classList.toggle('active', view === 'radial');
+  if (lastResult) renderDiagram(lastResult);
+}
+
+function setPhaseFilter(phase) {
+  phaseFilter = phase;
+  document.querySelectorAll('.phase-filter-btn').forEach(function (btn) {
+    btn.classList.toggle('active', btn.dataset.phase === phase);
+  });
   if (lastResult) renderDiagram(lastResult);
 }
 
@@ -394,6 +417,8 @@ function update() {
   warnEl.style.display = 'none';
   cardsEl.style.display = 'flex';
   lastResult = result;
+  document.getElementById('phaseFilterRow').style.display =
+    (layers === 'double') ? 'flex' : 'none';
   renderKeyNumbers(result);
   renderDiagram(result);
 }
