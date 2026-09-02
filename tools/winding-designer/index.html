@@ -69,7 +69,13 @@
       </div>
 
       <div class="result-card">
-        <div class="result-card-label" data-i18n="diagramTitle">Winding Layout</div>
+        <div class="diagram-header">
+          <div class="result-card-label" data-i18n="diagramTitle" style="margin-bottom:0">Winding Layout</div>
+          <div class="view-toggle">
+            <button class="view-toggle-btn active" id="viewLinearBtn" onclick="setDiagramView('linear')" data-i18n="viewLinear">Linear</button>
+            <button class="view-toggle-btn" id="viewRadialBtn" onclick="setDiagramView('radial')" data-i18n="viewRadial">Cross-section</button>
+          </div>
+        </div>
         <div class="winding-diagram-wrap">
           <svg id="wdSvg" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>

@@ -14,10 +14,12 @@ var MT_I18N = {
   coilSpan:            { en: 'Coil span [slots]',        zh: '線圈節距 [槽]' },
   phaseFixedHint:      { en: 'Three-phase (m = 3) only.', zh: '固定三相 (m = 3)。' },
   legendTitle:         { en: 'Legend',                   zh: '圖例' },
-  legendHint:          { en: 'Block color = phase. "+" / "−" = current direction (EMF phasor sign). Arcs below the slots trace each coil (double layer only); coils that wrap past the last slot are not drawn.',
-                          zh: '色塊代表相別。「+」/「−」代表電流方向（EMF 相量正負）。槽下方弧線表示線圈連接（僅雙層繞組顯示）；跨越最後一槽回捲的線圈不繪出。' },
+  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Arcs below the linear diagram trace each coil (double layer only); coils that wrap past the last slot are not drawn.',
+                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。展開圖下方弧線表示線圈連接（僅雙層繞組顯示）；跨越最後一槽回捲的線圈不繪出。' },
   keyNumbersTitle:     { en: 'Key Numbers',              zh: '關鍵數值' },
   diagramTitle:        { en: 'Winding Layout',           zh: '繞組展開圖' },
+  viewLinear:          { en: 'Linear',                    zh: '展開圖' },
+  viewRadial:          { en: 'Cross-section',              zh: '馬達剖面' },
   spanHintFullPitch:   { en: 'Full pitch = {v} slots',   zh: '全節距 = {v} 槽' },
   warnInvalidQ:        { en: 'Slots (Q) must be an integer ≥ 3.',
                           zh: '槽數 (Q) 須為 ≥ 3 的整數。' },
@@ -49,6 +51,7 @@ var MT_I18N = {
 };
 
 const PHASE_COLOR = { A: '#2563eb', B: '#dc2626', C: '#059669' };
+let lastResult = null; // 最近一次成功計算的結果，供切換展開圖顯示模式時重繪
 
 /* ══════════════════════════════════════════════════════════
    輸入變更事件
@@ -143,7 +146,7 @@ function textEl(x, y, str, attrs) {
   return t;
 }
 
-function renderDiagram(result) {
+function renderLinearDiagram(result) {
   const svg = document.getElementById('wdSvg');
   svg.innerHTML = '';
 
@@ -222,6 +225,112 @@ function renderDiagram(result) {
 
 
 /* ══════════════════════════════════════════════════════════
+   徑向（馬達剖面）繞組展開圖
+   ══════════════════════════════════════════════════════════ */
+
+function polarPt(cx, cy, r, angleDeg) {
+  const rad = angleDeg * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+/** 環形扇區路徑（一個槽的一個繞組層），角度跨度恆 < 180°，故 large-arc-flag 固定 0 */
+function annularSectorPath(cx, cy, rInner, rOuter, startDeg, endDeg) {
+  const p1 = polarPt(cx, cy, rOuter, startDeg);
+  const p2 = polarPt(cx, cy, rOuter, endDeg);
+  const p3 = polarPt(cx, cy, rInner, endDeg);
+  const p4 = polarPt(cx, cy, rInner, startDeg);
+  return 'M ' + p1.x + ' ' + p1.y +
+    ' A ' + rOuter + ' ' + rOuter + ' 0 0 1 ' + p2.x + ' ' + p2.y +
+    ' L ' + p3.x + ' ' + p3.y +
+    ' A ' + rInner + ' ' + rInner + ' 0 0 0 ' + p4.x + ' ' + p4.y +
+    ' Z';
+}
+
+/** 電流方向符號：⊙ = 流出（+），⊗ = 流入（−），為剖面圖慣用符號 */
+function currentDirSymbol(svg, cx, cy, r, sign) {
+  const color = '#fff';
+  if (sign > 0) {
+    svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: r, fill: 'none', stroke: color, 'stroke-width': 1.1 }));
+    svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: r * 0.32, fill: color }));
+  } else {
+    const k = r * 0.72;
+    svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: r, fill: 'none', stroke: color, 'stroke-width': 1.1 }));
+    svg.appendChild(svgEl('line', { x1: cx - k, y1: cy - k, x2: cx + k, y2: cy + k, stroke: color, 'stroke-width': 1.1 }));
+    svg.appendChild(svgEl('line', { x1: cx - k, y1: cy + k, x2: cx + k, y2: cy - k, stroke: color, 'stroke-width': 1.1 }));
+  }
+}
+
+function renderRadialDiagram(result) {
+  const svg = document.getElementById('wdSvg');
+  svg.innerHTML = '';
+
+  const Q = result.Q;
+  const isDouble = result.slots[0].bottom !== null;
+  const size = 440;
+  const cx = size / 2, cy = size / 2;
+  const rOuter = 190, rMid = isDouble ? 150 : 170, rInner = 110, rRotor = 78;
+  const step = 360 / Q;
+  const gapDeg = Math.min(3, step * 0.12); // 槽間留白角度
+
+  svg.setAttribute('width', size);
+  svg.setAttribute('height', size);
+  svg.setAttribute('viewBox', '0 0 ' + size + ' ' + size);
+
+  // 轉子（僅示意，無功能意義）
+  svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: rRotor, fill: 'var(--bg)', stroke: 'var(--border)', 'stroke-width': 1.5 }));
+  svg.appendChild(textEl(cx, cy + 3, 'rotor', { fill: 'var(--text3)', 'font-size': 9 }));
+
+  result.slots.forEach(function (s, k) {
+    const a0 = -90 + k * step + gapDeg / 2;
+    const a1 = -90 + (k + 1) * step - gapDeg / 2;
+    const aMid = (a0 + a1) / 2;
+
+    if (isDouble) {
+      svg.appendChild(svgEl('path', {
+        d: annularSectorPath(cx, cy, rMid, rOuter, a0, a1),
+        fill: PHASE_COLOR[s.top.phase], opacity: 0.9,
+      }));
+      const pOuter = polarPt(cx, cy, (rMid + rOuter) / 2, aMid);
+      currentDirSymbol(svg, pOuter.x, pOuter.y, Math.max(4, step * 1.4), s.top.sign);
+
+      svg.appendChild(svgEl('path', {
+        d: annularSectorPath(cx, cy, rInner, rMid, a0, a1),
+        fill: PHASE_COLOR[s.bottom.phase], opacity: 0.6,
+      }));
+      const pInner = polarPt(cx, cy, (rInner + rMid) / 2, aMid);
+      currentDirSymbol(svg, pInner.x, pInner.y, Math.max(4, step * 1.4), s.bottom.sign);
+    } else {
+      svg.appendChild(svgEl('path', {
+        d: annularSectorPath(cx, cy, rInner, rMid, a0, a1),
+        fill: PHASE_COLOR[s.top.phase], opacity: 0.9,
+      }));
+      const pMid = polarPt(cx, cy, (rInner + rMid) / 2, aMid);
+      currentDirSymbol(svg, pMid.x, pMid.y, Math.max(4, step * 1.6), s.top.sign);
+    }
+
+    const pLabel = polarPt(cx, cy, rOuter + 14, aMid);
+    svg.appendChild(textEl(pLabel.x, pLabel.y + 3, String(k + 1), { fill: 'var(--text3)', 'font-size': 8 }));
+  });
+}
+
+
+/** 目前選擇的展開圖顯示模式：'linear' | 'radial' */
+let diagramView = 'linear';
+
+function renderDiagram(result) {
+  if (diagramView === 'radial') renderRadialDiagram(result);
+  else renderLinearDiagram(result);
+}
+
+function setDiagramView(view) {
+  diagramView = view;
+  document.getElementById('viewLinearBtn').classList.toggle('active', view === 'linear');
+  document.getElementById('viewRadialBtn').classList.toggle('active', view === 'radial');
+  if (lastResult) renderDiagram(lastResult);
+}
+
+
+/* ══════════════════════════════════════════════════════════
    主更新函式
    ══════════════════════════════════════════════════════════ */
 
@@ -241,11 +350,13 @@ function update() {
     warnEl.textContent = '⚠ ' + msg;
     warnEl.style.display = 'block';
     cardsEl.style.display = 'none';
+    lastResult = null;
     return;
   }
 
   warnEl.style.display = 'none';
   cardsEl.style.display = 'flex';
+  lastResult = result;
   renderKeyNumbers(result);
   renderDiagram(result);
 }

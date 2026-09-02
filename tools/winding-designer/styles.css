@@ -178,10 +178,43 @@ body > * { min-width: 0; }
 /* ══════════════════════════════════════════════════════════
    繞組展開圖
    ══════════════════════════════════════════════════════════ */
+.diagram-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.view-toggle {
+  display: flex;
+  gap: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+.view-toggle-btn {
+  padding: 4px 9px;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text2);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.view-toggle-btn:hover { background: var(--hover-bg); }
+.view-toggle-btn.active { background: var(--accent); color: #fff; }
+
 .winding-diagram-wrap {
   overflow-x: auto;
   overflow-y: hidden;
   padding: 4px 2px 6px;
+  display: flex;
+  justify-content: center;
 }
 #wdSvg { display: block; }
 
