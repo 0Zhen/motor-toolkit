@@ -167,8 +167,8 @@ function renderLinearDiagram(result) {
 
   const Q = result.Q;
   const isDouble = result.slots[0].bottom !== null;
-  const slotW = 30, gapW = 10, pitch = slotW + gapW;
-  const blockH = isDouble ? 34 : 60;
+  const slotW = isDouble ? 44 : 30, gapW = 10, pitch = slotW + gapW; // 雙層較寬，左右兩層並排才放得下文字
+  const blockH = 60;
   const labelGap = 4, labelH = 10;
   const frontAreaH = isDouble ? 120 : 56, rearAreaH = isDouble ? 120 : 0;
   const marginTop = frontAreaH + 8;
@@ -176,7 +176,7 @@ function renderLinearDiagram(result) {
 
   const width = Q * pitch + gapW;
   const bodyTop = marginTop;
-  const bodyBottom = bodyTop + blockH * (isDouble ? 2 : 1);
+  const bodyBottom = bodyTop + blockH;
   const labelY = bodyBottom + labelGap + labelH;
   const rearTop = labelY + 8;
   const height = isDouble ? rearTop + rearAreaH + 6 : labelY + 6;
@@ -190,19 +190,28 @@ function renderLinearDiagram(result) {
     const cx = x + slotW / 2;
 
     if (isDouble) {
+      // 雙層的兩個線圈邊左右並排（同一槽內左＝top、右＝bottom），而不是上下疊放，
+      // 對應實際槽內兩個線圈邊左右相鄰的擺法
+      const halfW = slotW / 2;
       svg.appendChild(svgEl('rect', {
-        x: x, y: bodyTop, width: slotW, height: blockH,
+        x: x, y: bodyTop, width: halfW, height: blockH,
         fill: PHASE_COLOR[s.top.phase], opacity: 0.9, rx: 2,
       }));
-      svg.appendChild(textEl(cx, bodyTop + blockH / 2 + 3, s.top.phase + (s.top.sign > 0 ? '+' : '−'),
-        { fill: '#fff', 'font-weight': 700 }));
+      svg.appendChild(textEl(x + halfW / 2, bodyTop + blockH / 2 + 3, s.top.phase + (s.top.sign > 0 ? '+' : '−'),
+        { fill: '#fff', 'font-weight': 700, 'font-size': 7.5 }));
 
       svg.appendChild(svgEl('rect', {
-        x: x, y: bodyTop + blockH, width: slotW, height: blockH,
+        x: x + halfW, y: bodyTop, width: halfW, height: blockH,
         fill: PHASE_COLOR[s.bottom.phase], opacity: 0.55, rx: 2,
       }));
-      svg.appendChild(textEl(cx, bodyTop + blockH * 1.5 + 3, s.bottom.phase + (s.bottom.sign > 0 ? '+' : '−'),
-        { fill: '#fff', 'font-weight': 700 }));
+      svg.appendChild(textEl(x + halfW + halfW / 2, bodyTop + blockH / 2 + 3, s.bottom.phase + (s.bottom.sign > 0 ? '+' : '−'),
+        { fill: '#fff', 'font-weight': 700, 'font-size': 7.5 }));
+
+      // 左右兩層之間的分隔線
+      svg.appendChild(svgEl('line', {
+        x1: x + halfW, y1: bodyTop + 2, x2: x + halfW, y2: bodyBottom - 2,
+        stroke: '#fff', 'stroke-width': 1, opacity: 0.6,
+      }));
 
       const lineX = x - gapW / 2;
       if (k > 0) {
