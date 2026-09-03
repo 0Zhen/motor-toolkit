@@ -476,27 +476,19 @@ function renderRadialDiagram(result) {
     });
   }
 
-  result.slots.forEach(function (s, k) {
-    const a0 = -90 + k * step + gapDeg / 2;
-    const a1 = -90 + (k + 1) * step - gapDeg / 2;
-    const aMid = (a0 + a1) / 2;
-    const pLabel = polarPt(cx, cy, rYoke + 14, aMid);
-    svg.appendChild(textEl(pLabel.x, pLabel.y + 3, String(k + 1), { fill: 'var(--text3)', 'font-size': 8 }));
-  });
+  // 線圈連接弧線：定子外側，三相各用不同匯流半徑（由內而外 A→B→C），
+  // 彼此不會疊在同一圈上；選定單一相時其餘相調淡，方便專注看該相走線。
+  // 雙層依 buildPhaseChains 把整條 path 串起來；單層依 buildSingleLayerPairs
+  // 把相鄰配對齒橋接起來，兩者共用同一套 busR／方向邏輯。
+  const slotAngle = function (k) { return -90 + k * step + step / 2; };
+  const busR = { A: rYoke + 22, B: rYoke + 38, C: rYoke + 54 };
+  const overlap = {};
 
-  // 線圈連接弧線（僅雙層）：定子外側，依相別把整條 path 的線圈依序串接，
-  // 沿圓周自然處理回捲，不像展開圖需要擔心跨過頭尾。三相各自用不同的
-  // 匯流半徑（由內而外 A→B→C），彼此不會疊在同一圈上；選定單一相時
-  // 其餘相調淡，方便專注看該相走線。
   if (isDouble) {
-    const slotAngle = function (k) { return -90 + k * step + step / 2; };
-    const busR = { A: rYoke + 22, B: rYoke + 38, C: rYoke + 54 };
     const chains = buildPhaseChains(result);
-    const overlap = {};
     ['A', 'B', 'C'].forEach(function (phase) {
       const wp = phaseWaypoints(chains[phase]);
-      const intervals = hopIntervals(wp, slotAngle);
-      overlap[phase] = maxOverlapDepth(intervals);
+      overlap[phase] = maxOverlapDepth(hopIntervals(wp, slotAngle));
       const dimmed = phaseFilter !== 'all' && phaseFilter !== phase;
       const opacity = dimmed ? 0.15 : 0.8;
       for (let i = 0; i < wp.length - 1; i++) {
@@ -506,10 +498,36 @@ function renderRadialDiagram(result) {
         }));
       }
     });
-    renderWireOverlapInfo(overlap);
   } else {
-    renderWireOverlapInfo(null);
+    const pairs = buildSingleLayerPairs(result);
+    ['A', 'B', 'C'].forEach(function (phase) {
+      const phPairs = pairs.filter(function (p) { return p.phase === phase; });
+      const intervals = phPairs.map(function (p) {
+        const a = slotAngle(p.aK), b = slotAngle(p.bK);
+        return [Math.min(a, b), Math.max(a, b)];
+      });
+      overlap[phase] = maxOverlapDepth(intervals);
+      const dimmed = phaseFilter !== 'all' && phaseFilter !== phase;
+      const opacity = dimmed ? 0.15 : 0.8;
+      phPairs.forEach(function (p) {
+        svg.appendChild(svgEl('path', {
+          d: radialConnectionPath(cx, cy, rYoke + 6, slotAngle(p.aK), slotAngle(p.bK), busR[phase]),
+          fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
+        }));
+      });
+    });
   }
+  renderWireOverlapInfo(overlap);
+
+  // 槽號放在所有接線匯流圈之外，避免被徑向出線／收線的線段蓋住
+  const labelR = busR.C + 16;
+  result.slots.forEach(function (s, k) {
+    const a0 = -90 + k * step + gapDeg / 2;
+    const a1 = -90 + (k + 1) * step - gapDeg / 2;
+    const aMid = (a0 + a1) / 2;
+    const pLabel = polarPt(cx, cy, labelR, aMid);
+    svg.appendChild(textEl(pLabel.x, pLabel.y + 3, String(k + 1), { fill: 'var(--text3)', 'font-size': 8 }));
+  });
 }
 
 
@@ -528,10 +546,8 @@ function renderDiagram(result) {
  * （馬達剖面圖的單層是旗形符號，尚未加接線串接，見專案記憶）。
  */
 function updatePhaseFilterVisibility() {
-  const row = document.getElementById('phaseFilterRow');
-  if (!lastResult) { row.style.display = 'none'; return; }
-  const isDouble = lastResult.slots[0].bottom !== null;
-  row.style.display = (isDouble || diagramView === 'linear') ? 'flex' : 'none';
+  // 兩種層數、兩種視圖現在都有線圈接線可濾，只要有可行結果就顯示濾鏡列
+  document.getElementById('phaseFilterRow').style.display = lastResult ? 'flex' : 'none';
 }
 
 function setDiagramView(view) {
