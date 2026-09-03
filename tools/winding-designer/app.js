@@ -304,6 +304,20 @@ function radialConnectionPath(cx, cy, r0, aStart, aEnd, busR) {
     ' L ' + p1.x + ' ' + p1.y;
 }
 
+/**
+ * 同槽跳線：當一條線圈接線的頭尾其實是「同一槽」（一枚線圈的回程邊直接
+ * 接下一枚線圈在同槽的去程邊，只差 top/bottom 的小角度偏移），繞出去到
+ * 共用匯流半徑再繞回來反而誇張化了這段其實很短的實際接線，改成直接在
+ * 槽緣外側畫一小段弧，貼著定子。
+ */
+function localJumperPath(cx, cy, r0, aStart, aEnd) {
+  const p0 = polarPt(cx, cy, r0, aStart);
+  const p1 = polarPt(cx, cy, r0, aEnd);
+  const sweepFlag = aEnd >= aStart ? 1 : 0;
+  return 'M ' + p0.x + ' ' + p0.y +
+    ' A ' + r0 + ' ' + r0 + ' 0 0 ' + sweepFlag + ' ' + p1.x + ' ' + p1.y;
+}
+
 /** 把兩個角度端點轉成走「短邊方向」的區間 [lo, hi]——跟 radialConnectionPath 實際畫的方向一致 */
 function shortWayInterval(aStart, aEndRaw) {
   const delta = ((aEndRaw - aStart + 540) % 360) - 180;
@@ -519,9 +533,13 @@ function renderRadialDiagram(result) {
       const dimmed = phaseFilter !== 'all' && phaseFilter !== phase;
       const opacity = dimmed ? 0.15 : 0.8;
       for (let i = 0; i < wp.length - 1; i++) {
+        // 同槽跳線（一枚線圈的回程邊直接接下一枚線圈在同槽的去程邊）：
+        // 貼著槽緣畫一小段弧，不繞去匯流半徑，避免把很短的實際接線畫得太誇張
+        const d = wp[i] === wp[i + 1]
+          ? localJumperPath(cx, cy, rYoke + 6, angleAt(i), angleAt(i + 1))
+          : radialConnectionPath(cx, cy, rYoke + 6, angleAt(i), angleAt(i + 1), busR[phase]);
         svg.appendChild(svgEl('path', {
-          d: radialConnectionPath(cx, cy, rYoke + 6, angleAt(i), angleAt(i + 1), busR[phase]),
-          fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
+          d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
         }));
       }
     });
