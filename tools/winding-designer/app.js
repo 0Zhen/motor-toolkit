@@ -14,8 +14,8 @@ var MT_I18N = {
   coilSpan:            { en: 'Coil span [slots]',        zh: '線圈節距 [槽]' },
   phaseFixedHint:      { en: 'Three-phase (m = 3) only.', zh: '固定三相 (m = 3)。' },
   legendTitle:         { en: 'Legend',                   zh: '圖例' },
-  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). In the cross-section view, single-layer windings are drawn as a coil symbol on each tooth (concentrated-winding style); double-layer windings merge consecutive same-phase, same-direction slots into one arc (distributed-winding style). The inner ring shows the rotor\'s alternating N/S poles (illustrative only). Curves trace each phase\'s coils wired in series as one continuous path (double layer only; all coils in a single parallel path — no wave-winding reordering or multi-path splitting yet), alternating "front" (above the strip / outside the stator) and "rear" (below). Use the coil-path filter to isolate one phase.',
-                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。馬達剖面圖中，單層繞組在每齒畫成線圈符號（集中繞組風格）；雙層繞組把相鄰同相同方向的槽合併成一段弧（分佈繞組風格）。內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。弧線表示該相所有線圈串成一條 path 的接線順序（僅雙層繞組；目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流），front（上方／定子外側）與 rear（下方）交替。可用線圈接線濾鏡只看單一相。' },
+  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Single-layer windings are drawn as a coil symbol per tooth (concentrated-winding style); double-layer windings merge consecutive same-phase, same-direction slots into one arc/block (distributed-winding style). The cross-section\'s inner ring shows the rotor\'s alternating N/S poles (illustrative only). Curves/brackets trace coils wired in series (all coils in a single parallel path — no wave-winding reordering or multi-path splitting yet); a tooth whose adjacent same-phase partner would wrap past the first/last slot is left unbracketed. Use the coil-path filter to isolate one phase.',
+                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。單層繞組在每齒畫成線圈符號（集中繞組風格）；雙層繞組把相鄰同相同方向的槽合併成一段弧／色塊（分佈繞組風格）。馬達剖面圖內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。弧線／跳線表示線圈的串接順序（目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流）；若相鄰同相的配對齒剛好跨過頭尾槽，則不畫跳線。可用線圈接線濾鏡只看單一相。' },
   keyNumbersTitle:     { en: 'Key Numbers',              zh: '關鍵數值' },
   diagramTitle:        { en: 'Winding Layout',           zh: '繞組展開圖' },
   viewLinear:          { en: 'Linear',                    zh: '展開圖' },
@@ -148,6 +148,17 @@ function textEl(x, y, str, attrs) {
   return t;
 }
 
+/** 齒形路徑（單層集中繞組用）：頂部平、底部收尖，示意實體齒的輪廓 */
+function toothPath(x, top, bottom, w) {
+  const h = bottom - top;
+  return 'M ' + x + ' ' + top +
+    ' L ' + (x + w) + ' ' + top +
+    ' L ' + (x + w * 0.78) + ' ' + (top + h * 0.55) +
+    ' L ' + (x + w / 2) + ' ' + bottom +
+    ' L ' + (x + w * 0.22) + ' ' + (top + h * 0.55) +
+    ' Z';
+}
+
 function renderLinearDiagram(result) {
   const svg = document.getElementById('wdSvg');
   svg.innerHTML = '';
@@ -157,8 +168,9 @@ function renderLinearDiagram(result) {
   const slotW = 30, gapW = 10, pitch = slotW + gapW;
   const blockH = isDouble ? 34 : 60;
   const labelGap = 4, labelH = 10;
-  const frontAreaH = isDouble ? 120 : 0, rearAreaH = isDouble ? 120 : 0;
+  const frontAreaH = isDouble ? 120 : 56, rearAreaH = isDouble ? 120 : 0;
   const marginTop = frontAreaH + 8;
+  const slotX = function (k) { return gapW / 2 + k * pitch + slotW / 2; };
 
   const width = Q * pitch + gapW;
   const bodyTop = marginTop;
@@ -189,28 +201,30 @@ function renderLinearDiagram(result) {
       }));
       svg.appendChild(textEl(cx, bodyTop + blockH * 1.5 + 3, s.bottom.phase + (s.bottom.sign > 0 ? '+' : '−'),
         { fill: '#fff', 'font-weight': 700 }));
+
+      const lineX = x - gapW / 2;
+      if (k > 0) {
+        svg.appendChild(svgEl('line', {
+          x1: lineX, y1: bodyTop - 2, x2: lineX, y2: bodyBottom + 2,
+          stroke: 'var(--border)', 'stroke-width': 1,
+        }));
+      }
     } else {
-      svg.appendChild(svgEl('rect', {
-        x: x, y: bodyTop, width: slotW, height: blockH,
-        fill: PHASE_COLOR[s.top.phase], opacity: 0.9, rx: 2,
+      // 齒形輪廓 + 齒尖顏色 + 頂部入/出線符號（集中繞組風格）
+      svg.appendChild(svgEl('path', {
+        d: toothPath(x, bodyTop, bodyBottom, slotW),
+        fill: PHASE_COLOR[s.top.phase], 'fill-opacity': 0.22,
+        stroke: PHASE_COLOR[s.top.phase], 'stroke-width': 1.4,
       }));
-      svg.appendChild(textEl(cx, bodyTop + blockH / 2 + 3, s.top.phase + (s.top.sign > 0 ? '+' : '−'),
-        { fill: '#fff', 'font-weight': 700 }));
+      svg.appendChild(textEl(cx, bodyTop + blockH * 0.74, s.top.phase + (s.top.sign > 0 ? '+' : '−'),
+        { fill: PHASE_COLOR[s.top.phase], 'font-weight': 700 }));
+      currentDirSymbol(svg, cx, bodyTop, 5, s.top.sign);
     }
 
     svg.appendChild(textEl(cx, labelY, String(k + 1), { fill: 'var(--text3)', 'font-size': 8 }));
-
-    if (k > 0) {
-      const lineX = x - gapW / 2;
-      svg.appendChild(svgEl('line', {
-        x1: lineX, y1: bodyTop - 2, x2: lineX, y2: bodyBottom + 2,
-        stroke: 'var(--border)', 'stroke-width': 1,
-      }));
-    }
   });
 
   if (isDouble) {
-    const slotX = function (k) { return gapW / 2 + k * pitch + slotW / 2; };
     const chains = buildPhaseChains(result);
     ['A', 'B', 'C'].forEach(function (phase) {
       if (phaseFilter !== 'all' && phaseFilter !== phase) return;
@@ -229,6 +243,19 @@ function renderLinearDiagram(result) {
           d: path, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
         }));
       }
+    });
+  } else {
+    // 單層：相鄰同相配對齒，頂部用直角跳線橋接（不與齒形重疊，留在 front 區）
+    const wireTop = bodyTop - (frontAreaH - 16);
+    buildSingleLayerPairs(result).forEach(function (pair) {
+      if (phaseFilter !== 'all' && phaseFilter !== pair.phase) return;
+      const opacity = phaseFilter !== 'all' ? 0.9 : 0.6;
+      const x1 = slotX(pair.aK), x2 = slotX(pair.bK);
+      const d = 'M ' + x1 + ' ' + (bodyTop - 6) + ' L ' + x1 + ' ' + wireTop +
+                ' L ' + x2 + ' ' + wireTop + ' L ' + x2 + ' ' + (bodyTop - 6);
+      svg.appendChild(svgEl('path', {
+        d: d, fill: 'none', stroke: PHASE_COLOR[pair.phase], 'stroke-width': 1.5, opacity: opacity,
+      }));
     });
   }
 }
@@ -297,6 +324,23 @@ function groupConsecutiveSlots(Q, sideAt) {
     i = j + 1;
   }
   return groups;
+}
+
+/**
+ * 單層（集中繞組）齒配對：把連續同相（不分正負）的齒兩兩配成一個線圈單元
+ * （相鄰齒一正一負，頂部用跳線橋接）。落單的齒（該相連續段長度為奇數時
+ * 的最後一顆）不配對，不畫跳線。
+ */
+function buildSingleLayerPairs(result) {
+  const Q = result.Q;
+  const runs = groupConsecutiveSlots(Q, function (k) { return { phase: result.slots[k].top.phase, sign: 0 }; });
+  const pairs = [];
+  runs.forEach(function (run) {
+    for (let k = run.startK; k + 1 <= run.endK; k += 2) {
+      pairs.push({ aK: k, bK: k + 1, phase: run.phase });
+    }
+  });
+  return pairs;
 }
 
 /** 集中繞組（單層）線圈符號：齒上的旗形線圈，斜線代表繞線圈數，中心疊方向符號 */
@@ -427,10 +471,22 @@ function renderDiagram(result) {
   else renderLinearDiagram(result);
 }
 
+/**
+ * 線圈接線濾鏡列可見性：雙層兩種視圖都有接線；單層目前只有展開圖
+ * （馬達剖面圖的單層是旗形符號，尚未加接線串接，見專案記憶）。
+ */
+function updatePhaseFilterVisibility() {
+  const row = document.getElementById('phaseFilterRow');
+  if (!lastResult) { row.style.display = 'none'; return; }
+  const isDouble = lastResult.slots[0].bottom !== null;
+  row.style.display = (isDouble || diagramView === 'linear') ? 'flex' : 'none';
+}
+
 function setDiagramView(view) {
   diagramView = view;
   document.getElementById('viewLinearBtn').classList.toggle('active', view === 'linear');
   document.getElementById('viewRadialBtn').classList.toggle('active', view === 'radial');
+  updatePhaseFilterVisibility();
   if (lastResult) renderDiagram(lastResult);
 }
 
@@ -470,8 +526,7 @@ function update() {
   warnEl.style.display = 'none';
   cardsEl.style.display = 'flex';
   lastResult = result;
-  document.getElementById('phaseFilterRow').style.display =
-    (layers === 'double') ? 'flex' : 'none';
+  updatePhaseFilterVisibility();
   renderKeyNumbers(result);
   renderDiagram(result);
 }
