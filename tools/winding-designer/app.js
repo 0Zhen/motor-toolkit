@@ -397,17 +397,22 @@ function arrowMarker(svg, cx, cy, r, angleDeg, clockwise, color, size, opacity) 
 }
 
 /**
- * 在整條相線的每一段「跨槽」接線（非同槽跳線）的匯流弧中點畫一個方向箭頭，
- * 標出電流沿這條 path 走的方向，順便讓「跨了幾槽、往哪跨」一眼看出來。
+ * 在整條相線的每一段「跨槽」接線（非同槽跳線）的匯流弧中點畫一個方向箭頭。
+ * 箭頭方向不是照 wp 陣列順序（那只是串接時任意選的走訪順序），而是照
+ * ⊙(+)／⊗(−) 符號本身：一律從 + 端指向 − 端，才能跟旁邊槽的方向符號對得起來
+ * ——同一枚線圈的兩端保證一正一負，箭頭就從 + 那端畫向 − 那端；一般的跨槽
+ * 跳線通常也剛好是 + 接 −（只有同槽跳線那種極短的例外，但那種本來就不畫箭頭）。
  */
-function drawChainArrows(svg, cx, cy, busR, wp, angleAt, color, opacity, size) {
+function drawChainArrows(svg, cx, cy, busR, wp, angleAt, signAt, color, opacity, size) {
   for (let i = 0; i < wp.length - 1; i++) {
     if (wp[i] === wp[i + 1]) continue; // 同槽跳線太短，不畫箭頭
     const aStart = angleAt(i), aEndRaw = angleAt(i + 1);
     const delta = ((aEndRaw - aStart + 540) % 360) - 180;
     const aEnd = aStart + delta;
     const aMid = (aStart + aEnd) / 2;
-    arrowMarker(svg, cx, cy, busR, aMid, delta >= 0, color, size, opacity);
+    const forward = signAt(i) > 0; // wp[i] 是 + 端就順著畫（i→i+1）；是 − 端就反過來（i+1→i）
+    const clockwise = forward ? (delta >= 0) : (delta < 0);
+    arrowMarker(svg, cx, cy, busR, aMid, clockwise, color, size, opacity);
   }
 }
 
@@ -634,6 +639,10 @@ function renderRadialDiagram(result) {
       const angleAt = function (idx) {
         return sideAngle(wp[idx], idx % 2 === 0);
       };
+      const signAt = function (idx) {
+        const isTop = idx % 2 === 0;
+        return isTop ? result.slots[wp[idx]].top.sign : result.slots[wp[idx]].bottom.sign;
+      };
       overlap[phase] = maxOverlapDepth(hopIntervals(wp, angleAt));
       const dimmed = phaseFilter !== 'all' && phaseFilter !== phase;
       const opacity = dimmed ? 0.15 : 0.8;
@@ -644,7 +653,7 @@ function renderRadialDiagram(result) {
       svg.appendChild(svgEl('path', {
         d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
       }));
-      drawChainArrows(svg, cx, cy, busR[phase], wp, angleAt, PHASE_COLOR[phase], opacity, 6.5);
+      drawChainArrows(svg, cx, cy, busR[phase], wp, angleAt, signAt, PHASE_COLOR[phase], opacity, 6.5);
     });
   } else {
     const pairs = buildSingleLayerPairs(result);
