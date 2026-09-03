@@ -14,8 +14,8 @@ var MT_I18N = {
   coilSpan:            { en: 'Coil span [slots]',        zh: '線圈節距 [槽]' },
   phaseFixedHint:      { en: 'Three-phase (m = 3) only.', zh: '固定三相 (m = 3)。' },
   legendTitle:         { en: 'Legend',                   zh: '圖例' },
-  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Single-layer windings are drawn as a coil symbol per tooth (concentrated-winding style); double-layer windings split each slot left/right into its two coil sides — left = bottom (return, facing the lower-numbered neighbor), right = top (start, facing the higher-numbered neighbor) — even when both happen to share the same phase and direction, so every coil side stays its own distinct block. The cross-section\'s inner ring shows the rotor\'s alternating N/S poles (illustrative only). Curves/brackets trace coils wired in series (all coils in a single parallel path — no wave-winding reordering or multi-path splitting yet); a tooth whose adjacent same-phase partner would wrap past the first/last slot is left unbracketed. In the cross-section view each phase gets its own bus radius (A innermost, C outermost) so all three can be shown at once without overlapping each other; the "max overlapping" readout below the phase filter shows how many of that phase\'s own segments still stack on top of each other.',
-                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。單層繞組在每齒畫成線圈符號（集中繞組風格）；雙層繞組把每槽左右分成兩個線圈邊——左＝bottom（回程，面向較小槽號那側）、右＝top（去程，面向較大槽號那側）——即使剛好同相同方向也一樣分開顯示，每個線圈邊都對應獨立一塊色塊。馬達剖面圖內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。弧線／跳線表示線圈的串接順序（目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流）；若相鄰同相的配對齒剛好跨過頭尾槽，則不畫跳線。馬達剖面圖中三相各自用不同的匯流半徑（A 最內、C 最外），所以三相可以同時顯示不互相重疊；下方「最大重疊」數字顯示該相自己的線段裡最多有幾段疊在一起。' },
+  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Single-layer windings are drawn as a coil symbol per tooth (concentrated-winding style); double-layer windings split each slot left/right into its two coil sides — left = bottom (return, facing the lower-numbered neighbor), right = top (start, facing the higher-numbered neighbor) — even when both happen to share the same phase and direction, so every coil side stays its own distinct block. The cross-section\'s inner ring shows the rotor\'s alternating N/S poles (illustrative only). Curves/brackets trace coils wired in series (all coils in a single parallel path — no wave-winding reordering or multi-path splitting yet); a tooth whose adjacent same-phase partner would wrap past the first/last slot is left unbracketed. In the cross-section view each phase gets its own band of bus rings (A innermost, C outermost); when a phase\'s cross-slot connections overlap in angle, they\'re automatically offset into separate concentric-arc lanes instead of stacking, so every segment stays visible — the "max overlapping" readout below the phase filter shows how many lanes that phase needed. Same-slot jumpers hugging the teeth now get direction arrows too (smaller, to mark them as short local connections).',
+                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。單層繞組在每齒畫成線圈符號（集中繞組風格）；雙層繞組把每槽左右分成兩個線圈邊——左＝bottom（回程，面向較小槽號那側）、右＝top（去程，面向較大槽號那側）——即使剛好同相同方向也一樣分開顯示，每個線圈邊都對應獨立一塊色塊。馬達剖面圖內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。弧線／跳線表示線圈的串接順序（目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流）；若相鄰同相的配對齒剛好跨過頭尾槽，則不畫跳線。馬達剖面圖中三相各自佔一段由內而外的匯流環（A 最內、C 最外）；同一相如果有多條跨槽接線角度重疊，會自動錯開成不同車道的同心弧分開顯示，不會疊在一起看不出來——下方「最大重疊」數字就是該相最多同時用到幾條車道。貼齒的同槽跳線現在也會畫方向箭頭（尺寸較小，標示是短接線）。' },
   keyNumbersTitle:     { en: 'Key Numbers',              zh: '關鍵數值' },
   diagramTitle:        { en: 'Winding Layout',           zh: '繞組展開圖' },
   viewLinear:          { en: 'Linear',                    zh: '展開圖' },
@@ -179,9 +179,8 @@ function toothHalfPath(x, top, bottom, w, side) {
 }
 
 function renderLinearDiagram(result) {
-  const svg = document.getElementById('wdSvg');
+  const svg = document.getElementById('wdSvgLinear');
   svg.innerHTML = '';
-  renderWireOverlapInfo(null); // 重疊提示僅在馬達剖面圖顯示
 
   const Q = result.Q;
   const isDouble = result.slots[0].bottom !== null;
@@ -335,27 +334,14 @@ function radialConnectionPath(cx, cy, r0, aStart, aEnd, busR) {
 }
 
 /**
- * 同槽跳線：當一條線圈接線的頭尾其實是「同一槽」（一枚線圈的回程邊直接
- * 接下一枚線圈在同槽的去程邊，只差 top/bottom 的小角度偏移），繞出去到
- * 共用匯流半徑再繞回來反而誇張化了這段其實很短的實際接線，改成直接在
- * 槽緣外側畫一小段弧，貼著定子。
- */
-function localJumperPath(cx, cy, r0, aStart, aEnd) {
-  const p0 = polarPt(cx, cy, r0, aStart);
-  const p1 = polarPt(cx, cy, r0, aEnd);
-  const sweepFlag = aEnd >= aStart ? 1 : 0;
-  return 'M ' + p0.x + ' ' + p0.y +
-    ' A ' + r0 + ' ' + r0 + ' 0 0 ' + sweepFlag + ' ' + p1.x + ' ' + p1.y;
-}
-
-/**
  * 把整條相線的所有線圈接線串成「一條路徑」（單一 `<path>` 的 d 字串），
  * 而不是每段各自獨立的 `<path>`——即使每段的端點都精確相接，分開畫在視覺
  * 上仍會像好幾截各自獨立的線段；串成一條路徑後才是真正頭尾相連的一條線。
- * `angleAt(idx)` 取第 idx 個端點角度；`wp[i]===wp[i+1]` 的同槽跳線沿用
- * localJumperPath 的貼槽緣畫法，其餘沿用 radialConnectionPath 的直角走線。
+ * `angleAt(idx)` 取第 idx 個端點角度；`wp[i]===wp[i+1]` 的同槽跳線貼槽緣
+ * （半徑 r0）畫一小段弧，其餘跨槽的段落繞去 `busRAt(i)` 決定的匯流半徑——
+ * 依車道分開的半徑，讓角度重疊的跨槽接線不會疊在同一條圓弧上分不出來。
  */
-function buildChainPath(cx, cy, r0, busR, wp, angleAt) {
+function buildChainPath(cx, cy, r0, busRAt, wp, angleAt) {
   const p0 = polarPt(cx, cy, r0, angleAt(0));
   const parts = ['M ' + p0.x + ' ' + p0.y];
   for (let i = 0; i < wp.length - 1; i++) {
@@ -365,6 +351,7 @@ function buildChainPath(cx, cy, r0, busR, wp, angleAt) {
       const p1 = polarPt(cx, cy, r0, aEndRaw);
       parts.push('A ' + r0 + ' ' + r0 + ' 0 0 ' + sweepFlag + ' ' + p1.x + ' ' + p1.y);
     } else {
+      const busR = busRAt(i);
       const delta = ((aEndRaw - aStart + 540) % 360) - 180;
       const aEnd = aStart + delta;
       const sweepFlag = delta >= 0 ? 1 : 0;
@@ -397,22 +384,25 @@ function arrowMarker(svg, cx, cy, r, angleDeg, clockwise, color, size, opacity) 
 }
 
 /**
- * 在整條相線的每一段「跨槽」接線（非同槽跳線）的匯流弧中點畫一個方向箭頭。
- * 箭頭方向不是照 wp 陣列順序（那只是串接時任意選的走訪順序），而是照
- * ⊙(+)／⊗(−) 符號本身：一律從 + 端指向 − 端，才能跟旁邊槽的方向符號對得起來
- * ——同一枚線圈的兩端保證一正一負，箭頭就從 + 那端畫向 − 那端；一般的跨槽
- * 跳線通常也剛好是 + 接 −（只有同槽跳線那種極短的例外，但那種本來就不畫箭頭）。
+ * 在整條相線的每一段接線中點畫一個方向箭頭：跨槽段畫在 busRAt(i) 的匯流弧
+ * 上，同槽跳線畫在貼槽緣的 r0 弧上（箭頭縮小標示是短接線）——兩種接線統一
+ * 都有箭頭，視覺語言一致。箭頭方向不是照 wp 陣列順序（那只是串接時任意選
+ * 的走訪順序），而是照 ⊙(+)／⊗(−) 符號本身：一律從 + 端指向 − 端，才能跟
+ * 旁邊槽的方向符號對得起來——同一枚線圈的兩端保證一正一負，箭頭就從 + 那
+ * 端畫向 − 那端。
  */
-function drawChainArrows(svg, cx, cy, busR, wp, angleAt, signAt, color, opacity, size) {
+function drawChainArrows(svg, cx, cy, r0, busRAt, wp, angleAt, signAt, color, opacity, size) {
   for (let i = 0; i < wp.length - 1; i++) {
-    if (wp[i] === wp[i + 1]) continue; // 同槽跳線太短，不畫箭頭
+    const sameSlot = wp[i] === wp[i + 1];
     const aStart = angleAt(i), aEndRaw = angleAt(i + 1);
     const delta = ((aEndRaw - aStart + 540) % 360) - 180;
     const aEnd = aStart + delta;
     const aMid = (aStart + aEnd) / 2;
     const forward = signAt(i) > 0; // wp[i] 是 + 端就順著畫（i→i+1）；是 − 端就反過來（i+1→i）
     const clockwise = forward ? (delta >= 0) : (delta < 0);
-    arrowMarker(svg, cx, cy, busR, aMid, clockwise, color, size, opacity);
+    const r = sameSlot ? r0 : busRAt(i);
+    const sz = sameSlot ? size * 0.7 : size;
+    arrowMarker(svg, cx, cy, r, aMid, clockwise, color, sz, opacity);
   }
 }
 
@@ -424,26 +414,42 @@ function shortWayInterval(aStart, aEndRaw) {
 }
 
 /**
- * 把某相的線圈接線路徑序列轉成角度區間清單。`angleAt(idx)` 取第 idx 個
- * 端點的實際繪製角度（已含 top/bottom 的小偏移，見 renderRadialDiagram），
- * 不是單純的槽角度。
+ * 貪婪掃描線分配「車道」：把彼此角度重疊的區間分開放到不同車道，同車道內
+ * 保證互不重疊；車道數等於這批區間最多同時重疊的深度（區間排程的古典結果）。
+ * 回傳每個區間對應的車道編號（跟輸入陣列順序一致）與總車道數，供匯流弧
+ * 依車道往外偏移半徑，讓重疊的接線變成看得出來的同心弧，而不是疊在同一條
+ * 線上分不出來。
  */
-function hopIntervals(wp, angleAt) {
-  const intervals = [];
-  for (let i = 0; i < wp.length - 1; i++) {
-    intervals.push(shortWayInterval(angleAt(i), angleAt(i + 1)));
-  }
-  return intervals;
+function assignLanes(intervals) {
+  const order = intervals.map(function (_, i) { return i; })
+    .sort(function (a, b) { return intervals[a][0] - intervals[b][0]; });
+  const laneEnd = []; // 每條車道目前占用到的角度終點
+  const laneOf = new Array(intervals.length);
+  order.forEach(function (i) {
+    const iv = intervals[i];
+    let lane = laneEnd.findIndex(function (end) { return end <= iv[0]; });
+    if (lane === -1) { lane = laneEnd.length; laneEnd.push(iv[1]); }
+    else { laneEnd[lane] = iv[1]; }
+    laneOf[i] = lane;
+  });
+  return { laneOf: laneOf, laneCount: laneEnd.length };
 }
 
-/** 掃描線法算出同一相在同一匯流圈上，最多同時有幾段接線互相重疊 */
-function maxOverlapDepth(intervals) {
-  const events = [];
-  intervals.forEach(function (iv) { events.push([iv[0], 1]); events.push([iv[1], -1]); });
-  events.sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
-  let cur = 0, max = 0;
-  events.forEach(function (e) { cur += e[1]; if (cur > max) max = cur; });
-  return max;
+/**
+ * 依三相「跨槽接線」各自需要的車道數，由內而外分配匯流半徑起點——車道數
+ * 愈多的相占用愈寬的圓環範圍，彼此不會撞在一起；也回傳三相都畫完後最外側
+ * 的可用半徑，供槽號標籤定位。
+ */
+function layoutPhaseBuses(intervalsByPhase, startR, laneStep, phaseGap) {
+  const layout = {};
+  let cursor = startR;
+  ['A', 'B', 'C'].forEach(function (phase) {
+    const lanes = assignLanes(intervalsByPhase[phase]);
+    layout[phase] = { base: cursor, laneOf: lanes.laneOf, laneCount: lanes.laneCount };
+    cursor += Math.max(1, lanes.laneCount) * laneStep + phaseGap;
+  });
+  layout.labelR = cursor + 8;
+  return layout;
 }
 
 /** 顯示（或隱藏）各相接線最大重疊段數的小提示 */
@@ -541,17 +547,74 @@ function drawConcentratedCoil(svg, cx, cy, aMid, rIn, rOut, phase, sign, symR) {
 }
 
 function renderRadialDiagram(result) {
-  const svg = document.getElementById('wdSvg');
+  const svg = document.getElementById('wdSvgRadial');
   svg.innerHTML = '';
 
   const Q = result.Q, P = result.P;
   const isDouble = result.slots[0].bottom !== null;
-  const size = 600;
-  const cx = size / 2, cy = size / 2;
   const IRON = '#94a3b8', IRON_STROKE = '#475569';
   const rYoke = 200, rOuter = 175, rInner = 100, rRotor = 70, rRotorCore = 56;
   const step = 360 / Q;
   const gapDeg = Math.min(7, step * 0.22); // 槽間留白角度（露出鐵芯，形成齒），比例隨槽數自動縮小避免槽被吃光
+
+  const slotAngle = function (k) { return -90 + k * step + step / 2; };
+  /** 半槽（角度方向）中心角：isTop=true 取右半（面向較大槽號），false 取左半（面向較小槽號） */
+  const sideAngle = function (k, isTop) {
+    const a0 = -90 + k * step + gapDeg / 2, a1 = -90 + (k + 1) * step - gapDeg / 2, aMid = (a0 + a1) / 2;
+    return isTop ? (aMid + a1) / 2 : (a0 + aMid) / 2;
+  };
+  const laneStep = 7, phaseGap = 8;
+  const overlap = {};
+
+  // ── 先在角度空間（不需要畫布尺寸）算出每相跨槽接線要用幾條匯流車道；
+  // 車道數決定匯流環要多寬，進而決定畫布要留多大，複雜繞組（高極對數／
+  // 高度分數槽重複單元）的接線才不會被裁到畫布外。雙層依 buildPhaseChains
+  // 把整條 path 串起來；單層依 buildSingleLayerPairs 把相鄰配對齒橋接起來，
+  // 兩者共用同一套車道分配邏輯。
+  let connByPhase, layout;
+  if (isDouble) {
+    const chains = buildPhaseChains(result);
+    connByPhase = {};
+    ['A', 'B', 'C'].forEach(function (phase) {
+      const wp = phaseWaypoints(chains[phase]);
+      const angleAt = function (idx) {
+        return sideAngle(wp[idx], idx % 2 === 0);
+      };
+      const signAt = function (idx) {
+        const isTop = idx % 2 === 0;
+        return isTop ? result.slots[wp[idx]].top.sign : result.slots[wp[idx]].bottom.sign;
+      };
+      // 只有跨槽的段落要占匯流車道；同槽跳線固定貼在 r0，不參與車道分配
+      const farHopIdx = [], farIntervals = [];
+      for (let i = 0; i < wp.length - 1; i++) {
+        if (wp[i] === wp[i + 1]) continue;
+        farHopIdx.push(i);
+        farIntervals.push(shortWayInterval(angleAt(i), angleAt(i + 1)));
+      }
+      connByPhase[phase] = { wp: wp, angleAt: angleAt, signAt: signAt, farHopIdx: farHopIdx, farIntervals: farIntervals };
+    });
+    const intervalsByPhase = {};
+    ['A', 'B', 'C'].forEach(function (phase) { intervalsByPhase[phase] = connByPhase[phase].farIntervals; });
+    layout = layoutPhaseBuses(intervalsByPhase, rYoke + 20, laneStep, phaseGap);
+  } else {
+    const pairs = buildSingleLayerPairs(result);
+    connByPhase = {};
+    ['A', 'B', 'C'].forEach(function (phase) {
+      const phPairs = pairs.filter(function (p) { return p.phase === phase; });
+      const intervals = phPairs.map(function (p) {
+        return shortWayInterval(slotAngle(p.aK), slotAngle(p.bK));
+      });
+      connByPhase[phase] = { pairs: phPairs, intervals: intervals };
+    });
+    const intervalsByPhase = {};
+    ['A', 'B', 'C'].forEach(function (phase) { intervalsByPhase[phase] = connByPhase[phase].intervals; });
+    layout = layoutPhaseBuses(intervalsByPhase, rYoke + 20, laneStep, phaseGap);
+  }
+
+  // 畫布依匯流車道實際需要的寬度放大，車道多的複雜繞組也不會被裁到邊界外；
+  // 一般情形（車道需求小）維持原本 600×600。
+  const size = Math.max(600, 2 * (layout.labelR + 14));
+  const cx = size / 2, cy = size / 2;
 
   svg.setAttribute('width', size);
   svg.setAttribute('height', size);
@@ -616,58 +679,36 @@ function renderRadialDiagram(result) {
     });
   }
 
-  // 線圈連接弧線：定子外側，三相各用不同匯流半徑（由內而外 A→B→C），
-  // 彼此不會疊在同一圈上；選定單一相時其餘相調淡，方便專注看該相走線。
-  // 雙層依 buildPhaseChains 把整條 path 串起來；單層依 buildSingleLayerPairs
-  // 把相鄰配對齒橋接起來，兩者共用同一套 busR／方向邏輯。
-  const slotAngle = function (k) { return -90 + k * step + step / 2; };
-  /** 半槽（角度方向）中心角：isTop=true 取右半（面向較大槽號），false 取左半（面向較小槽號） */
-  const sideAngle = function (k, isTop) {
-    const a0 = -90 + k * step + gapDeg / 2, a1 = -90 + (k + 1) * step - gapDeg / 2, aMid = (a0 + a1) / 2;
-    return isTop ? (aMid + a1) / 2 : (a0 + aMid) / 2;
-  };
-  const busR = { A: rYoke + 22, B: rYoke + 38, C: rYoke + 54 };
-  const overlap = {};
-
+  // 線圈連接弧線：定子外側，三相依 layout 分到的匯流車道畫出（車道分配已在
+  // 函式開頭算好）；選定單一相時其餘相調淡，方便專注看該相走線。
   if (isDouble) {
-    // waypoint 序列固定是 [go,ret,go,ret,...]：偶數索引＝top（去程，畫在槽的
-    // 右半），奇數索引＝bottom（回程，畫在槽的左半），跟色塊的左右配置一致，
-    // 各自的出線角度自然對齊該半槽中心，不需要再另外加小角度偏移。
-    const chains = buildPhaseChains(result);
     ['A', 'B', 'C'].forEach(function (phase) {
-      const wp = phaseWaypoints(chains[phase]);
-      const angleAt = function (idx) {
-        return sideAngle(wp[idx], idx % 2 === 0);
-      };
-      const signAt = function (idx) {
-        const isTop = idx % 2 === 0;
-        return isTop ? result.slots[wp[idx]].top.sign : result.slots[wp[idx]].bottom.sign;
-      };
-      overlap[phase] = maxOverlapDepth(hopIntervals(wp, angleAt));
+      const pd = connByPhase[phase], ph = layout[phase];
+      const laneOfHop = {};
+      pd.farHopIdx.forEach(function (hopI, j) { laneOfHop[hopI] = ph.laneOf[j]; });
+      const busRAt = function (hopIdx) { return ph.base + (laneOfHop[hopIdx] || 0) * laneStep; };
+      overlap[phase] = ph.laneCount;
       const dimmed = phaseFilter !== 'all' && phaseFilter !== phase;
       const opacity = dimmed ? 0.15 : 0.8;
       // 整條相線串成一條路徑：同槽跳線（線圈回程邊直接接下一枚線圈在同槽
-      // 的去程邊）貼著槽緣走一小段（半徑較小），其餘照常繞去匯流半徑——
-      // 半徑會隨線圈遠近自然變化，但整條線頭尾相連，不再是分開的小段
-      const d = buildChainPath(cx, cy, rYoke + 6, busR[phase], wp, angleAt);
+      // 的去程邊）貼著槽緣走一小段（半徑 r0），跨槽段落繞去該段所在車道的
+      // 匯流半徑——半徑會隨車道變化，但整條線頭尾相連，不再是分開的小段
+      const d = buildChainPath(cx, cy, rYoke + 6, busRAt, pd.wp, pd.angleAt);
       svg.appendChild(svgEl('path', {
         d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
       }));
-      drawChainArrows(svg, cx, cy, busR[phase], wp, angleAt, signAt, PHASE_COLOR[phase], opacity, 6.5);
+      drawChainArrows(svg, cx, cy, rYoke + 6, busRAt, pd.wp, pd.angleAt, pd.signAt, PHASE_COLOR[phase], opacity, 6.5);
     });
   } else {
-    const pairs = buildSingleLayerPairs(result);
     ['A', 'B', 'C'].forEach(function (phase) {
-      const phPairs = pairs.filter(function (p) { return p.phase === phase; });
-      const intervals = phPairs.map(function (p) {
-        return shortWayInterval(slotAngle(p.aK), slotAngle(p.bK));
-      });
-      overlap[phase] = maxOverlapDepth(intervals);
+      const pd = connByPhase[phase], ph = layout[phase];
+      overlap[phase] = ph.laneCount;
       const dimmed = phaseFilter !== 'all' && phaseFilter !== phase;
       const opacity = dimmed ? 0.15 : 0.8;
-      phPairs.forEach(function (p) {
+      pd.pairs.forEach(function (p, i) {
+        const hopBusR = ph.base + ph.laneOf[i] * laneStep;
         svg.appendChild(svgEl('path', {
-          d: radialConnectionPath(cx, cy, rYoke + 6, slotAngle(p.aK), slotAngle(p.bK), busR[phase]),
+          d: radialConnectionPath(cx, cy, rYoke + 6, slotAngle(p.aK), slotAngle(p.bK), hopBusR),
           fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
         }));
       });
@@ -676,42 +717,28 @@ function renderRadialDiagram(result) {
   renderWireOverlapInfo(overlap);
 
   // 槽號放在所有接線匯流圈之外，避免被徑向出線／收線的線段蓋住
-  const labelR = busR.C + 16;
   result.slots.forEach(function (s, k) {
     const a0 = -90 + k * step + gapDeg / 2;
     const a1 = -90 + (k + 1) * step - gapDeg / 2;
     const aMid = (a0 + a1) / 2;
-    const pLabel = polarPt(cx, cy, labelR, aMid);
+    const pLabel = polarPt(cx, cy, layout.labelR, aMid);
     svg.appendChild(textEl(pLabel.x, pLabel.y + 3, String(k + 1), { fill: 'var(--text3)', 'font-size': 8 }));
   });
 }
 
 
-/** 目前選擇的展開圖顯示模式：'linear' | 'radial' */
-let diagramView = 'linear';
 /** 目前選擇的線圈接線相別濾鏡：'all' | 'A' | 'B' | 'C'（僅雙層繞組有作用） */
 let phaseFilter = 'all';
 
+/** 展開圖與剖面圖並排顯示，兩者一起重繪 */
 function renderDiagram(result) {
-  if (diagramView === 'radial') renderRadialDiagram(result);
-  else renderLinearDiagram(result);
+  renderLinearDiagram(result);
+  renderRadialDiagram(result);
 }
 
-/**
- * 線圈接線濾鏡列可見性：雙層兩種視圖都有接線；單層目前只有展開圖
- * （馬達剖面圖的單層是旗形符號，尚未加接線串接，見專案記憶）。
- */
+/** 線圈接線濾鏡列可見性：兩種層數、兩種視圖都有線圈接線可濾，只要有可行結果就顯示 */
 function updatePhaseFilterVisibility() {
-  // 兩種層數、兩種視圖現在都有線圈接線可濾，只要有可行結果就顯示濾鏡列
   document.getElementById('phaseFilterRow').style.display = lastResult ? 'flex' : 'none';
-}
-
-function setDiagramView(view) {
-  diagramView = view;
-  document.getElementById('viewLinearBtn').classList.toggle('active', view === 'linear');
-  document.getElementById('viewRadialBtn').classList.toggle('active', view === 'radial');
-  updatePhaseFilterVisibility();
-  if (lastResult) renderDiagram(lastResult);
 }
 
 function setPhaseFilter(phase) {

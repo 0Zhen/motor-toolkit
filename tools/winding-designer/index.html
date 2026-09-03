@@ -69,13 +69,7 @@
       </div>
 
       <div class="result-card">
-        <div class="diagram-header">
-          <div class="result-card-label" data-i18n="diagramTitle" style="margin-bottom:0">Winding Layout</div>
-          <div class="view-toggle">
-            <button class="view-toggle-btn active" id="viewLinearBtn" onclick="setDiagramView('linear')" data-i18n="viewLinear">Linear</button>
-            <button class="view-toggle-btn" id="viewRadialBtn" onclick="setDiagramView('radial')" data-i18n="viewRadial">Cross-section</button>
-          </div>
-        </div>
+        <div class="result-card-label" data-i18n="diagramTitle">Winding Layout</div>
         <div class="view-toggle phase-filter-row" id="phaseFilterRow" style="display:none">
           <span class="phase-filter-label" data-i18n="phaseFilterLabel">Coil path:</span>
           <button class="view-toggle-btn phase-filter-btn active" data-phase="all" onclick="setPhaseFilter('all')" data-i18n="phaseAll">All</button>
@@ -84,8 +78,19 @@
           <button class="view-toggle-btn phase-filter-btn" data-phase="C" onclick="setPhaseFilter('C')">C</button>
         </div>
         <div class="hint-text" id="wireOverlapInfo" style="display:none"></div>
-        <div class="winding-diagram-wrap">
-          <svg id="wdSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="winding-diagram-row">
+          <div class="winding-diagram-col">
+            <div class="diagram-panel-title" data-i18n="viewLinear">Linear</div>
+            <div class="winding-diagram-wrap">
+              <svg id="wdSvgLinear" class="wd-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+            </div>
+          </div>
+          <div class="winding-diagram-col">
+            <div class="diagram-panel-title" data-i18n="viewRadial">Cross-section</div>
+            <div class="winding-diagram-wrap">
+              <svg id="wdSvgRadial" class="wd-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -113,7 +118,7 @@
   </div>
 </div>
 
-<script src="winding.js?v=20"></script>
-<script src="app.js?v=20"></script>
+<script src="winding.js?v=23"></script>
+<script src="app.js?v=23"></script>
 </body>
 </html>

@@ -178,13 +178,6 @@ body > * { min-width: 0; }
 /* ══════════════════════════════════════════════════════════
    繞組展開圖
    ══════════════════════════════════════════════════════════ */
-.diagram-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 .view-toggle {
   display: flex;
   gap: 3px;
@@ -221,6 +214,22 @@ body > * { min-width: 0; }
   align-self: center;
 }
 
+.winding-diagram-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.winding-diagram-col {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.diagram-panel-title {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text2);
+  text-align: center;
+  margin-bottom: 2px;
+}
 .winding-diagram-wrap {
   overflow-x: auto;
   overflow-y: hidden;
@@ -228,7 +237,7 @@ body > * { min-width: 0; }
   display: flex;
   justify-content: center;
 }
-#wdSvg { display: block; }
+.wd-svg { display: block; max-width: 100%; }
 
 .wd-legend {
   display: flex;
