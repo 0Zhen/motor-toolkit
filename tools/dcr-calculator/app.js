@@ -206,7 +206,7 @@ function computeFull() {
 function renderSweepTable() {
   var p = readFullParams();
   var targetFill = num('s_targetFill', 75);
-  var dMin = num('s_dMin', 0.3), dMax = num('s_dMax', 1.0), dStep = num('s_dStep', 0.05);
+  var dMin = num('s_dMin', 0.1), dMax = num('s_dMax', 1.0), dStep = num('s_dStep', 0.05);
   if (dStep <= 0 || dMax < dMin) return;
 
   var rows = sweepWireTable(p, targetFill, dMin, dMax, dStep);
