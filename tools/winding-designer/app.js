@@ -250,6 +250,7 @@ function renderLinearDiagram(result) {
     // 單層：相鄰同相配對齒，頂部用直角跳線橋接（不與齒形重疊，留在 front 區）
     const wireTop = bodyTop - (frontAreaH - 16);
     buildSingleLayerPairs(result).forEach(function (pair) {
+      if (pair.wraps) return; // 跨槽1／槽Q接縫的配對，在展開圖上斷開，不畫
       if (phaseFilter !== 'all' && phaseFilter !== pair.phase) return;
       const opacity = phaseFilter !== 'all' ? 0.9 : 0.6;
       const x1 = slotX(pair.aK), x2 = slotX(pair.bK);
@@ -303,14 +304,22 @@ function radialConnectionPath(cx, cy, r0, aStart, aEnd, busR) {
     ' L ' + p1.x + ' ' + p1.y;
 }
 
-/** 把某相的線圈接線路徑序列轉成角度區間 [lo, hi]（走短邊方向，未處理跨越頭尾接縫的邊界情形） */
-function hopIntervals(wp, slotAngle) {
+/** 把兩個角度端點轉成走「短邊方向」的區間 [lo, hi]——跟 radialConnectionPath 實際畫的方向一致 */
+function shortWayInterval(aStart, aEndRaw) {
+  const delta = ((aEndRaw - aStart + 540) % 360) - 180;
+  const aEnd = aStart + delta;
+  return [Math.min(aStart, aEnd), Math.max(aStart, aEnd)];
+}
+
+/**
+ * 把某相的線圈接線路徑序列轉成角度區間清單。`angleAt(idx)` 取第 idx 個
+ * 端點的實際繪製角度（已含 top/bottom 的小偏移，見 renderRadialDiagram），
+ * 不是單純的槽角度。
+ */
+function hopIntervals(wp, angleAt) {
   const intervals = [];
   for (let i = 0; i < wp.length - 1; i++) {
-    const aStart = slotAngle(wp[i]), aEndRaw = slotAngle(wp[i + 1]);
-    const delta = ((aEndRaw - aStart + 540) % 360) - 180;
-    const aEnd = aStart + delta;
-    intervals.push([Math.min(aStart, aEnd), Math.max(aStart, aEnd)]);
+    intervals.push(shortWayInterval(angleAt(i), angleAt(i + 1)));
   }
   return intervals;
 }
@@ -371,8 +380,10 @@ function groupConsecutiveSlots(Q, sideAt) {
 
 /**
  * 單層（集中繞組）齒配對：把連續同相（不分正負）的齒兩兩配成一個線圈單元
- * （相鄰齒一正一負，頂部用跳線橋接）。落單的齒（該相連續段長度為奇數時
- * 的最後一顆）不配對，不畫跳線。
+ * （相鄰齒一正一負，用跳線橋接）。若頭尾兩段剛好同相且都落單一顆，視為
+ * 跨越槽1／槽Q接縫的一對（`wraps:true`）——沿圓周本來就相鄰，只是在
+ * 線性展開圖上斷成兩截；展開圖畫的時候應跳過這種對（見 renderLinearDiagram），
+ * 剖面圖因為是真圓周，可以正常畫。
  */
 function buildSingleLayerPairs(result) {
   const Q = result.Q;
@@ -380,9 +391,17 @@ function buildSingleLayerPairs(result) {
   const pairs = [];
   runs.forEach(function (run) {
     for (let k = run.startK; k + 1 <= run.endK; k += 2) {
-      pairs.push({ aK: k, bK: k + 1, phase: run.phase });
+      pairs.push({ aK: k, bK: k + 1, phase: run.phase, wraps: false });
     }
   });
+  if (runs.length > 1) {
+    const first = runs[0], last = runs[runs.length - 1];
+    const firstLen = first.endK - first.startK + 1;
+    const lastLen = last.endK - last.startK + 1;
+    if (first.phase === last.phase && firstLen % 2 === 1 && lastLen % 2 === 1) {
+      pairs.push({ aK: last.endK, bK: first.startK, phase: first.phase, wraps: true });
+    }
+  }
   return pairs;
 }
 
@@ -485,15 +504,23 @@ function renderRadialDiagram(result) {
   const overlap = {};
 
   if (isDouble) {
+    // waypoint 序列固定是 [go,ret,go,ret,...]：偶數索引＝top（去程），
+    // 奇數索引＝bottom（回程）。同一槽的 top／bottom 若屬於不同相（短節距
+    // 常見），兩相各自的出線會疊在同一角度上；用小角度偏移把 top／bottom
+    // 錯開，避免視覺上看不出是兩條線。
+    const offsetDeg = Math.min(2, step * 0.12);
     const chains = buildPhaseChains(result);
     ['A', 'B', 'C'].forEach(function (phase) {
       const wp = phaseWaypoints(chains[phase]);
-      overlap[phase] = maxOverlapDepth(hopIntervals(wp, slotAngle));
+      const angleAt = function (idx) {
+        return slotAngle(wp[idx]) + (idx % 2 === 0 ? -offsetDeg : offsetDeg);
+      };
+      overlap[phase] = maxOverlapDepth(hopIntervals(wp, angleAt));
       const dimmed = phaseFilter !== 'all' && phaseFilter !== phase;
       const opacity = dimmed ? 0.15 : 0.8;
       for (let i = 0; i < wp.length - 1; i++) {
         svg.appendChild(svgEl('path', {
-          d: radialConnectionPath(cx, cy, rYoke + 6, slotAngle(wp[i]), slotAngle(wp[i + 1]), busR[phase]),
+          d: radialConnectionPath(cx, cy, rYoke + 6, angleAt(i), angleAt(i + 1), busR[phase]),
           fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
         }));
       }
@@ -503,8 +530,7 @@ function renderRadialDiagram(result) {
     ['A', 'B', 'C'].forEach(function (phase) {
       const phPairs = pairs.filter(function (p) { return p.phase === phase; });
       const intervals = phPairs.map(function (p) {
-        const a = slotAngle(p.aK), b = slotAngle(p.bK);
-        return [Math.min(a, b), Math.max(a, b)];
+        return shortWayInterval(slotAngle(p.aK), slotAngle(p.bK));
       });
       overlap[phase] = maxOverlapDepth(intervals);
       const dimmed = phaseFilter !== 'all' && phaseFilter !== phase;
