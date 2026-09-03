@@ -14,8 +14,8 @@ var MT_I18N = {
   coilSpan:            { en: 'Coil span [slots]',        zh: '線圈節距 [槽]' },
   phaseFixedHint:      { en: 'Three-phase (m = 3) only.', zh: '固定三相 (m = 3)。' },
   legendTitle:         { en: 'Legend',                   zh: '圖例' },
-  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Single-layer windings are drawn as a coil symbol per tooth (concentrated-winding style); double-layer windings merge consecutive same-phase, same-direction slots into one arc/block (distributed-winding style). The cross-section\'s inner ring shows the rotor\'s alternating N/S poles (illustrative only). Curves/brackets trace coils wired in series (all coils in a single parallel path — no wave-winding reordering or multi-path splitting yet); a tooth whose adjacent same-phase partner would wrap past the first/last slot is left unbracketed. Use the coil-path filter to isolate one phase.',
-                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。單層繞組在每齒畫成線圈符號（集中繞組風格）；雙層繞組把相鄰同相同方向的槽合併成一段弧／色塊（分佈繞組風格）。馬達剖面圖內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。弧線／跳線表示線圈的串接順序（目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流）；若相鄰同相的配對齒剛好跨過頭尾槽，則不畫跳線。可用線圈接線濾鏡只看單一相。' },
+  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Single-layer windings are drawn as a coil symbol per tooth (concentrated-winding style); double-layer windings merge consecutive same-phase, same-direction slots into one arc/block (distributed-winding style). The cross-section\'s inner ring shows the rotor\'s alternating N/S poles (illustrative only). Curves/brackets trace coils wired in series (all coils in a single parallel path — no wave-winding reordering or multi-path splitting yet); a tooth whose adjacent same-phase partner would wrap past the first/last slot is left unbracketed. In the cross-section view, all three phases\' wiring together wraps almost the full circle and gets unreadable, so it only draws once you pick a single phase below — the linear view shows every phase\'s wiring at once since it doesn\'t have that problem.',
+                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。單層繞組在每齒畫成線圈符號（集中繞組風格）；雙層繞組把相鄰同相同方向的槽合併成一段弧／色塊（分佈繞組風格）。馬達剖面圖內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。弧線／跳線表示線圈的串接順序（目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流）；若相鄰同相的配對齒剛好跨過頭尾槽，則不畫跳線。馬達剖面圖中三相接線疊在一起會繞滿整圈難以辨識，因此預設「全部」不畫接線，選單一相才會顯示；展開圖沒有這個問題，「全部」時會直接顯示三相接線。' },
   keyNumbersTitle:     { en: 'Key Numbers',              zh: '關鍵數值' },
   diagramTitle:        { en: 'Winding Layout',           zh: '繞組展開圖' },
   viewLinear:          { en: 'Linear',                    zh: '展開圖' },
@@ -442,21 +442,19 @@ function renderRadialDiagram(result) {
   });
 
   // 線圈連接弧線（僅雙層）：定子外側，依相別把整條 path 的線圈依序串接，
-  // 沿圓周自然處理回捲，不像展開圖需要擔心跨過頭尾
-  if (isDouble) {
+  // 沿圓周自然處理回捲，不像展開圖需要擔心跨過頭尾。
+  // 「全部」模式下三相疊在一起幾乎繞滿整圈、看不出個別走線，故只在選定
+  // 單一相時才畫（見 phaseFilter 說明）。
+  if (isDouble && phaseFilter !== 'all') {
     const slotAngle = function (k) { return -90 + k * step + step / 2; };
     const chains = buildPhaseChains(result);
-    ['A', 'B', 'C'].forEach(function (phase) {
-      if (phaseFilter !== 'all' && phaseFilter !== phase) return;
-      const wp = phaseWaypoints(chains[phase]);
-      const opacity = phaseFilter !== 'all' ? 0.75 : 0.4;
-      for (let i = 0; i < wp.length - 1; i++) {
-        svg.appendChild(svgEl('path', {
-          d: radialConnectionPath(cx, cy, rYoke + 6, slotAngle(wp[i]), slotAngle(wp[i + 1])),
-          fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.1, opacity: opacity,
-        }));
-      }
-    });
+    const wp = phaseWaypoints(chains[phaseFilter]);
+    for (let i = 0; i < wp.length - 1; i++) {
+      svg.appendChild(svgEl('path', {
+        d: radialConnectionPath(cx, cy, rYoke + 6, slotAngle(wp[i]), slotAngle(wp[i + 1])),
+        fill: 'none', stroke: PHASE_COLOR[phaseFilter], 'stroke-width': 1.1, opacity: 0.75,
+      }));
+    }
   }
 }
 
