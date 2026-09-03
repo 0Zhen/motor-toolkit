@@ -379,6 +379,38 @@ function buildChainPath(cx, cy, r0, busR, wp, angleAt) {
   return parts.join(' ');
 }
 
+/** 在匯流圓弧上畫一個小箭頭，指出這段接線的走向（沿圓弧切線方向） */
+function arrowMarker(svg, cx, cy, r, angleDeg, clockwise, color, size, opacity) {
+  const rad = angleDeg * Math.PI / 180;
+  const nx = Math.cos(rad), ny = Math.sin(rad); // 徑向（法線）方向
+  const tx = clockwise ? -Math.sin(rad) : Math.sin(rad); // 切線方向（沿走向）
+  const ty = clockwise ? Math.cos(rad) : -Math.cos(rad);
+  const px = cx + r * Math.cos(rad), py = cy + r * Math.sin(rad);
+  const tipX = px + tx * size, tipY = py + ty * size;
+  const backX = px - tx * size * 0.6, backY = py - ty * size * 0.6;
+  const leftX = backX + nx * size * 0.55, leftY = backY + ny * size * 0.55;
+  const rightX = backX - nx * size * 0.55, rightY = backY - ny * size * 0.55;
+  svg.appendChild(svgEl('polygon', {
+    points: tipX + ',' + tipY + ' ' + leftX + ',' + leftY + ' ' + rightX + ',' + rightY,
+    fill: color, opacity: opacity,
+  }));
+}
+
+/**
+ * 在整條相線的每一段「跨槽」接線（非同槽跳線）的匯流弧中點畫一個方向箭頭，
+ * 標出電流沿這條 path 走的方向，順便讓「跨了幾槽、往哪跨」一眼看出來。
+ */
+function drawChainArrows(svg, cx, cy, busR, wp, angleAt, color, opacity, size) {
+  for (let i = 0; i < wp.length - 1; i++) {
+    if (wp[i] === wp[i + 1]) continue; // 同槽跳線太短，不畫箭頭
+    const aStart = angleAt(i), aEndRaw = angleAt(i + 1);
+    const delta = ((aEndRaw - aStart + 540) % 360) - 180;
+    const aEnd = aStart + delta;
+    const aMid = (aStart + aEnd) / 2;
+    arrowMarker(svg, cx, cy, busR, aMid, delta >= 0, color, size, opacity);
+  }
+}
+
 /** 把兩個角度端點轉成走「短邊方向」的區間 [lo, hi]——跟 radialConnectionPath 實際畫的方向一致 */
 function shortWayInterval(aStart, aEndRaw) {
   const delta = ((aEndRaw - aStart + 540) % 360) - 180;
@@ -612,6 +644,7 @@ function renderRadialDiagram(result) {
       svg.appendChild(svgEl('path', {
         d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
       }));
+      drawChainArrows(svg, cx, cy, busR[phase], wp, angleAt, PHASE_COLOR[phase], opacity, 6.5);
     });
   } else {
     const pairs = buildSingleLayerPairs(result);
