@@ -191,6 +191,11 @@ function renderLinearDiagram(result) {
   const frontAreaH = isDouble ? 120 : 56, rearAreaH = isDouble ? 120 : 0;
   const marginTop = frontAreaH + 8;
   const slotX = function (k) { return gapW / 2 + k * pitch + slotW / 2; };
+  /** 雙層接線出線點：isTop=true 取右半中心（go/top）、false 取左半中心（ret/bottom），跟色塊左右配置一致 */
+  const sideX = function (k, isTop) {
+    const x = gapW / 2 + k * pitch, halfW = slotW / 2;
+    return isTop ? x + halfW * 1.5 : x + halfW * 0.5;
+  };
 
   const width = Q * pitch + gapW;
   const bodyTop = marginTop;
@@ -260,8 +265,8 @@ function renderLinearDiagram(result) {
       const opacity = dimmed ? 0.85 : 0.5;
       for (let i = 0; i < wp.length - 1; i++) {
         const front = i % 2 === 0; // 交替 front（去程，上方）／rear（回程接下一圈，下方）
-        const x1 = slotX(wp[i]), x2 = slotX(wp[i + 1]);
-        const span = Math.abs(wp[i + 1] - wp[i]);
+        const x1 = sideX(wp[i], i % 2 === 0), x2 = sideX(wp[i + 1], (i + 1) % 2 === 0);
+        const span = Math.abs(wp[i + 1] - wp[i]); // 槽數差（不是像素差），同槽跳線 span=0 自然只給最小弧高
         const h = Math.min(front ? frontAreaH - 10 : rearAreaH - 10, 16 + span * 6);
         const path = front
           ? 'M ' + x1 + ' ' + bodyTop + ' C ' + x1 + ' ' + (bodyTop - h) + ', ' + x2 + ' ' + (bodyTop - h) + ', ' + x2 + ' ' + bodyTop
