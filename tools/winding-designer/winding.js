@@ -153,31 +153,74 @@ function conventionalSpan(Q, P) {
   return qVal < 1 ? 1 : suggestSpan(Q, P);
 }
 
+/** 圓周上兩槽的最短距離（槽數），用來挑「就近」的跳線目標 */
+function circularSlotDist(Q, a, b) {
+  const d = Math.abs(a - b) % Q;
+  return Math.min(d, Q - d);
+}
+
 /**
- * 依相別把雙層繞組的所有線圈串成一條序列（MVP：只支援 1 條 parallel path，
- * 線圈依「回程邊所在槽」由小到大排序後首尾相接，不做 wave 繞法的重排）。
- * 每個線圈以 { goK, retK } 表示去程／回程邊所在槽索引。
+ * 貪婪就近法把同一相的線圈串成一條鏈：從第一顆線圈的「進」端開始，繞到它的
+ * 「出」端後，在還沒用過的線圈裡找「進」端跟目前位置槽號最近的那一顆接上去，
+ * 重複到全部線圈用完。模擬真實繞線機的接線方式——線圈本身的方向固定是
+ * 「−進、+出」（不能反過來，這是線圈本身的物理特性決定的），跳線只能接
+ * 「出→進」（+接+或−接−都不合法），且優先選最近的槽以縮短跳線距離。
+ * 取代舊版「照回程邊槽號排序、頭尾硬接」的 MVP 假設（會接出「出接出」這種
+ * 不合法的跳線，例如某槽兩條都是同號時無法直接同槽相接）。
+ */
+function chainByNearestEntry(Q, coils) {
+  const remaining = coils.slice();
+  const ordered = [remaining.shift()];
+  while (remaining.length) {
+    let bestIdx = 0, bestDist = Infinity;
+    remaining.forEach(function (c, i) {
+      const d = circularSlotDist(Q, ordered[ordered.length - 1].exit.k, c.entry.k);
+      if (d < bestDist) { bestDist = d; bestIdx = i; }
+    });
+    ordered.push(remaining.splice(bestIdx, 1)[0]);
+  }
+  return ordered.map(function (c) {
+    return { goK: c.entry.k, goTop: c.entry.top, retK: c.exit.k, retTop: c.exit.top };
+  });
+}
+
+/**
+ * 依相別把雙層繞組的所有線圈串成一條序列。每顆線圈的兩條邊（槽 k 的下半、
+ * 槽 k−span 的上半）固定同相；用正負號決定哪端是「進」（−）、哪端是
+ * 「出」（+），再用 chainByNearestEntry() 依「出→進、就近」的規則接成鏈。
+ * 每個線圈以 { goK, goTop, retK, retTop } 表示進／出端所在槽索引與上下半。
  * @returns {{A:Array, B:Array, C:Array}|null} 單層繞組無此結構，回傳 null
  */
 function buildPhaseChains(result) {
   if (!result.feasible || !result.slots.length || !result.slots[0].bottom) return null;
   const Q = result.Q, W = result.span;
-  const chains = { A: [], B: [], C: [] };
+  const byPhase = { A: [], B: [], C: [] };
   for (let k = 0; k < Q; k++) {
-    const b = result.slots[k].bottom;
-    const goK = (((k - W) % Q) + Q) % Q;
-    chains[b.phase].push({ goK, retK: k });
+    const bottom = result.slots[k].bottom;
+    const topK = (((k - W) % Q) + Q) % Q;
+    const top = result.slots[topK].top;
+    const bottomIsEntry = bottom.sign < 0;
+    const entry = bottomIsEntry ? { k: k, top: false } : { k: topK, top: true };
+    const exit = bottomIsEntry ? { k: topK, top: true } : { k: k, top: false };
+    byPhase[bottom.phase].push({ entry: entry, exit: exit });
   }
+  const chains = {};
+  ['A', 'B', 'C'].forEach(function (phase) { chains[phase] = chainByNearestEntry(Q, byPhase[phase]); });
   return chains;
 }
 
 /**
- * 給定相別的線圈序列，展開成頭尾相接的槽索引序列
- * [coil0.go, coil0.ret, coil1.go, coil1.ret, ...]，相鄰兩點即為一段連接弧
+ * 給定相別的線圈序列，展開成頭尾相接的端點序列
+ * [coil0.go, coil0.ret, coil1.go, coil1.ret, ...]，相鄰兩點即為一段連接弧；
+ * 每個端點是 { k, top }，top 標明這端是槽 k 的上半還是下半（進出端不一定
+ * 固定在上半或下半，要照 top 欄位查，不能再用陣列索引奇偶推算）。
  */
 function phaseWaypoints(coils) {
   const wp = [];
-  coils.forEach(function (c) { wp.push(c.goK); wp.push(c.retK); });
+  coils.forEach(function (c) {
+    wp.push({ k: c.goK, top: c.goTop });
+    wp.push({ k: c.retK, top: c.retTop });
+  });
   return wp;
 }
 

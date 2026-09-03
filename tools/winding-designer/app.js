@@ -263,9 +263,9 @@ function renderLinearDiagram(result) {
       const dimmed = phaseFilter !== 'all'; // 單相模式下其餘相已被濾掉，此處不用再淡化
       const opacity = dimmed ? 0.85 : 0.5;
       for (let i = 0; i < wp.length - 1; i++) {
-        const front = i % 2 === 0; // 交替 front（去程，上方）／rear（回程接下一圈，下方）
-        const x1 = sideX(wp[i], i % 2 === 0), x2 = sideX(wp[i + 1], (i + 1) % 2 === 0);
-        const span = Math.abs(wp[i + 1] - wp[i]); // 槽數差（不是像素差），同槽跳線 span=0 自然只給最小弧高
+        const front = i % 2 === 0; // 交替 front（線圈自己的去回程，上方）／rear（線圈之間的跳線，下方）
+        const x1 = sideX(wp[i].k, wp[i].top), x2 = sideX(wp[i + 1].k, wp[i + 1].top);
+        const span = Math.abs(wp[i + 1].k - wp[i].k); // 槽數差（不是像素差），同槽跳線 span=0 自然只給最小弧高
         const h = Math.min(front ? frontAreaH - 10 : rearAreaH - 10, 16 + span * 6);
         const path = front
           ? 'M ' + x1 + ' ' + bodyTop + ' C ' + x1 + ' ' + (bodyTop - h) + ', ' + x2 + ' ' + (bodyTop - h) + ', ' + x2 + ' ' + bodyTop
@@ -337,7 +337,7 @@ function radialConnectionPath(cx, cy, r0, aStart, aEnd, busR) {
  * 把整條相線的所有線圈接線串成「一條路徑」（單一 `<path>` 的 d 字串），
  * 而不是每段各自獨立的 `<path>`——即使每段的端點都精確相接，分開畫在視覺
  * 上仍會像好幾截各自獨立的線段；串成一條路徑後才是真正頭尾相連的一條線。
- * `angleAt(idx)` 取第 idx 個端點角度；`wp[i]===wp[i+1]` 的同槽跳線貼槽緣
+ * `angleAt(idx)` 取第 idx 個端點角度；`wp[i].k===wp[i+1].k` 的同槽跳線貼槽緣
  * （半徑 r0）畫一小段弧，其餘跨槽的段落繞去 `busRAt(i)` 決定的匯流半徑——
  * 依車道分開的半徑，讓角度重疊的跨槽接線不會疊在同一條圓弧上分不出來。
  */
@@ -346,7 +346,7 @@ function buildChainPath(cx, cy, r0, busRAt, wp, angleAt) {
   const parts = ['M ' + p0.x + ' ' + p0.y];
   for (let i = 0; i < wp.length - 1; i++) {
     const aStart = angleAt(i), aEndRaw = angleAt(i + 1);
-    if (wp[i] === wp[i + 1]) {
+    if (wp[i].k === wp[i + 1].k) {
       const sweepFlag = aEndRaw >= aStart ? 1 : 0;
       const p1 = polarPt(cx, cy, r0, aEndRaw);
       parts.push('A ' + r0 + ' ' + r0 + ' 0 0 ' + sweepFlag + ' ' + p1.x + ' ' + p1.y);
@@ -393,7 +393,7 @@ function arrowMarker(svg, cx, cy, r, angleDeg, clockwise, color, size, opacity) 
  */
 function drawChainArrows(svg, cx, cy, r0, busRAt, wp, angleAt, signAt, color, opacity, size) {
   for (let i = 0; i < wp.length - 1; i++) {
-    const sameSlot = wp[i] === wp[i + 1];
+    const sameSlot = wp[i].k === wp[i + 1].k;
     const aStart = angleAt(i), aEndRaw = angleAt(i + 1);
     const delta = ((aEndRaw - aStart + 540) % 360) - 180;
     const aEnd = aStart + delta;
@@ -578,16 +578,15 @@ function renderRadialDiagram(result) {
     ['A', 'B', 'C'].forEach(function (phase) {
       const wp = phaseWaypoints(chains[phase]);
       const angleAt = function (idx) {
-        return sideAngle(wp[idx], idx % 2 === 0);
+        return sideAngle(wp[idx].k, wp[idx].top);
       };
       const signAt = function (idx) {
-        const isTop = idx % 2 === 0;
-        return isTop ? result.slots[wp[idx]].top.sign : result.slots[wp[idx]].bottom.sign;
+        return wp[idx].top ? result.slots[wp[idx].k].top.sign : result.slots[wp[idx].k].bottom.sign;
       };
       // 只有跨槽的段落要占匯流車道；同槽跳線固定貼在 r0，不參與車道分配
       const farHopIdx = [], farIntervals = [];
       for (let i = 0; i < wp.length - 1; i++) {
-        if (wp[i] === wp[i + 1]) continue;
+        if (wp[i].k === wp[i + 1].k) continue;
         farHopIdx.push(i);
         farIntervals.push(shortWayInterval(angleAt(i), angleAt(i + 1)));
       }
