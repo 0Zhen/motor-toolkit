@@ -348,6 +348,37 @@ function localJumperPath(cx, cy, r0, aStart, aEnd) {
     ' A ' + r0 + ' ' + r0 + ' 0 0 ' + sweepFlag + ' ' + p1.x + ' ' + p1.y;
 }
 
+/**
+ * 把整條相線的所有線圈接線串成「一條路徑」（單一 `<path>` 的 d 字串），
+ * 而不是每段各自獨立的 `<path>`——即使每段的端點都精確相接，分開畫在視覺
+ * 上仍會像好幾截各自獨立的線段；串成一條路徑後才是真正頭尾相連的一條線。
+ * `angleAt(idx)` 取第 idx 個端點角度；`wp[i]===wp[i+1]` 的同槽跳線沿用
+ * localJumperPath 的貼槽緣畫法，其餘沿用 radialConnectionPath 的直角走線。
+ */
+function buildChainPath(cx, cy, r0, busR, wp, angleAt) {
+  const p0 = polarPt(cx, cy, r0, angleAt(0));
+  const parts = ['M ' + p0.x + ' ' + p0.y];
+  for (let i = 0; i < wp.length - 1; i++) {
+    const aStart = angleAt(i), aEndRaw = angleAt(i + 1);
+    if (wp[i] === wp[i + 1]) {
+      const sweepFlag = aEndRaw >= aStart ? 1 : 0;
+      const p1 = polarPt(cx, cy, r0, aEndRaw);
+      parts.push('A ' + r0 + ' ' + r0 + ' 0 0 ' + sweepFlag + ' ' + p1.x + ' ' + p1.y);
+    } else {
+      const delta = ((aEndRaw - aStart + 540) % 360) - 180;
+      const aEnd = aStart + delta;
+      const sweepFlag = delta >= 0 ? 1 : 0;
+      const p0b = polarPt(cx, cy, busR, aStart);
+      const p1b = polarPt(cx, cy, busR, aEnd);
+      const p1 = polarPt(cx, cy, r0, aEnd);
+      parts.push('L ' + p0b.x + ' ' + p0b.y);
+      parts.push('A ' + busR + ' ' + busR + ' 0 0 ' + sweepFlag + ' ' + p1b.x + ' ' + p1b.y);
+      parts.push('L ' + p1.x + ' ' + p1.y);
+    }
+  }
+  return parts.join(' ');
+}
+
 /** 把兩個角度端點轉成走「短邊方向」的區間 [lo, hi]——跟 radialConnectionPath 實際畫的方向一致 */
 function shortWayInterval(aStart, aEndRaw) {
   const delta = ((aEndRaw - aStart + 540) % 360) - 180;
@@ -574,16 +605,13 @@ function renderRadialDiagram(result) {
       overlap[phase] = maxOverlapDepth(hopIntervals(wp, angleAt));
       const dimmed = phaseFilter !== 'all' && phaseFilter !== phase;
       const opacity = dimmed ? 0.15 : 0.8;
-      for (let i = 0; i < wp.length - 1; i++) {
-        // 同槽跳線（一枚線圈的回程邊直接接下一枚線圈在同槽的去程邊）：
-        // 貼著槽緣畫一小段弧，不繞去匯流半徑，避免把很短的實際接線畫得太誇張
-        const d = wp[i] === wp[i + 1]
-          ? localJumperPath(cx, cy, rYoke + 6, angleAt(i), angleAt(i + 1))
-          : radialConnectionPath(cx, cy, rYoke + 6, angleAt(i), angleAt(i + 1), busR[phase]);
-        svg.appendChild(svgEl('path', {
-          d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
-        }));
-      }
+      // 整條相線串成一條路徑：同槽跳線（線圈回程邊直接接下一枚線圈在同槽
+      // 的去程邊）貼著槽緣走一小段（半徑較小），其餘照常繞去匯流半徑——
+      // 半徑會隨線圈遠近自然變化，但整條線頭尾相連，不再是分開的小段
+      const d = buildChainPath(cx, cy, rYoke + 6, busR[phase], wp, angleAt);
+      svg.appendChild(svgEl('path', {
+        d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
+      }));
     });
   } else {
     const pairs = buildSingleLayerPairs(result);
