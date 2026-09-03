@@ -160,6 +160,24 @@ function toothPath(x, top, bottom, w) {
     ' Z';
 }
 
+/** 齒形路徑的左／右半邊（雙層槽內兩個線圈邊左右並排用），沿中線對切 */
+function toothHalfPath(x, top, bottom, w, side) {
+  const h = bottom - top;
+  const midX = x + w / 2;
+  if (side === 'left') {
+    return 'M ' + x + ' ' + top +
+      ' L ' + midX + ' ' + top +
+      ' L ' + midX + ' ' + bottom +
+      ' L ' + (x + w * 0.22) + ' ' + (top + h * 0.55) +
+      ' Z';
+  }
+  return 'M ' + midX + ' ' + top +
+    ' L ' + (x + w) + ' ' + top +
+    ' L ' + (x + w * 0.78) + ' ' + (top + h * 0.55) +
+    ' L ' + midX + ' ' + bottom +
+    ' Z';
+}
+
 function renderLinearDiagram(result) {
   const svg = document.getElementById('wdSvg');
   svg.innerHTML = '';
@@ -190,28 +208,26 @@ function renderLinearDiagram(result) {
     const cx = x + slotW / 2;
 
     if (isDouble) {
-      // 雙層的兩個線圈邊左右並排（同一槽內左＝top、右＝bottom），而不是上下疊放，
-      // 對應實際槽內兩個線圈邊左右相鄰的擺法
+      // 雙層的兩個線圈邊左右並排在同一個齒形輪廓裡：左＝bottom（回程，面向
+      // 較小槽號、也就是它的 go 搭檔所在方向）、右＝top（去程，面向較大槽號、
+      // 也就是它的 ret 搭檔所在方向）——這樣同一枚線圈的兩端會分別落在相鄰
+      // 兩槽「面對面」的那一側，接線才會走最短路徑，不會繞去槽的外側。
       const halfW = slotW / 2;
-      svg.appendChild(svgEl('rect', {
-        x: x, y: bodyTop, width: halfW, height: blockH,
-        fill: PHASE_COLOR[s.top.phase], opacity: 0.9, rx: 2,
+      svg.appendChild(svgEl('path', {
+        d: toothHalfPath(x, bodyTop, bodyBottom, slotW, 'left'),
+        fill: PHASE_COLOR[s.bottom.phase], 'fill-opacity': 0.75,
+        stroke: PHASE_COLOR[s.bottom.phase], 'stroke-width': 1.2,
       }));
-      svg.appendChild(textEl(x + halfW / 2, bodyTop + blockH / 2 + 3, s.top.phase + (s.top.sign > 0 ? '+' : '−'),
+      svg.appendChild(textEl(x + halfW * 0.55, bodyTop + blockH * 0.3, s.bottom.phase + (s.bottom.sign > 0 ? '+' : '−'),
         { fill: '#fff', 'font-weight': 700, 'font-size': 7.5 }));
 
-      svg.appendChild(svgEl('rect', {
-        x: x + halfW, y: bodyTop, width: halfW, height: blockH,
-        fill: PHASE_COLOR[s.bottom.phase], opacity: 0.55, rx: 2,
+      svg.appendChild(svgEl('path', {
+        d: toothHalfPath(x, bodyTop, bodyBottom, slotW, 'right'),
+        fill: PHASE_COLOR[s.top.phase], 'fill-opacity': 0.45,
+        stroke: PHASE_COLOR[s.top.phase], 'stroke-width': 1.2,
       }));
-      svg.appendChild(textEl(x + halfW + halfW / 2, bodyTop + blockH / 2 + 3, s.bottom.phase + (s.bottom.sign > 0 ? '+' : '−'),
-        { fill: '#fff', 'font-weight': 700, 'font-size': 7.5 }));
-
-      // 左右兩層之間的分隔線
-      svg.appendChild(svgEl('line', {
-        x1: x + halfW, y1: bodyTop + 2, x2: x + halfW, y2: bodyBottom - 2,
-        stroke: '#fff', 'stroke-width': 1, opacity: 0.6,
-      }));
+      svg.appendChild(textEl(x + halfW * 1.45, bodyTop + blockH * 0.3, s.top.phase + (s.top.sign > 0 ? '+' : '−'),
+        { fill: '#fff', 'font-weight': 700, 'font-size': 7.5, stroke: PHASE_COLOR[s.top.phase], 'stroke-width': 2, 'paint-order': 'stroke' }));
 
       const lineX = x - gapW / 2;
       if (k > 0) {
@@ -460,7 +476,7 @@ function renderRadialDiagram(result) {
   const size = 600;
   const cx = size / 2, cy = size / 2;
   const IRON = '#94a3b8', IRON_STROKE = '#475569';
-  const rYoke = 200, rOuter = 175, rMid = isDouble ? 140 : 160, rInner = 100, rRotor = 70, rRotorCore = 56;
+  const rYoke = 200, rOuter = 175, rInner = 100, rRotor = 70, rRotorCore = 56;
   const step = 360 / Q;
   const gapDeg = Math.min(7, step * 0.22); // 槽間留白角度（露出鐵芯，形成齒），比例隨槽數自動縮小避免槽被吃光
 
@@ -489,24 +505,34 @@ function renderRadialDiagram(result) {
   function symbolR(bandThk) {
     return Math.max(3, Math.min(9, Math.min(bandThk, arcAtMid) * 0.32));
   }
+  /** 雙層合併弧專用：角寬隨合併段數變化，弧長要用該段實際角寬重算 */
+  function symbolRSpan(radialDepth, angularSpanDeg) {
+    const arcLen = (rInner + rOuter) / 2 * angularSpanDeg * Math.PI / 180;
+    return Math.max(3, Math.min(9, Math.min(radialDepth, arcLen) * 0.32));
+  }
 
   if (isDouble) {
-    // 雙層：同相同方向的相鄰槽合併成一組，畫成一段連續弧（仿 JMAG 風格），
-    // 組內不再顯示每槽的齒縫，只在組中心疊一個方向符號
-    const groupA0 = function (startK) { return -90 + startK * step + gapDeg / 2; };
-    const groupA1 = function (endK) { return -90 + (endK + 1) * step - gapDeg / 2; };
+    // 雙層：每槽切成左右兩半（角度方向，非徑向），左＝bottom（回程，面向較小
+    // 槽號——即它 go 搭檔所在方向）、右＝top（去程，面向較大槽號），跟展開圖
+    // 一致，讓同一枚線圈的兩端落在相鄰槽面對面的一側。相鄰半槽同相同方向
+    // 再合併成一段連續弧（仿 JMAG 風格）。
+    const halfSide = function (idx) {
+      const k = Math.floor(idx / 2);
+      return (idx % 2 === 0) ? result.slots[k].bottom : result.slots[k].top;
+    };
+    const halfBoundary = function (idx) {
+      const k = Math.floor(idx / 2);
+      const a0 = -90 + k * step + gapDeg / 2;
+      const a1 = -90 + (k + 1) * step - gapDeg / 2;
+      const aMid = (a0 + a1) / 2;
+      return (idx % 2 === 0) ? { start: a0, end: aMid } : { start: aMid, end: a1 };
+    };
 
-    groupConsecutiveSlots(Q, function (k) { return result.slots[k].top; }).forEach(function (g) {
-      const a0 = groupA0(g.startK), a1 = groupA1(g.endK);
-      svg.appendChild(svgEl('path', { d: annularSectorPath(cx, cy, rMid, rOuter, a0, a1), fill: PHASE_COLOR[g.phase], opacity: 0.9 }));
-      const p = polarPt(cx, cy, (rMid + rOuter) / 2, (a0 + a1) / 2);
-      currentDirSymbol(svg, p.x, p.y, symbolR(rOuter - rMid), g.sign);
-    });
-    groupConsecutiveSlots(Q, function (k) { return result.slots[k].bottom; }).forEach(function (g) {
-      const a0 = groupA0(g.startK), a1 = groupA1(g.endK);
-      svg.appendChild(svgEl('path', { d: annularSectorPath(cx, cy, rInner, rMid, a0, a1), fill: PHASE_COLOR[g.phase], opacity: 0.6 }));
-      const p = polarPt(cx, cy, (rInner + rMid) / 2, (a0 + a1) / 2);
-      currentDirSymbol(svg, p.x, p.y, symbolR(rMid - rInner), g.sign);
+    groupConsecutiveSlots(2 * Q, halfSide).forEach(function (g) {
+      const a0 = halfBoundary(g.startK).start, a1 = halfBoundary(g.endK).end;
+      svg.appendChild(svgEl('path', { d: annularSectorPath(cx, cy, rInner, rOuter, a0, a1), fill: PHASE_COLOR[g.phase], opacity: 0.8 }));
+      const p = polarPt(cx, cy, (rInner + rOuter) / 2, (a0 + a1) / 2);
+      currentDirSymbol(svg, p.x, p.y, symbolRSpan(rOuter - rInner, a1 - a0), g.sign);
     });
   } else {
     // 單層（集中繞組）：每齒一個線圈旗形符號
@@ -523,20 +549,23 @@ function renderRadialDiagram(result) {
   // 雙層依 buildPhaseChains 把整條 path 串起來；單層依 buildSingleLayerPairs
   // 把相鄰配對齒橋接起來，兩者共用同一套 busR／方向邏輯。
   const slotAngle = function (k) { return -90 + k * step + step / 2; };
+  /** 半槽（角度方向）中心角：isTop=true 取右半（面向較大槽號），false 取左半（面向較小槽號） */
+  const sideAngle = function (k, isTop) {
+    const a0 = -90 + k * step + gapDeg / 2, a1 = -90 + (k + 1) * step - gapDeg / 2, aMid = (a0 + a1) / 2;
+    return isTop ? (aMid + a1) / 2 : (a0 + aMid) / 2;
+  };
   const busR = { A: rYoke + 22, B: rYoke + 38, C: rYoke + 54 };
   const overlap = {};
 
   if (isDouble) {
-    // waypoint 序列固定是 [go,ret,go,ret,...]：偶數索引＝top（去程），
-    // 奇數索引＝bottom（回程）。同一槽的 top／bottom 若屬於不同相（短節距
-    // 常見），兩相各自的出線會疊在同一角度上；用小角度偏移把 top／bottom
-    // 錯開，避免視覺上看不出是兩條線。
-    const offsetDeg = Math.min(2, step * 0.12);
+    // waypoint 序列固定是 [go,ret,go,ret,...]：偶數索引＝top（去程，畫在槽的
+    // 右半），奇數索引＝bottom（回程，畫在槽的左半），跟色塊的左右配置一致，
+    // 各自的出線角度自然對齊該半槽中心，不需要再另外加小角度偏移。
     const chains = buildPhaseChains(result);
     ['A', 'B', 'C'].forEach(function (phase) {
       const wp = phaseWaypoints(chains[phase]);
       const angleAt = function (idx) {
-        return slotAngle(wp[idx]) + (idx % 2 === 0 ? -offsetDeg : offsetDeg);
+        return sideAngle(wp[idx], idx % 2 === 0);
       };
       overlap[phase] = maxOverlapDepth(hopIntervals(wp, angleAt));
       const dimmed = phaseFilter !== 'all' && phaseFilter !== phase;
