@@ -14,8 +14,8 @@ var MT_I18N = {
   coilSpan:            { en: 'Coil span [slots]',        zh: '線圈節距 [槽]' },
   phaseFixedHint:      { en: 'Three-phase (m = 3) only.', zh: '固定三相 (m = 3)。' },
   legendTitle:         { en: 'Legend',                   zh: '圖例' },
-  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Single-layer windings are drawn as a coil symbol per tooth (concentrated-winding style); double-layer windings merge consecutive same-phase, same-direction slots into one arc/block (distributed-winding style). The cross-section\'s inner ring shows the rotor\'s alternating N/S poles (illustrative only). Curves/brackets trace coils wired in series (all coils in a single parallel path — no wave-winding reordering or multi-path splitting yet); a tooth whose adjacent same-phase partner would wrap past the first/last slot is left unbracketed. In the cross-section view each phase gets its own bus radius (A innermost, C outermost) so all three can be shown at once without overlapping each other; the "max overlapping" readout below the phase filter shows how many of that phase\'s own segments still stack on top of each other.',
-                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。單層繞組在每齒畫成線圈符號（集中繞組風格）；雙層繞組把相鄰同相同方向的槽合併成一段弧／色塊（分佈繞組風格）。馬達剖面圖內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。弧線／跳線表示線圈的串接順序（目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流）；若相鄰同相的配對齒剛好跨過頭尾槽，則不畫跳線。馬達剖面圖中三相各自用不同的匯流半徑（A 最內、C 最外），所以三相可以同時顯示不互相重疊；下方「最大重疊」數字顯示該相自己的線段裡最多有幾段疊在一起。' },
+  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Single-layer windings are drawn as a coil symbol per tooth (concentrated-winding style); double-layer windings split each slot left/right into its two coil sides — left = bottom (return, facing the lower-numbered neighbor), right = top (start, facing the higher-numbered neighbor) — even when both happen to share the same phase and direction, so every coil side stays its own distinct block. The cross-section\'s inner ring shows the rotor\'s alternating N/S poles (illustrative only). Curves/brackets trace coils wired in series (all coils in a single parallel path — no wave-winding reordering or multi-path splitting yet); a tooth whose adjacent same-phase partner would wrap past the first/last slot is left unbracketed. In the cross-section view each phase gets its own bus radius (A innermost, C outermost) so all three can be shown at once without overlapping each other; the "max overlapping" readout below the phase filter shows how many of that phase\'s own segments still stack on top of each other.',
+                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。單層繞組在每齒畫成線圈符號（集中繞組風格）；雙層繞組把每槽左右分成兩個線圈邊——左＝bottom（回程，面向較小槽號那側）、右＝top（去程，面向較大槽號那側）——即使剛好同相同方向也一樣分開顯示，每個線圈邊都對應獨立一塊色塊。馬達剖面圖內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。弧線／跳線表示線圈的串接順序（目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流）；若相鄰同相的配對齒剛好跨過頭尾槽，則不畫跳線。馬達剖面圖中三相各自用不同的匯流半徑（A 最內、C 最外），所以三相可以同時顯示不互相重疊；下方「最大重疊」數字顯示該相自己的線段裡最多有幾段疊在一起。' },
   keyNumbersTitle:     { en: 'Key Numbers',              zh: '關鍵數值' },
   diagramTitle:        { en: 'Winding Layout',           zh: '繞組展開圖' },
   viewLinear:          { en: 'Linear',                    zh: '展開圖' },
@@ -514,25 +514,24 @@ function renderRadialDiagram(result) {
   if (isDouble) {
     // 雙層：每槽切成左右兩半（角度方向，非徑向），左＝bottom（回程，面向較小
     // 槽號——即它 go 搭檔所在方向）、右＝top（去程，面向較大槽號），跟展開圖
-    // 一致，讓同一枚線圈的兩端落在相鄰槽面對面的一側。相鄰半槽同相同方向
-    // 再合併成一段連續弧（仿 JMAG 風格）。
-    const halfSide = function (idx) {
-      const k = Math.floor(idx / 2);
-      return (idx % 2 === 0) ? result.slots[k].bottom : result.slots[k].top;
-    };
-    const halfBoundary = function (idx) {
-      const k = Math.floor(idx / 2);
+    // 一致，讓同一枚線圈的兩端落在相鄰槽面對面的一側。每槽的左右兩半各自
+    // 獨立畫出（不跨槽合併），即使相鄰的剛好同相同方向也一樣分開顯示，
+    // 這樣每個線圈邊都對應唯一一塊色塊、接線的出線點才看得出來是哪一邊。
+    const halfGapDeg = Math.min(2, step * 0.06);
+    result.slots.forEach(function (s, k) {
       const a0 = -90 + k * step + gapDeg / 2;
       const a1 = -90 + (k + 1) * step - gapDeg / 2;
       const aMid = (a0 + a1) / 2;
-      return (idx % 2 === 0) ? { start: a0, end: aMid } : { start: aMid, end: a1 };
-    };
 
-    groupConsecutiveSlots(2 * Q, halfSide).forEach(function (g) {
-      const a0 = halfBoundary(g.startK).start, a1 = halfBoundary(g.endK).end;
-      svg.appendChild(svgEl('path', { d: annularSectorPath(cx, cy, rInner, rOuter, a0, a1), fill: PHASE_COLOR[g.phase], opacity: 0.8 }));
-      const p = polarPt(cx, cy, (rInner + rOuter) / 2, (a0 + a1) / 2);
-      currentDirSymbol(svg, p.x, p.y, symbolRSpan(rOuter - rInner, a1 - a0), g.sign);
+      const lA0 = a0, lA1 = aMid - halfGapDeg / 2;
+      svg.appendChild(svgEl('path', { d: annularSectorPath(cx, cy, rInner, rOuter, lA0, lA1), fill: PHASE_COLOR[s.bottom.phase], opacity: 0.8 }));
+      const pL = polarPt(cx, cy, (rInner + rOuter) / 2, (lA0 + lA1) / 2);
+      currentDirSymbol(svg, pL.x, pL.y, symbolRSpan(rOuter - rInner, lA1 - lA0), s.bottom.sign);
+
+      const rA0 = aMid + halfGapDeg / 2, rA1 = a1;
+      svg.appendChild(svgEl('path', { d: annularSectorPath(cx, cy, rInner, rOuter, rA0, rA1), fill: PHASE_COLOR[s.top.phase], opacity: 0.8 }));
+      const pR = polarPt(cx, cy, (rInner + rOuter) / 2, (rA0 + rA1) / 2);
+      currentDirSymbol(svg, pR.x, pR.y, symbolRSpan(rOuter - rInner, rA1 - rA0), s.top.sign);
     });
   } else {
     // 單層（集中繞組）：每齒一個線圈旗形符號
