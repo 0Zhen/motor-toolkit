@@ -14,14 +14,15 @@ var MT_I18N = {
   coilSpan:            { en: 'Coil span [slots]',        zh: '線圈節距 [槽]' },
   phaseFixedHint:      { en: 'Three-phase (m = 3) only.', zh: '固定三相 (m = 3)。' },
   legendTitle:         { en: 'Legend',                   zh: '圖例' },
-  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Single-layer windings are drawn as a coil symbol per tooth (concentrated-winding style); double-layer windings merge consecutive same-phase, same-direction slots into one arc/block (distributed-winding style). The cross-section\'s inner ring shows the rotor\'s alternating N/S poles (illustrative only). Curves/brackets trace coils wired in series (all coils in a single parallel path — no wave-winding reordering or multi-path splitting yet); a tooth whose adjacent same-phase partner would wrap past the first/last slot is left unbracketed. In the cross-section view, all three phases\' wiring together wraps almost the full circle and gets unreadable, so it only draws once you pick a single phase below — the linear view shows every phase\'s wiring at once since it doesn\'t have that problem.',
-                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。單層繞組在每齒畫成線圈符號（集中繞組風格）；雙層繞組把相鄰同相同方向的槽合併成一段弧／色塊（分佈繞組風格）。馬達剖面圖內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。弧線／跳線表示線圈的串接順序（目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流）；若相鄰同相的配對齒剛好跨過頭尾槽，則不畫跳線。馬達剖面圖中三相接線疊在一起會繞滿整圈難以辨識，因此預設「全部」不畫接線，選單一相才會顯示；展開圖沒有這個問題，「全部」時會直接顯示三相接線。' },
+  legendHint:          { en: 'Block color = phase. "+"/"−" (linear view) or ⊙/⊗ (cross-section view) = current direction (EMF phasor sign). Single-layer windings are drawn as a coil symbol per tooth (concentrated-winding style); double-layer windings merge consecutive same-phase, same-direction slots into one arc/block (distributed-winding style). The cross-section\'s inner ring shows the rotor\'s alternating N/S poles (illustrative only). Curves/brackets trace coils wired in series (all coils in a single parallel path — no wave-winding reordering or multi-path splitting yet); a tooth whose adjacent same-phase partner would wrap past the first/last slot is left unbracketed. In the cross-section view each phase gets its own bus radius (A innermost, C outermost) so all three can be shown at once without overlapping each other; the "max overlapping" readout below the phase filter shows how many of that phase\'s own segments still stack on top of each other.',
+                          zh: '色塊代表相別。線性展開圖用「+」/「−」、馬達剖面圖用 ⊙/⊗ 代表電流方向（EMF 相量正負）。單層繞組在每齒畫成線圈符號（集中繞組風格）；雙層繞組把相鄰同相同方向的槽合併成一段弧／色塊（分佈繞組風格）。馬達剖面圖內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。弧線／跳線表示線圈的串接順序（目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流）；若相鄰同相的配對齒剛好跨過頭尾槽，則不畫跳線。馬達剖面圖中三相各自用不同的匯流半徑（A 最內、C 最外），所以三相可以同時顯示不互相重疊；下方「最大重疊」數字顯示該相自己的線段裡最多有幾段疊在一起。' },
   keyNumbersTitle:     { en: 'Key Numbers',              zh: '關鍵數值' },
   diagramTitle:        { en: 'Winding Layout',           zh: '繞組展開圖' },
   viewLinear:          { en: 'Linear',                    zh: '展開圖' },
   viewRadial:          { en: 'Cross-section',              zh: '馬達剖面' },
   phaseFilterLabel:    { en: 'Coil path:',                 zh: '線圈接線：' },
   phaseAll:            { en: 'All',                         zh: '全部' },
+  overlapLabel:        { en: 'Max overlapping segments (same phase)', zh: '最大重疊段數（同相）' },
   spanHintFullPitch:   { en: 'Full pitch = {v} slots',   zh: '全節距 = {v} 槽' },
   warnInvalidQ:        { en: 'Slots (Q) must be an integer ≥ 3.',
                           zh: '槽數 (Q) 須為 ≥ 3 的整數。' },
@@ -162,6 +163,7 @@ function toothPath(x, top, bottom, w) {
 function renderLinearDiagram(result) {
   const svg = document.getElementById('wdSvg');
   svg.innerHTML = '';
+  renderWireOverlapInfo(null); // 重疊提示僅在馬達剖面圖顯示
 
   const Q = result.Q;
   const isDouble = result.slots[0].bottom !== null;
@@ -299,6 +301,40 @@ function radialConnectionPath(cx, cy, r0, aStart, aEnd, busR) {
   return 'M ' + p0.x + ' ' + p0.y + ' L ' + p0b.x + ' ' + p0b.y +
     ' A ' + busR + ' ' + busR + ' 0 0 ' + sweepFlag + ' ' + p1b.x + ' ' + p1b.y +
     ' L ' + p1.x + ' ' + p1.y;
+}
+
+/** 把某相的線圈接線路徑序列轉成角度區間 [lo, hi]（走短邊方向，未處理跨越頭尾接縫的邊界情形） */
+function hopIntervals(wp, slotAngle) {
+  const intervals = [];
+  for (let i = 0; i < wp.length - 1; i++) {
+    const aStart = slotAngle(wp[i]), aEndRaw = slotAngle(wp[i + 1]);
+    const delta = ((aEndRaw - aStart + 540) % 360) - 180;
+    const aEnd = aStart + delta;
+    intervals.push([Math.min(aStart, aEnd), Math.max(aStart, aEnd)]);
+  }
+  return intervals;
+}
+
+/** 掃描線法算出同一相在同一匯流圈上，最多同時有幾段接線互相重疊 */
+function maxOverlapDepth(intervals) {
+  const events = [];
+  intervals.forEach(function (iv) { events.push([iv[0], 1]); events.push([iv[1], -1]); });
+  events.sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+  let cur = 0, max = 0;
+  events.forEach(function (e) { cur += e[1]; if (cur > max) max = cur; });
+  return max;
+}
+
+/** 顯示（或隱藏）各相接線最大重疊段數的小提示 */
+function renderWireOverlapInfo(overlap) {
+  const el = document.getElementById('wireOverlapInfo');
+  if (!el) return;
+  if (!overlap) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = mtT('overlapLabel') + ': ' +
+    ['A', 'B', 'C'].map(function (ph) {
+      return '<span style="color:' + PHASE_COLOR[ph] + ';font-weight:700">' + ph + '×' + overlap[ph] + '</span>';
+    }).join('　');
 }
 
 /** 電流方向符號：⊙ = 流出（+），⊗ = 流入（−），為剖面圖慣用符號 */
@@ -449,20 +485,30 @@ function renderRadialDiagram(result) {
   });
 
   // 線圈連接弧線（僅雙層）：定子外側，依相別把整條 path 的線圈依序串接，
-  // 沿圓周自然處理回捲，不像展開圖需要擔心跨過頭尾。
-  // 「全部」模式下三相疊在一起幾乎繞滿整圈、看不出個別走線，故只在選定
-  // 單一相時才畫（見 phaseFilter 說明）。
-  if (isDouble && phaseFilter !== 'all') {
+  // 沿圓周自然處理回捲，不像展開圖需要擔心跨過頭尾。三相各自用不同的
+  // 匯流半徑（由內而外 A→B→C），彼此不會疊在同一圈上；選定單一相時
+  // 其餘相調淡，方便專注看該相走線。
+  if (isDouble) {
     const slotAngle = function (k) { return -90 + k * step + step / 2; };
-    const busR = rYoke + 34;
+    const busR = { A: rYoke + 22, B: rYoke + 38, C: rYoke + 54 };
     const chains = buildPhaseChains(result);
-    const wp = phaseWaypoints(chains[phaseFilter]);
-    for (let i = 0; i < wp.length - 1; i++) {
-      svg.appendChild(svgEl('path', {
-        d: radialConnectionPath(cx, cy, rYoke + 6, slotAngle(wp[i]), slotAngle(wp[i + 1]), busR),
-        fill: 'none', stroke: PHASE_COLOR[phaseFilter], 'stroke-width': 1.3, opacity: 0.8,
-      }));
-    }
+    const overlap = {};
+    ['A', 'B', 'C'].forEach(function (phase) {
+      const wp = phaseWaypoints(chains[phase]);
+      const intervals = hopIntervals(wp, slotAngle);
+      overlap[phase] = maxOverlapDepth(intervals);
+      const dimmed = phaseFilter !== 'all' && phaseFilter !== phase;
+      const opacity = dimmed ? 0.15 : 0.8;
+      for (let i = 0; i < wp.length - 1; i++) {
+        svg.appendChild(svgEl('path', {
+          d: radialConnectionPath(cx, cy, rYoke + 6, slotAngle(wp[i]), slotAngle(wp[i + 1]), busR[phase]),
+          fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
+        }));
+      }
+    });
+    renderWireOverlapInfo(overlap);
+  } else {
+    renderWireOverlapInfo(null);
   }
 }
 
