@@ -260,7 +260,7 @@ function annularSectorPath(cx, cy, rInner, rOuter, startDeg, endDeg) {
 function radialConnectionPath(cx, cy, r0, aStart, aEnd) {
   const delta = ((aEnd - aStart + 540) % 360) - 180; // 正規化到 (-180,180]，取較短角距方向
   const mid = aStart + delta / 2;
-  const bulge = r0 + 14 + Math.min(60, Math.abs(delta) * 0.5);
+  const bulge = r0 + 14 + Math.min(24, Math.abs(delta) * 0.2);
   const p0 = polarPt(cx, cy, r0, aStart);
   const p1 = polarPt(cx, cy, r0, aEnd);
   const cp = polarPt(cx, cy, bulge, mid);
