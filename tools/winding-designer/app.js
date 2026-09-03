@@ -283,15 +283,22 @@ function annularSectorPath(cx, cy, rInner, rOuter, startDeg, endDeg) {
     ' Z';
 }
 
-/** 線圈連接弧線：從來源槽（外側）繞到目的槽（外側），彎曲程度隨角距增加 */
-function radialConnectionPath(cx, cy, r0, aStart, aEnd) {
+/**
+ * 線圈連接線（直角版）：從來源槽徑向出線到共用匯流半徑 busR，沿該半徑走
+ * 一段真圓弧到目的槽的角度，再徑向收回槽緣——呈「出線／匯流排／收線」
+ * 的直角走線，明確落在定子外側，不與定子本體重疊。
+ */
+function radialConnectionPath(cx, cy, r0, aStart, aEnd, busR) {
   const delta = ((aEnd - aStart + 540) % 360) - 180; // 正規化到 (-180,180]，取較短角距方向
-  const mid = aStart + delta / 2;
-  const bulge = r0 + 14 + Math.min(24, Math.abs(delta) * 0.2);
+  const aEndShort = aStart + delta;
+  const sweepFlag = delta >= 0 ? 1 : 0;
   const p0 = polarPt(cx, cy, r0, aStart);
-  const p1 = polarPt(cx, cy, r0, aEnd);
-  const cp = polarPt(cx, cy, bulge, mid);
-  return 'M ' + p0.x + ' ' + p0.y + ' Q ' + cp.x + ' ' + cp.y + ' ' + p1.x + ' ' + p1.y;
+  const p0b = polarPt(cx, cy, busR, aStart);
+  const p1b = polarPt(cx, cy, busR, aEndShort);
+  const p1 = polarPt(cx, cy, r0, aEndShort);
+  return 'M ' + p0.x + ' ' + p0.y + ' L ' + p0b.x + ' ' + p0b.y +
+    ' A ' + busR + ' ' + busR + ' 0 0 ' + sweepFlag + ' ' + p1b.x + ' ' + p1b.y +
+    ' L ' + p1.x + ' ' + p1.y;
 }
 
 /** 電流方向符號：⊙ = 流出（+），⊗ = 流入（−），為剖面圖慣用符號 */
@@ -447,12 +454,13 @@ function renderRadialDiagram(result) {
   // 單一相時才畫（見 phaseFilter 說明）。
   if (isDouble && phaseFilter !== 'all') {
     const slotAngle = function (k) { return -90 + k * step + step / 2; };
+    const busR = rYoke + 34;
     const chains = buildPhaseChains(result);
     const wp = phaseWaypoints(chains[phaseFilter]);
     for (let i = 0; i < wp.length - 1; i++) {
       svg.appendChild(svgEl('path', {
-        d: radialConnectionPath(cx, cy, rYoke + 6, slotAngle(wp[i]), slotAngle(wp[i + 1])),
-        fill: 'none', stroke: PHASE_COLOR[phaseFilter], 'stroke-width': 1.1, opacity: 0.75,
+        d: radialConnectionPath(cx, cy, rYoke + 6, slotAngle(wp[i]), slotAngle(wp[i + 1]), busR),
+        fill: 'none', stroke: PHASE_COLOR[phaseFilter], 'stroke-width': 1.3, opacity: 0.8,
       }));
     }
   }
