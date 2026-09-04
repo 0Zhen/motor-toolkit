@@ -266,7 +266,7 @@ function renderLinearDiagram(result) {
     svg.appendChild(svgEl('path', {
       d: toothPath(x, bodyTop, bodyBottom, slotW), fill: 'none', stroke: 'var(--text3)', 'stroke-width': 1.2,
     }));
-    svg.appendChild(textEl(cx, bodyTop + blockH * 0.4, String(k + 1), { fill: 'var(--text3)', 'font-size': 8 }));
+    svg.appendChild(textEl(cx, bodyTop + blockH * 0.4, String(k + 1), { fill: 'var(--text3)', 'font-size': 11, 'font-weight': 600 }));
 
     if (isDouble) {
       const midX = x + slotW / 2;
@@ -703,7 +703,7 @@ function renderRadialDiagram(result) {
     const a1 = -90 + (k + 1) * step - gapDeg / 2;
     const aMid = (a0 + a1) / 2;
     const pLabel = polarPt(cx, cy, layout.labelR, aMid);
-    svg.appendChild(textEl(pLabel.x, pLabel.y + 3, String(k + 1), { fill: 'var(--text3)', 'font-size': 8 }));
+    svg.appendChild(textEl(pLabel.x, pLabel.y + 4, String(k + 1), { fill: 'var(--text3)', 'font-size': 11, 'font-weight': 600 }));
   });
 }
 
