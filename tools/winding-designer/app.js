@@ -669,16 +669,21 @@ function renderRadialDiagram(result) {
     });
   }
 
-  // 所有色塊畫完後，把齒實際畫出來（跟軛部同一種鐵芯灰、加外框），不是留白
-  // 或用淺色示意——之前齒的角寬太窄、顏色也太淡，看起來像鏤空或消失；現在
-  // gapDeg 加寬到接近真實齒寬比例，顏色也改回跟軛部同色（本來就是同一塊鐵
-  // 芯），對比夠、形狀也夠寬才看得出來是實體的齒，不會被誤認成縫隙。
+  // 所有色塊畫完後，把齒實際畫出來（跟軛部同一種鐵芯灰），不是留白或用淺色
+  // 示意——之前齒的角寬太窄、顏色也太淡，看起來像鏤空或消失；現在 gapDeg
+  // 加寬到接近真實齒寬比例，顏色也改回跟軛部同色（本來就是同一塊鐵芯）。
+  // 填色雖然畫到 rYoke（跟軛部無縫相接），但邊框只到 rOuter 為止——軛部本身
+  // 是連續一整圈，不會真的有縫，齒跟齒之間的分界線只在齒尖（槽開口那段）
+  // 才有實體意義；畫到 rYoke 會變成背鐵上憑空多一條放射狀分隔線，不符合
+  // 實際結構，所以邊框用兩條獨立線段畫，只到 rOuter。
   result.slots.forEach(function (s, k) {
     const a1 = -90 + (k + 1) * step - gapDeg / 2;
     const nextA0 = -90 + (k + 1) * step + gapDeg / 2;
-    svg.appendChild(svgEl('path', {
-      d: annularSectorPath(cx, cy, rInner, rYoke, a1, nextA0), fill: IRON, stroke: IRON_STROKE, 'stroke-width': 1,
-    }));
+    svg.appendChild(svgEl('path', { d: annularSectorPath(cx, cy, rInner, rYoke, a1, nextA0), fill: IRON }));
+    const e1a = polarPt(cx, cy, rInner, a1), e1b = polarPt(cx, cy, rOuter, a1);
+    const e2a = polarPt(cx, cy, rInner, nextA0), e2b = polarPt(cx, cy, rOuter, nextA0);
+    svg.appendChild(svgEl('line', { x1: e1a.x, y1: e1a.y, x2: e1b.x, y2: e1b.y, stroke: IRON_STROKE, 'stroke-width': 1 }));
+    svg.appendChild(svgEl('line', { x1: e2a.x, y1: e2a.y, x2: e2b.x, y2: e2b.y, stroke: IRON_STROKE, 'stroke-width': 1 }));
     if (isDouble) {
       const a0 = -90 + k * step + gapDeg / 2, aMid = (a0 + a1) / 2;
       svg.appendChild(svgEl('path', {
