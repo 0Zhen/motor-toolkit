@@ -636,13 +636,14 @@ function renderRadialDiagram(result) {
     return Math.max(3, Math.min(9, Math.min(radialDepth, arcLen) * 0.32));
   }
 
+  const halfGapDeg = Math.min(3, step * 0.08);
+
   if (isDouble) {
     // 雙層：每槽切成左右兩半（角度方向，非徑向），左＝bottom（回程，面向較小
     // 槽號——即它 go 搭檔所在方向）、右＝top（去程，面向較大槽號），跟展開圖
     // 一致，讓同一枚線圈的兩端落在相鄰槽面對面的一側。每槽的左右兩半各自
     // 獨立畫出（不跨槽合併），即使相鄰的剛好同相同方向也一樣分開顯示，
     // 這樣每個線圈邊都對應唯一一塊色塊、接線的出線點才看得出來是哪一邊。
-    const halfGapDeg = Math.min(2, step * 0.06);
     result.slots.forEach(function (s, k) {
       const a0 = -90 + k * step + gapDeg / 2;
       const a1 = -90 + (k + 1) * step - gapDeg / 2;
@@ -667,6 +668,22 @@ function renderRadialDiagram(result) {
       drawConcentratedCoil(svg, cx, cy, aMid, rInner, rOuter, s.top.phase, s.top.sign, symbolR(rOuter - rInner));
     });
   }
+
+  // 所有色塊畫完後，補一層背景色的細縫，把每一槽（雙層還包含同一槽內左右
+  // 兩半的分界）跟鄰居清楚隔開——鐵芯灰跟色塊的對比不夠明顯，兩側剛好同
+  // 相同色時，那條窄縫幾乎看不出來，會讓使用者誤以為是同一槽。改成疊一層
+  // 頁面背景色（跟色塊、跟鐵芯灰都有反差），不管兩側顏色是否相同都看得出來。
+  result.slots.forEach(function (s, k) {
+    const a1 = -90 + (k + 1) * step - gapDeg / 2;
+    const nextA0 = -90 + (k + 1) * step + gapDeg / 2;
+    svg.appendChild(svgEl('path', { d: annularSectorPath(cx, cy, rInner, rOuter, a1, nextA0), fill: 'var(--bg)' }));
+    if (isDouble) {
+      const a0 = -90 + k * step + gapDeg / 2, aMid = (a0 + a1) / 2;
+      svg.appendChild(svgEl('path', {
+        d: annularSectorPath(cx, cy, rInner, rOuter, aMid - halfGapDeg / 2, aMid + halfGapDeg / 2), fill: 'var(--bg)',
+      }));
+    }
+  });
 
   // 線圈連接弧線：定子外側，三相依 layout 分到的匯流車道畫出（車道分配已在
   // 函式開頭算好）；選定單一相時其餘相調淡，方便專注看該相走線。每顆線圈
