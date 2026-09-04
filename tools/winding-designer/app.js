@@ -550,7 +550,7 @@ function renderRadialDiagram(result) {
   const IRON = '#94a3b8', IRON_STROKE = '#475569';
   const rYoke = 200, rOuter = 175, rInner = 100, rRotor = 70, rRotorCore = 56;
   const step = 360 / Q;
-  const gapDeg = Math.min(7, step * 0.22); // 槽間留白角度（露出鐵芯，形成齒），比例隨槽數自動縮小避免槽被吃光
+  const gapDeg = step * 0.44; // 齒的角寬——之前只留窄縫示意，寬度不夠會讓齒看起來像消失／鏤空；改成跟參考圖比例接近的實體齒寬（槽開口約佔剩下 56%）
 
   const slotAngle = function (k) { return -90 + k * step + step / 2; };
   /** 半槽（角度方向）中心角：isTop=true 取右半（面向較大槽號），false 取左半（面向較小槽號） */
@@ -669,16 +669,16 @@ function renderRadialDiagram(result) {
     });
   }
 
-  // 所有色塊畫完後，補一層縫，把每一槽（雙層還包含同一槽內左右兩半的分界）
-  // 跟鄰居清楚隔開——鐵芯灰跟色塊的對比不夠明顯，兩側剛好同相同色時，那條
-  // 窄縫幾乎看不出來，會讓使用者誤以為是同一槽。原本改成頁面背景色，但背景
-  // 色跟頁面本身融為一體，看起來像「齒不見了、變成空隙」；改用 --border
-  // （介於背景與鐵芯灰之間、跟三個相色都有反差的淺灰），還是讀得出「這裡有
-  // 齒」，不會被誤認成鏤空。
+  // 所有色塊畫完後，把齒實際畫出來（跟軛部同一種鐵芯灰、加外框），不是留白
+  // 或用淺色示意——之前齒的角寬太窄、顏色也太淡，看起來像鏤空或消失；現在
+  // gapDeg 加寬到接近真實齒寬比例，顏色也改回跟軛部同色（本來就是同一塊鐵
+  // 芯），對比夠、形狀也夠寬才看得出來是實體的齒，不會被誤認成縫隙。
   result.slots.forEach(function (s, k) {
     const a1 = -90 + (k + 1) * step - gapDeg / 2;
     const nextA0 = -90 + (k + 1) * step + gapDeg / 2;
-    svg.appendChild(svgEl('path', { d: annularSectorPath(cx, cy, rInner, rOuter, a1, nextA0), fill: 'var(--border)' }));
+    svg.appendChild(svgEl('path', {
+      d: annularSectorPath(cx, cy, rInner, rYoke, a1, nextA0), fill: IRON, stroke: IRON_STROKE, 'stroke-width': 1,
+    }));
     if (isDouble) {
       const a0 = -90 + k * step + gapDeg / 2, aMid = (a0 + a1) / 2;
       svg.appendChild(svgEl('path', {
