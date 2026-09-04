@@ -540,7 +540,7 @@ function renderRadialDiagram(result) {
     const a0 = -90 + k * step + gapDeg / 2, a1 = -90 + (k + 1) * step - gapDeg / 2, aMid = (a0 + a1) / 2;
     return isTop ? (aMid + a1) / 2 : (a0 + aMid) / 2;
   };
-  const laneStep = 20, phaseGap = 10;
+  const laneStep = 20, phaseGap = 22;
   const overlap = {};
 
   // ── 只畫「同一枚線圈自己」的去回程接線（entry↔exit），線圈跟線圈之間的
@@ -637,7 +637,11 @@ function renderRadialDiagram(result) {
   // 函式開頭算好）；選定單一相時其餘相調淡，方便專注看該相走線。每顆線圈
   // 各自獨立一段（buildChainPath 對 2 點 wp 就是單一 M→L→A→L 的弧線），不畫
   // 線圈間的跳線，也不畫方向箭頭。
-  ['A', 'B', 'C'].forEach(function (phase) {
+  // 由外而內畫（C→B→A），讓最內圈的 A（離定子最近、最常被對照的一圈）疊在
+  // 最上層——三相車道彼此不真的共用半徑（已各自分段），但 B/C 的出線／收線
+  // 徑向段落必然會「穿過」比自己內側的相所在的半徑範圍（從槽緣往外接到自己
+  // 的車道，路上會經過內側相的車道），這樣畫至少讓內側那圈線不被外側的線蓋住
+  ['C', 'B', 'A'].forEach(function (phase) {
     const coils = coilsByPhase[phase], ph = layout[phase];
     overlap[phase] = ph.laneCount;
     const dimmed = phaseFilter !== 'all' && phaseFilter !== phase;
