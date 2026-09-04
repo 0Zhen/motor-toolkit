@@ -210,21 +210,6 @@ function buildPhaseChains(result) {
   return chains;
 }
 
-/**
- * 給定相別的線圈序列，展開成頭尾相接的端點序列
- * [coil0.go, coil0.ret, coil1.go, coil1.ret, ...]，相鄰兩點即為一段連接弧；
- * 每個端點是 { k, top }，top 標明這端是槽 k 的上半還是下半（進出端不一定
- * 固定在上半或下半，要照 top 欄位查，不能再用陣列索引奇偶推算）。
- */
-function phaseWaypoints(coils) {
-  const wp = [];
-  coils.forEach(function (c) {
-    wp.push({ k: c.goK, top: c.goTop });
-    wp.push({ k: c.retK, top: c.retTop });
-  });
-  return wp;
-}
-
 /** 把連續槽依「同相」合併成一組（僅比對相鄰，不處理跨越槽1的回捲合併），單層用 */
 function groupConsecutiveSlots(Q, phaseAt) {
   const groups = [];
@@ -268,11 +253,12 @@ function buildSingleLayerPairs(result) {
 }
 
 /**
- * 依相別把單層繞組的所有線圈（`buildSingleLayerPairs` 配對出的齒對）串成一條
- * 序列，串接規則與 `buildPhaseChains`（雙層）完全一樣：線圈固定「−進+出」、
- * 跳線只能「出接進」、優先接最近槽號。單層每槽只有一個導體邊（`top`），沒有
- * 上下半之分，waypoint 一律標 `top:true`（下游 `phaseWaypoints`/`buildChainPath`
- * 只認 `.k`/`.top` 欄位，沿用即可，不用另外寫一套）。
+ * 依相別把單層繞組的所有線圈（`buildSingleLayerPairs` 配對出的齒對）標出各自
+ * 的進／出端，規則與 `buildPhaseChains`（雙層）完全一樣：線圈固定「−進+出」。
+ * 沿用 `chainByNearestEntry` 只是為了共用同一個「決定 goK/goTop/retK/retTop」
+ * 的函式，不代表畫圖時真的用得到它排的順序——目前每顆線圈是各自獨立畫一段
+ * （不畫線圈間的跳線），順序無所謂。單層每槽只有一個導體邊（`top`），沒有
+ * 上下半之分，回傳的每顆線圈一律標 `top:true`。
  * @returns {{A:Array, B:Array, C:Array}|null} 雙層繞組無此結構，回傳 null
  */
 function buildSingleLayerChains(result) {
