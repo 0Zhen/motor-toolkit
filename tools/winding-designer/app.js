@@ -14,8 +14,8 @@ var MT_I18N = {
   coilSpan:            { en: 'Coil span [slots]',        zh: '線圈節距 [槽]' },
   phaseFixedHint:      { en: 'Three-phase (m = 3) only.', zh: '固定三相 (m = 3)。' },
   legendTitle:         { en: 'Legend',                   zh: '圖例' },
-  legendHint:          { en: 'Tip color (linear view) / block color (cross-section view) = phase. ⊙/⊗ (with "+"/"−") = current direction (EMF phasor sign). Cross-section double-layer windings split each slot left/right into its two coil sides — left = bottom (return, facing the lower-numbered neighbor), right = top (start, facing the higher-numbered neighbor) — even when both happen to share the same phase and direction, so every coil side stays its own distinct block. Linear-view teeth are drawn with a neutral outline and just the tip colored, one tooth per slot (single layer, concentrated-winding style) or split left/right into two coil sides (double layer) — the ⊙/⊗ symbol and its sign sit above the tooth, the phase letter below. The cross-section\'s inner ring shows the rotor\'s alternating N/S poles (illustrative only). Only each individual coil\'s own two ends (its entry and exit) are connected with a line; the series jumpers wiring separate coils together into a phase are not drawn, so what you see is each coil on its own, not a lead-to-lead series path. When a phase\'s coil connections overlap — in angle (cross-section) or horizontal position (linear) — they\'re automatically offset into separate lanes instead of stacking, so every coil stays visible; the cross-section\'s "max overlapping" readout shows how many lanes each phase needed. A coil that only looks long because the slot-1/slot-Q seam was cut open to unroll the linear view is left undrawn there, its two ends marked with a short dashed line to the nearest edge instead (it\'s a short coil on the real circle — see the cross-section for it).',
-                          zh: '展開圖用齒尖顏色、剖面圖用色塊代表相別。⊙/⊗（配「+」/「−」）代表電流方向（EMF 相量正負）。剖面圖的雙層繞組把每槽左右分成兩個線圈邊——左＝bottom（回程，面向較小槽號那側）、右＝top（去程，面向較大槽號那側）——即使剛好同相同方向也一樣分開顯示，每個線圈邊都對應獨立一塊色塊。展開圖的齒形一律中性色輪廓、只有齒尖著色，單層每槽一顆齒（集中繞組風格），雙層每槽左右分成兩個線圈邊，⊙/⊗ 符號與正負號在齒上方、相別字母在齒下方。馬達剖面圖內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。畫面上只連每一枚線圈自己的兩端（進線與出線），線圈跟線圈之間串成同一相的跳線不畫，看到的是每顆線圈各自獨立的樣子，不是整相頭尾相接的串聯路徑。同一相如果有多枚線圈接線重疊——剖面圖是角度重疊、展開圖是水平位置重疊——會自動錯開成不同車道，不會疊在一起看不出來；剖面圖下方「最大重疊」數字就是該相最多同時用到幾條車道。展開圖是把圓周從槽1／槽Q接縫剪開拉直畫的，某枚線圈如果剛好跨過這個接縫、被拉成看起來很長，展開圖上會跳過不畫，改成兩端各拉一小段虛線指向最近的邊緣（它在圓周上其實是很短的線圈——完整走向請看剖面圖）。' },
+  legendHint:          { en: 'Tip color (linear view) / block color (cross-section view) = phase. ⊙/⊗ (with "+"/"−") = current direction (EMF phasor sign). Cross-section double-layer windings split each slot left/right into its two coil sides — left = bottom (return, facing the lower-numbered neighbor), right = top (start, facing the higher-numbered neighbor) — even when both happen to share the same phase and direction, so every coil side stays its own distinct block. Linear-view teeth are drawn with a neutral outline and just the tip colored, one tooth per slot (single layer, concentrated-winding style) or split left/right into two coil sides (double layer) — the ⊙/⊗ symbol and its sign sit above the tooth, the phase letter below. The cross-section\'s inner ring shows the rotor\'s alternating N/S poles (illustrative only). Only each individual coil\'s own two ends (its entry and exit) are connected with a line; the series jumpers wiring separate coils together into a phase are not drawn, so what you see is each coil on its own, not a lead-to-lead series path. Coil connections that overlap — in angle (cross-section) or horizontal position (linear) — are automatically offset into separate lanes instead of stacking, so every coil stays visible; lanes are shared across all three phases (a lane is only added when something actually conflicts, regardless of phase), not one fixed band per phase. The cross-section\'s "max overlapping" readout is a per-phase figure — how many of that phase\'s own coils overlap each other — shown for reference; it doesn\'t always match how many lanes that phase\'s coils actually ended up using, since they may also be sharing lanes with other phases\' coils. A coil that only looks long because the slot-1/slot-Q seam was cut open to unroll the linear view is left undrawn there, its two ends marked with a short dashed line to the nearest edge instead (it\'s a short coil on the real circle — see the cross-section for it).',
+                          zh: '展開圖用齒尖顏色、剖面圖用色塊代表相別。⊙/⊗（配「+」/「−」）代表電流方向（EMF 相量正負）。剖面圖的雙層繞組把每槽左右分成兩個線圈邊——左＝bottom（回程，面向較小槽號那側）、右＝top（去程，面向較大槽號那側）——即使剛好同相同方向也一樣分開顯示，每個線圈邊都對應獨立一塊色塊。展開圖的齒形一律中性色輪廓、只有齒尖著色，單層每槽一顆齒（集中繞組風格），雙層每槽左右分成兩個線圈邊，⊙/⊗ 符號與正負號在齒上方、相別字母在齒下方。馬達剖面圖內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。畫面上只連每一枚線圈自己的兩端（進線與出線），線圈跟線圈之間串成同一相的跳線不畫，看到的是每顆線圈各自獨立的樣子，不是整相頭尾相接的串聯路徑。線圈接線如果重疊——剖面圖是角度重疊、展開圖是水平位置重疊——會自動錯開成不同車道，不會疊在一起看不出來；車道是三相共用的（真的有衝突才會多一條車道，不分相別），不是每相固定佔一段。剖面圖下方「最大重疊」數字是各相自己的參考值（該相自己的線圈互相重疊幾層），不一定等於該相實際用到的車道數，因為車道也可能跟別相共用。展開圖是把圓周從槽1／槽Q接縫剪開拉直畫的，某枚線圈如果剛好跨過這個接縫、被拉成看起來很長，展開圖上會跳過不畫，改成兩端各拉一小段虛線指向最近的邊緣（它在圓周上其實是很短的線圈——完整走向請看剖面圖）。' },
   keyNumbersTitle:     { en: 'Key Numbers',              zh: '關鍵數值' },
   diagramTitle:        { en: 'Winding Layout',           zh: '繞組展開圖' },
   viewLinear:          { en: 'Linear',                    zh: '展開圖' },
@@ -179,16 +179,16 @@ function renderLinearDiagram(result) {
   // 只畫「同一枚線圈自己」的去回程接線（entry↔exit），線圈跟線圈之間的跳線
   // 不畫——單層／雙層都用同一套（buildPhaseChains／buildSingleLayerChains
   // 回傳的線圈陣列，不用 phaseWaypoints 展開成整條鏈，也不用管串接順序，
-  // 每顆線圈各自獨立畫一段）。車道分配比照剖面圖：三相「各自」分配車道、
-  // 由下而上疊成三段（A 最靠近齒排、C 最遠），不是三相合併共用一個車道池
-  // ——三相合併雖然車道數較省，但不同相的線會夾在一起造成不必要的交叉，
-  // 跟剖面圖 A/B/C 各佔一段匯流環的做法不一致。同一相自己的線圈如果剛好
-  // 交錯（角度區間互相穿插、不是誰包住誰），車道再多也無法完全避免視覺
-  // 上的交叉——這是這批線圈本身的幾何關係決定的，不是車道分配的問題。
+  // 每顆線圈各自獨立畫一段）。三相合併判斷真的有沒有 x 範圍重疊——不是
+  // 「不同相就固定分一層」，真的沒衝突的線（不管哪一相）就共用同一條車道，
+  // 車道數才是這個槽極組合實際需要的最小值。同一相自己的線圈如果剛好交錯
+  // （x 區間互相穿插、不是誰包住誰），車道再多也無法完全避免視覺上的交叉
+  // ——這是這批線圈本身的幾何關係決定的，不是車道分配的問題。
   const width = Q * pitch + gapW;
   const chainsRaw = isDouble ? buildPhaseChains(result) : buildSingleLayerChains(result);
-  const laneStepPx = 12, phaseGapPx = 8;
-  const coilsByPhase = {}, intervalsByPhase = {};
+  const laneStepPx = 12;
+  const coilsByPhase = {};
+  const allIvs = [], meta = [];
   ['A', 'B', 'C'].forEach(function (phase) {
     const coils = chainsRaw[phase].map(function (c) {
       const wp = [{ k: c.goK, top: c.goTop }, { k: c.retK, top: c.retTop }];
@@ -202,32 +202,25 @@ function renderLinearDiagram(result) {
       return { wp: wp, xAt: xAt, isWrap: isWrap, lane: 0 };
     });
     coilsByPhase[phase] = coils;
-    const ivs = [], idxMap = [];
     coils.forEach(function (c, ci) {
       // wrap 線圈用「整個畫布寬」當它的區間餵進車道分配——它兩端各自拉到左右
-      // 邊緣，視覺上等於占滿整個寬度，這樣同一相如果有不只一顆 wrap 線圈，
-      // 會各自搶到自己的車道，虛線就不會疊在同一高度分不出來（之前沒把 wrap
-      // 算進車道，一相有兩顆以上 wrap 時，兩條虛線會疊在同一條 busBaseY 上）。
-      ivs.push(c.isWrap ? [0, width] : [Math.min(c.xAt(0), c.xAt(1)), Math.max(c.xAt(0), c.xAt(1))]);
-      idxMap.push(ci);
-    });
-    intervalsByPhase[phase] = ivs;
-    coilsByPhase[phase].idxMap = idxMap;
-  });
-  const bandLayout = layoutPhaseBuses(intervalsByPhase, 0, laneStepPx, phaseGapPx);
-  ['A', 'B', 'C'].forEach(function (phase) {
-    coilsByPhase[phase].idxMap.forEach(function (ci, i) {
-      coilsByPhase[phase][ci].lane = bandLayout[phase].laneOf[i];
-      coilsByPhase[phase][ci].bandBase = bandLayout[phase].base;
+      // 邊緣，視覺上等於占滿整個寬度，這樣不管哪一相有不只一顆 wrap 線圈，
+      // 都會各自搶到自己的車道，虛線不會疊在同一高度分不出來。
+      allIvs.push(c.isWrap ? [0, width] : [Math.min(c.xAt(0), c.xAt(1)), Math.max(c.xAt(0), c.xAt(1))]);
+      meta.push({ phase: phase, ci: ci });
     });
   });
+  const lanes = assignLanes(allIvs);
+  const laneCount = lanes.laneCount;
+  meta.forEach(function (m, idx) { coilsByPhase[m.phase][m.ci].lane = lanes.laneOf[idx]; });
 
   // 由齒排上緣（bodyTop）往上，依序疊出：出線 stub → ⊙/⊗ 符號 → 到符號的間距
   // → 正負號標籤（含字元本身的視覺高度，不能只留基線到符號的距離，字元往上
   // 還要再佔一截，之前漏算這塊才會被最底下那條車道的線切到）→ 到車道0的
-  // 間距 → 三相車道逐層往上疊（bandLayout.labelR 已含車道、相間留白、緩衝）。
-  const stubGap = 7, symbolR = 5, symbolToLabelGap = 8, labelTextH = 11, labelToBusGap = 8;
-  const aboveBody = stubGap + symbolR * 2 + symbolToLabelGap + labelTextH + labelToBusGap + bandLayout.labelR;
+  // 間距 → 車道逐層往上疊。
+  const stubGap = 7, symbolR = 5, symbolToLabelGap = 8, labelTextH = 11, labelToBusGap = 8, busTopBuffer = 8;
+  const aboveBody = stubGap + symbolR * 2 + symbolToLabelGap + labelTextH + labelToBusGap +
+    Math.max(1, laneCount) * laneStepPx + busTopBuffer;
   const marginTop = aboveBody + 8;
 
   const bodyTop = marginTop;
@@ -283,17 +276,22 @@ function renderLinearDiagram(result) {
     }
   });
 
+  // 車道編號大的先畫（離齒排較遠），讓最靠近齒排的車道 0 疊在最上層不被蓋住
+  const drawOrder = [];
   ['A', 'B', 'C'].forEach(function (phase) {
     if (phaseFilter !== 'all' && phaseFilter !== phase) return;
+    coilsByPhase[phase].forEach(function (c) { drawOrder.push({ phase: phase, c: c }); });
+  });
+  drawOrder.sort(function (a, b) { return b.c.lane - a.c.lane; });
+  drawOrder.forEach(function (item) {
+    const phase = item.phase, c = item.c;
     const dimmed = phaseFilter !== 'all'; // 單相模式下其餘相已被濾掉，此處不用再淡化
     const opacity = dimmed ? 0.85 : 0.5;
-    coilsByPhase[phase].forEach(function (c) {
-      const laneY = busBaseY - (c.bandBase + c.lane * laneStepPx);
-      if (c.isWrap) { drawWrapEdgeStubs(svg, width, symbolY, laneY, c.wp, c.xAt, PHASE_COLOR[phase], opacity); return; }
-      const laneYAt = function () { return laneY; };
-      const d = buildLinearChainPath(symbolY, laneYAt, c.wp, c.xAt, null);
-      svg.appendChild(svgEl('path', { d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity }));
-    });
+    const laneY = busBaseY - c.lane * laneStepPx;
+    if (c.isWrap) { drawWrapEdgeStubs(svg, width, symbolY, laneY, c.wp, c.xAt, PHASE_COLOR[phase], opacity); return; }
+    const laneYAt = function () { return laneY; };
+    const d = buildLinearChainPath(symbolY, laneYAt, c.wp, c.xAt, null);
+    svg.appendChild(svgEl('path', { d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity }));
   });
 }
 
@@ -476,23 +474,6 @@ function assignLanes(intervals) {
   return { laneOf: laneOf, laneCount: laneEnd.length };
 }
 
-/**
- * 依三相「跨槽接線」各自需要的車道數，由內而外分配匯流半徑起點——車道數
- * 愈多的相占用愈寬的圓環範圍，彼此不會撞在一起；也回傳三相都畫完後最外側
- * 的可用半徑，供槽號標籤定位。
- */
-function layoutPhaseBuses(intervalsByPhase, startR, laneStep, phaseGap) {
-  const layout = {};
-  let cursor = startR;
-  ['A', 'B', 'C'].forEach(function (phase) {
-    const lanes = assignLanes(intervalsByPhase[phase]);
-    layout[phase] = { base: cursor, laneOf: lanes.laneOf, laneCount: lanes.laneCount };
-    cursor += Math.max(1, lanes.laneCount) * laneStep + phaseGap;
-  });
-  layout.labelR = cursor + 8;
-  return layout;
-}
-
 /** 顯示（或隱藏）各相接線最大重疊段數的小提示 */
 function renderWireOverlapInfo(overlap) {
   const el = document.getElementById('wireOverlapInfo');
@@ -577,38 +558,51 @@ function renderRadialDiagram(result) {
     const a0 = -90 + k * step + gapDeg / 2, a1 = -90 + (k + 1) * step - gapDeg / 2, aMid = (a0 + a1) / 2;
     return isTop ? (aMid + a1) / 2 : (a0 + aMid) / 2;
   };
-  const laneStep = 20, phaseGap = 22;
+  const laneStep = 20;
   const overlap = {};
 
   // ── 只畫「同一枚線圈自己」的去回程接線（entry↔exit），線圈跟線圈之間的
   // 跳線不畫；單層／雙層共用同一套（buildPhaseChains／buildSingleLayerChains
-  // 回傳的線圈陣列，每顆線圈各自獨立畫一段，不用管串接順序）。先在角度空間
-  // （不需要畫布尺寸）算出每相要用幾條匯流車道——車道數決定匯流環要多寬，
-  // 進而決定畫布要留多大。
+  // 回傳的線圈陣列，每顆線圈各自獨立畫一段，不用管串接順序）。三相合併判斷
+  // 真的有沒有角度重疊——不是「不同相就固定分一層」，是把三相所有線圈的
+  // 區間一起丟給車道分配，真的沒有角度衝突的線（不管是哪一相）就會共用
+  // 同一條車道，車道數才是這個槽極組合實際需要的最小值，畫布不會多留
+  // 用不到的高度。
   const chainsRaw = isDouble ? buildPhaseChains(result) : buildSingleLayerChains(result);
   const coilsByPhase = {};
+  const allRaw = [], meta = [];
   ['A', 'B', 'C'].forEach(function (phase) {
-    coilsByPhase[phase] = chainsRaw[phase].map(function (c) {
+    const coils = chainsRaw[phase].map(function (c) {
       const wp = [{ k: c.goK, top: c.goTop }, { k: c.retK, top: c.retTop }];
       const angleAt = function (idx) {
         return isDouble ? sideAngle(wp[idx].k, wp[idx].top) : slotAngle(wp[idx].k);
       };
-      return { wp: wp, angleAt: angleAt };
+      return { wp: wp, angleAt: angleAt, lane: 0 };
+    });
+    coilsByPhase[phase] = coils;
+    coils.forEach(function (c, ci) {
+      allRaw.push(shortWayInterval(c.angleAt(0), c.angleAt(1)));
+      meta.push({ phase: phase, ci: ci });
     });
   });
-  const intervalsByPhase = {};
+  // 這批區間各自用自己的基準表示角度，直接拿去比大小可能誤判「沒重疊」
+  // （見 unwrapCircularIntervals 說明），先統一展開成同一條數線再交給車道分配。
+  const lanes = assignLanes(unwrapCircularIntervals(allRaw));
+  const laneCount = lanes.laneCount;
+  meta.forEach(function (m, idx) { coilsByPhase[m.phase][m.ci].lane = lanes.laneOf[idx]; });
+  const busRBase = rYoke + 20;
+  const labelR = busRBase + Math.max(1, laneCount) * laneStep + 16;
+
+  // 「最大重疊段數」提示只看同一相自己的線圈互相衝突幾層（跟上面共用車道
+  // 的實際畫法是兩回事，純粹讓使用者知道「這一相自己」最擠的地方多深）
   ['A', 'B', 'C'].forEach(function (phase) {
-    const raw = coilsByPhase[phase].map(function (c) { return shortWayInterval(c.angleAt(0), c.angleAt(1)); });
-    // 這批區間各自用自己的基準表示角度，同一相若有兩顆以上線圈，直接拿去比
-    // 大小可能誤判「沒重疊」（見 unwrapCircularIntervals 說明），先統一展開成
-    // 同一條數線再交給車道分配。
-    intervalsByPhase[phase] = unwrapCircularIntervals(raw);
+    const own = coilsByPhase[phase].map(function (c) { return shortWayInterval(c.angleAt(0), c.angleAt(1)); });
+    overlap[phase] = assignLanes(unwrapCircularIntervals(own)).laneCount;
   });
-  const layout = layoutPhaseBuses(intervalsByPhase, rYoke + 20, laneStep, phaseGap);
 
   // 畫布依匯流車道實際需要的寬度放大，車道多的複雜繞組也不會被裁到邊界外；
   // 一般情形（車道需求小）維持原本 600×600。
-  const size = Math.max(600, 2 * (layout.labelR + 14));
+  const size = Math.max(600, 2 * (labelR + 14));
   const cx = size / 2, cy = size / 2;
 
   svg.setAttribute('width', size);
@@ -678,22 +672,21 @@ function renderRadialDiagram(result) {
   // 函式開頭算好）；選定單一相時其餘相調淡，方便專注看該相走線。每顆線圈
   // 各自獨立一段（buildChainPath 對 2 點 wp 就是單一 M→L→A→L 的弧線），不畫
   // 線圈間的跳線，也不畫方向箭頭。
-  // 由外而內畫（C→B→A），讓最內圈的 A（離定子最近、最常被對照的一圈）疊在
-  // 最上層——三相車道彼此不真的共用半徑（已各自分段），但 B/C 的出線／收線
-  // 徑向段落必然會「穿過」比自己內側的相所在的半徑範圍（從槽緣往外接到自己
-  // 的車道，路上會經過內側相的車道），這樣畫至少讓內側那圈線不被外側的線蓋住
-  ['C', 'B', 'A'].forEach(function (phase) {
-    const coils = coilsByPhase[phase], ph = layout[phase];
-    overlap[phase] = ph.laneCount;
+  // 車道由外而內畫（車道編號大的先畫），讓最靠近定子（車道 0，最常被對照）
+  // 的線疊在最上層——三相現在共用同一批車道，出線／收線徑向段落難免會
+  // 穿過比自己車道更內側的線所在半徑，這樣畫至少讓最內側那些線不被蓋住
+  const allCoils = [];
+  ['A', 'B', 'C'].forEach(function (phase) { coilsByPhase[phase].forEach(function (c) { allCoils.push({ phase: phase, c: c }); }); });
+  allCoils.sort(function (a, b) { return b.c.lane - a.c.lane; });
+  allCoils.forEach(function (item) {
+    const phase = item.phase, c = item.c;
+    const busR = busRBase + c.lane * laneStep;
     const dimmed = phaseFilter !== 'all' && phaseFilter !== phase;
     const opacity = dimmed ? 0.15 : 0.8;
-    coils.forEach(function (c, i) {
-      const busR = ph.base + ph.laneOf[i] * laneStep;
-      const d = buildChainPath(cx, cy, rYoke + 6, function () { return busR; }, c.wp, c.angleAt);
-      svg.appendChild(svgEl('path', {
-        d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
-      }));
-    });
+    const d = buildChainPath(cx, cy, rYoke + 6, function () { return busR; }, c.wp, c.angleAt);
+    svg.appendChild(svgEl('path', {
+      d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
+    }));
   });
   renderWireOverlapInfo(overlap);
 
@@ -702,7 +695,7 @@ function renderRadialDiagram(result) {
     const a0 = -90 + k * step + gapDeg / 2;
     const a1 = -90 + (k + 1) * step - gapDeg / 2;
     const aMid = (a0 + a1) / 2;
-    const pLabel = polarPt(cx, cy, layout.labelR, aMid);
+    const pLabel = polarPt(cx, cy, labelR, aMid);
     svg.appendChild(textEl(pLabel.x, pLabel.y + 4, String(k + 1), { fill: 'var(--text3)', 'font-size': 11, 'font-weight': 600 }));
   });
 }
