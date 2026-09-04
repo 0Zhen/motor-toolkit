@@ -14,8 +14,8 @@ var MT_I18N = {
   coilSpan:            { en: 'Coil span [slots]',        zh: '線圈節距 [槽]' },
   phaseFixedHint:      { en: 'Three-phase (m = 3) only.', zh: '固定三相 (m = 3)。' },
   legendTitle:         { en: 'Legend',                   zh: '圖例' },
-  legendHint:          { en: 'Block/tip color = phase. ⊙/⊗ (with "+"/"−") = current direction (EMF phasor sign). Double-layer windings split each slot left/right into its two coil sides — left = bottom (return, facing the lower-numbered neighbor), right = top (start, facing the higher-numbered neighbor) — even when both happen to share the same phase and direction, so every coil side stays its own distinct block. Single-layer windings draw one tooth outline per slot with just the tip colored (concentrated-winding style); the ⊙/⊗ symbol and its sign sit above the tooth, the phase letter below. The cross-section\'s inner ring shows the rotor\'s alternating N/S poles (illustrative only). Every phase\'s coils are wired into one continuous series chain (a single parallel path — no wave-winding reordering or multi-path splitting yet) and drawn as one unbroken line with direction arrows (always pointing from the ⊙/+ end to the ⊗/− end), in both the linear and cross-section views. When a phase\'s connections overlap — in angle (cross-section) or horizontal position (linear) — they\'re automatically offset into separate lanes instead of stacking, so every segment stays visible; the cross-section\'s "max overlapping" readout shows how many lanes each phase needed.',
-                          zh: '色塊／齒尖顏色代表相別。⊙/⊗（配「+」/「−」）代表電流方向（EMF 相量正負）。雙層繞組把每槽左右分成兩個線圈邊——左＝bottom（回程，面向較小槽號那側）、右＝top（去程，面向較大槽號那側）——即使剛好同相同方向也一樣分開顯示，每個線圈邊都對應獨立一塊色塊。單層繞組每槽畫一個中性色齒形輪廓、只有齒尖著色（集中繞組風格），⊙/⊗ 符號與正負號在齒上方、相別字母在齒下方。馬達剖面圖內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。每一相的所有線圈都串成一條連續接線（目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流），展開圖與剖面圖都畫成一筆到底的線並附方向箭頭（一律從 ⊙/+ 端指向 ⊗/− 端）。同一相的接線如果重疊——剖面圖是角度重疊、展開圖是水平位置重疊——會自動錯開成不同車道，不會疊在一起看不出來；剖面圖下方「最大重疊」數字就是該相最多同時用到幾條車道。' },
+  legendHint:          { en: 'Tip color (linear view) / block color (cross-section view) = phase. ⊙/⊗ (with "+"/"−") = current direction (EMF phasor sign). Cross-section double-layer windings split each slot left/right into its two coil sides — left = bottom (return, facing the lower-numbered neighbor), right = top (start, facing the higher-numbered neighbor) — even when both happen to share the same phase and direction, so every coil side stays its own distinct block. Linear-view teeth are drawn with a neutral outline and just the tip colored, one tooth per slot (single layer, concentrated-winding style) or split left/right into two coil sides (double layer) — the ⊙/⊗ symbol and its sign sit above the tooth, the phase letter below. The cross-section\'s inner ring shows the rotor\'s alternating N/S poles (illustrative only). Every phase\'s coils are wired into one continuous series chain (a single parallel path — no wave-winding reordering or multi-path splitting yet) and drawn as one unbroken line with direction arrows (always pointing from the ⊙/+ end to the ⊗/− end), in both the linear and cross-section views. When a phase\'s connections overlap — in angle (cross-section) or horizontal position (linear) — they\'re automatically offset into separate lanes instead of stacking, so every segment stays visible; the cross-section\'s "max overlapping" readout shows how many lanes each phase needed. A connection that only looks long because the slot-1/slot-Q seam was cut open to unroll the linear view is left undrawn there (it\'s short on the real circle — see the cross-section for it).',
+                          zh: '展開圖用齒尖顏色、剖面圖用色塊代表相別。⊙/⊗（配「+」/「−」）代表電流方向（EMF 相量正負）。剖面圖的雙層繞組把每槽左右分成兩個線圈邊——左＝bottom（回程，面向較小槽號那側）、右＝top（去程，面向較大槽號那側）——即使剛好同相同方向也一樣分開顯示，每個線圈邊都對應獨立一塊色塊。展開圖的齒形一律中性色輪廓、只有齒尖著色，單層每槽一顆齒（集中繞組風格），雙層每槽左右分成兩個線圈邊，⊙/⊗ 符號與正負號在齒上方、相別字母在齒下方。馬達剖面圖內圈環為轉子 N/S 極示意（僅示意，無實際磁極角位置意義）。每一相的所有線圈都串成一條連續接線（目前只支援單一 parallel path，未處理 wave 繞法重排或多路分流），展開圖與剖面圖都畫成一筆到底的線並附方向箭頭（一律從 ⊙/+ 端指向 ⊗/− 端）。同一相的接線如果重疊——剖面圖是角度重疊、展開圖是水平位置重疊——會自動錯開成不同車道，不會疊在一起看不出來；剖面圖下方「最大重疊」數字就是該相最多同時用到幾條車道。展開圖是把圓周從槽1／槽Q接縫剪開拉直畫的，某段接線如果只是因為這樣被拉成看起來很長（實際在圓周上很短），展開圖上會跳過不畫——要看這段接線請看剖面圖。' },
   keyNumbersTitle:     { en: 'Key Numbers',              zh: '關鍵數值' },
   diagramTitle:        { en: 'Winding Layout',           zh: '繞組展開圖' },
   viewLinear:          { en: 'Linear',                    zh: '展開圖' },
@@ -160,24 +160,6 @@ function toothPath(x, top, bottom, w) {
     ' Z';
 }
 
-/** 齒形路徑的左／右半邊（雙層槽內兩個線圈邊左右並排用），沿中線對切 */
-function toothHalfPath(x, top, bottom, w, side) {
-  const h = bottom - top;
-  const midX = x + w / 2;
-  if (side === 'left') {
-    return 'M ' + x + ' ' + top +
-      ' L ' + midX + ' ' + top +
-      ' L ' + midX + ' ' + bottom +
-      ' L ' + (x + w * 0.22) + ' ' + (top + h * 0.55) +
-      ' Z';
-  }
-  return 'M ' + midX + ' ' + top +
-    ' L ' + (x + w) + ' ' + top +
-    ' L ' + (x + w * 0.78) + ' ' + (top + h * 0.55) +
-    ' L ' + midX + ' ' + bottom +
-    ' Z';
-}
-
 function renderLinearDiagram(result) {
   const svg = document.getElementById('wdSvgLinear');
   svg.innerHTML = '';
@@ -194,150 +176,107 @@ function renderLinearDiagram(result) {
     return isTop ? x + halfW * 1.5 : x + halfW * 0.5;
   };
 
-  // 單層：整條相線串成一條連續接線（比照剖面圖 buildChainPath 的做法），畫在
-  // 齒排上方；三相合併統一分配車道（角度換成 x 區間），車道數決定上緣要留多高
-  // ——跟參考圖一樣，車道多會自然錯開成階梯狀，不會疊在同一高度分不出來。
+  // 整條相線串成一條連續接線（單層／雙層現在共用同一套：buildPhaseChains／
+  // buildSingleLayerChains 資料形狀相同，都是 {k,top} waypoint 序列），畫在
+  // 齒排上方；三相合併統一分配車道（x 區間），車道數決定上緣要留多高——跟
+  // 剖面圖的匯流車道同一個精神，車道多會自然錯開成階梯狀，不會疊在一起。
   // 有個跟剖面圖不一樣的地方：圓周上「短邊」是繞過槽1／槽Q接縫的那種跳線
   // （例如槽12接槽1，圓周上緊鄰），在剖面圖是真圓周所以自然短；但在這張
   // 展開圖是把圓周剪開拉直的長條，槽1在最左、槽Q在最右，這種接線的 x 距離
   // 反而是全圖最長，會被誤判成需要獨立車道的「長接線」，把其他本來很短的
   // 接線也一起往上擠、甚至讓那條線橫掃過整排齒——這種接線在展開圖上本來就
-  // 畫不出合理的直線（跟舊版 buildSingleLayerPairs 的 wraps 特例是同一件事），
-  // 所以跳過不畫（isWrapHop），車道分配也把它排除，不然車道數會被它拉爆。
-  let chainByPhase = null, laneCount = 0;
+  // 畫不出合理的直線，所以跳過不畫（isWrapHop），車道分配也把它排除。
+  const chains = isDouble ? buildPhaseChains(result) : buildSingleLayerChains(result);
+  const chainByPhase = {};
   const laneStepPx = 12, symbolGap = 15, busGapTop = 8, stubGap = 7;
-  if (!isDouble) {
-    const chains = buildSingleLayerChains(result);
-    chainByPhase = {};
-    const allIntervals = [], meta = [];
-    ['A', 'B', 'C'].forEach(function (phase) {
-      const wp = phaseWaypoints(chains[phase]);
-      const xAt = function (idx) { return slotX(wp[idx].k); };
-      const signAt = function (idx) { return result.slots[wp[idx].k].top.sign; };
-      const isWrapHop = function (idx) {
-        const d = Math.abs(wp[idx].k - wp[idx + 1].k);
-        return Q - d < d; // 繞過接縫那邊比直接距離短，代表這段在圓周上其實是鄰近的
-      };
-      chainByPhase[phase] = { wp: wp, xAt: xAt, signAt: signAt, isWrapHop: isWrapHop, laneOfHop: {} };
-      for (let i = 0; i < wp.length - 1; i++) {
-        if (isWrapHop(i)) continue;
-        allIntervals.push([Math.min(xAt(i), xAt(i + 1)), Math.max(xAt(i), xAt(i + 1))]);
-        meta.push({ phase: phase, hopIdx: i });
-      }
-    });
-    const lanes = assignLanes(allIntervals);
-    laneCount = lanes.laneCount;
-    meta.forEach(function (m, idx) { chainByPhase[m.phase].laneOfHop[m.hopIdx] = lanes.laneOf[idx]; });
-  }
+  const allIntervals = [], meta = [];
+  ['A', 'B', 'C'].forEach(function (phase) {
+    const wp = phaseWaypoints(chains[phase]);
+    const xAt = function (idx) { return isDouble ? sideX(wp[idx].k, wp[idx].top) : slotX(wp[idx].k); };
+    const signAt = function (idx) {
+      return (isDouble && !wp[idx].top) ? result.slots[wp[idx].k].bottom.sign : result.slots[wp[idx].k].top.sign;
+    };
+    const isWrapHop = function (idx) {
+      const d = Math.abs(wp[idx].k - wp[idx + 1].k);
+      return Q - d < d; // 繞過接縫那邊比直接距離短，代表這段在圓周上其實是鄰近的
+    };
+    chainByPhase[phase] = { wp: wp, xAt: xAt, signAt: signAt, isWrapHop: isWrapHop, laneOfHop: {} };
+    for (let i = 0; i < wp.length - 1; i++) {
+      if (isWrapHop(i)) continue;
+      allIntervals.push([Math.min(xAt(i), xAt(i + 1)), Math.max(xAt(i), xAt(i + 1))]);
+      meta.push({ phase: phase, hopIdx: i });
+    }
+  });
+  const lanes = assignLanes(allIntervals);
+  const laneCount = lanes.laneCount;
+  meta.forEach(function (m, idx) { chainByPhase[m.phase].laneOfHop[m.hopIdx] = lanes.laneOf[idx]; });
 
-  const frontAreaH = isDouble ? 120 : (labelH + busGapTop + Math.max(1, laneCount) * laneStepPx + symbolGap + stubGap);
-  const rearAreaH = isDouble ? 120 : 0;
+  const frontAreaH = labelH + busGapTop + Math.max(1, laneCount) * laneStepPx + symbolGap + stubGap;
   const marginTop = frontAreaH + 8;
 
   const width = Q * pitch + gapW;
   const bodyTop = marginTop;
   const bodyBottom = bodyTop + blockH;
   const labelY = bodyBottom + labelGap + labelH;
-  const rearTop = labelY + 8;
-  const height = isDouble ? rearTop + rearAreaH + 6 : labelY + 6;
-  const symbolY = bodyTop - stubGap - 5; // 單層專用：符號中心高度
-  const busBaseY = symbolY - symbolGap;  // 單層專用：車道 0 的高度
+  const height = labelY + 6;
+  const symbolY = bodyTop - stubGap - 5;
+  const busBaseY = symbolY - symbolGap;
 
   svg.setAttribute('width', width);
   svg.setAttribute('height', height);
   svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
 
+  /** 一個線圈邊的符號＋標籤：⊙/⊗ 疊正負號在上、相別字母（不含正負號）在下，中間貼齒尖著色 */
+  function drawSideMarks(symX, tipX0, tipX1, tipApexX, phase, sign, labelBottomX) {
+    const color = PHASE_COLOR[phase];
+    svg.appendChild(svgEl('path', {
+      d: 'M ' + tipX0 + ' ' + (bodyTop + blockH * 0.55) + ' L ' + tipApexX + ' ' + bodyBottom +
+         ' L ' + tipX1 + ' ' + (bodyTop + blockH * 0.55) + ' Z',
+      fill: color, opacity: 0.85,
+    }));
+    svg.appendChild(textEl(labelBottomX, labelY, phase, { fill: color, 'font-weight': 700, 'font-size': isDouble ? 10 : 12 }));
+    svg.appendChild(svgEl('line', { x1: symX, y1: symbolY + 5, x2: symX, y2: bodyTop, stroke: 'var(--text3)', 'stroke-width': 1 }));
+    currentDirSymbolOutlined(svg, symX, symbolY, 5, sign, color);
+    svg.appendChild(textEl(symX, symbolY - 10, (sign > 0 ? '+' : '−') + phase, { fill: color, 'font-weight': 700, 'font-size': isDouble ? 7.5 : 9 }));
+  }
+
   result.slots.forEach(function (s, k) {
     const x = gapW / 2 + k * pitch;
     const cx = x + slotW / 2;
 
+    // 齒形輪廓一律中性色，只有齒尖著色、槽號放進齒形內部——單層一顆齒一個
+    // 線圈邊、雙層一顆齒兩個線圈邊（左＝bottom 面向較小槽號、右＝top 面向
+    // 較大槽號，這樣同一枚線圈的兩端落在相鄰槽面對面那側，接線走最短路徑）
+    svg.appendChild(svgEl('path', {
+      d: toothPath(x, bodyTop, bodyBottom, slotW), fill: 'none', stroke: 'var(--text3)', 'stroke-width': 1.2,
+    }));
+    svg.appendChild(textEl(cx, bodyTop + blockH * 0.4, String(k + 1), { fill: 'var(--text3)', 'font-size': 8 }));
+
     if (isDouble) {
-      // 雙層的兩個線圈邊左右並排在同一個齒形輪廓裡：左＝bottom（回程，面向
-      // 較小槽號、也就是它的 go 搭檔所在方向）、右＝top（去程，面向較大槽號、
-      // 也就是它的 ret 搭檔所在方向）——這樣同一枚線圈的兩端會分別落在相鄰
-      // 兩槽「面對面」的那一側，接線才會走最短路徑，不會繞去槽的外側。
-      const halfW = slotW / 2;
-      svg.appendChild(svgEl('path', {
-        d: toothHalfPath(x, bodyTop, bodyBottom, slotW, 'left'),
-        fill: PHASE_COLOR[s.bottom.phase], 'fill-opacity': 0.75,
-        stroke: PHASE_COLOR[s.bottom.phase], 'stroke-width': 1.2,
-      }));
-      svg.appendChild(textEl(x + halfW * 0.55, bodyTop + blockH * 0.3, s.bottom.phase + (s.bottom.sign > 0 ? '+' : '−'),
-        { fill: '#fff', 'font-weight': 700, 'font-size': 7.5 }));
-
-      svg.appendChild(svgEl('path', {
-        d: toothHalfPath(x, bodyTop, bodyBottom, slotW, 'right'),
-        fill: PHASE_COLOR[s.top.phase], 'fill-opacity': 0.45,
-        stroke: PHASE_COLOR[s.top.phase], 'stroke-width': 1.2,
-      }));
-      svg.appendChild(textEl(x + halfW * 1.45, bodyTop + blockH * 0.3, s.top.phase + (s.top.sign > 0 ? '+' : '−'),
-        { fill: '#fff', 'font-weight': 700, 'font-size': 7.5, stroke: PHASE_COLOR[s.top.phase], 'stroke-width': 2, 'paint-order': 'stroke' }));
-
-      const lineX = x - gapW / 2;
+      const midX = x + slotW / 2;
+      drawSideMarks(sideX(k, false), x + slotW * 0.22, midX, midX, s.bottom.phase, s.bottom.sign, x + slotW * 0.28);
+      drawSideMarks(sideX(k, true), midX, x + slotW * 0.78, midX, s.top.phase, s.top.sign, x + slotW * 0.72);
       if (k > 0) {
         svg.appendChild(svgEl('line', {
-          x1: lineX, y1: bodyTop - 2, x2: lineX, y2: bodyBottom + 2,
+          x1: x - gapW / 2, y1: bodyTop - 2, x2: x - gapW / 2, y2: bodyBottom + 2,
           stroke: 'var(--border)', 'stroke-width': 1,
         }));
       }
-      svg.appendChild(textEl(cx, labelY, String(k + 1), { fill: 'var(--text3)', 'font-size': 8 }));
     } else {
-      // 齒形輪廓改成中性色（不填相色），只有齒尖著色；符號＋正負號標籤移到
-      // 齒排上方的接線區，跟參考圖（bavaria/CAD 風格）一致；槽號移進齒形內部、
-      // 底下另外加相別色標（不含正負號，跟參考圖底部的 U/W/V 對應）
-      const tip = PHASE_COLOR[s.top.phase];
-      const h = blockH;
-      svg.appendChild(svgEl('path', {
-        d: toothPath(x, bodyTop, bodyBottom, slotW), fill: 'none', stroke: 'var(--text3)', 'stroke-width': 1.2,
-      }));
-      svg.appendChild(svgEl('path', {
-        d: 'M ' + (x + slotW * 0.22) + ' ' + (bodyTop + h * 0.55) +
-           ' L ' + (x + slotW / 2) + ' ' + bodyBottom +
-           ' L ' + (x + slotW * 0.78) + ' ' + (bodyTop + h * 0.55) + ' Z',
-        fill: tip, opacity: 0.85,
-      }));
-      svg.appendChild(textEl(cx, bodyTop + blockH * 0.4, String(k + 1), { fill: 'var(--text3)', 'font-size': 8 }));
-      svg.appendChild(textEl(cx, labelY, s.top.phase, { fill: tip, 'font-weight': 700, 'font-size': 12 }));
-
-      svg.appendChild(svgEl('line', { x1: cx, y1: symbolY + 5, x2: cx, y2: bodyTop, stroke: 'var(--text3)', 'stroke-width': 1 }));
-      currentDirSymbolOutlined(svg, cx, symbolY, 5, s.top.sign, tip);
-      svg.appendChild(textEl(cx, symbolY - 10, (s.top.sign > 0 ? '+' : '−') + s.top.phase, { fill: tip, 'font-weight': 700, 'font-size': 9 }));
+      drawSideMarks(cx, x + slotW * 0.22, x + slotW * 0.78, cx, s.top.phase, s.top.sign, cx);
     }
   });
 
-  if (isDouble) {
-    const chains = buildPhaseChains(result);
-    ['A', 'B', 'C'].forEach(function (phase) {
-      if (phaseFilter !== 'all' && phaseFilter !== phase) return;
-      const wp = phaseWaypoints(chains[phase]);
-      const dimmed = phaseFilter !== 'all'; // 單相模式下其餘相已被濾掉，此處不用再淡化
-      const opacity = dimmed ? 0.85 : 0.5;
-      for (let i = 0; i < wp.length - 1; i++) {
-        const front = i % 2 === 0; // 交替 front（線圈自己的去回程，上方）／rear（線圈之間的跳線，下方）
-        const x1 = sideX(wp[i].k, wp[i].top), x2 = sideX(wp[i + 1].k, wp[i + 1].top);
-        const span = Math.abs(wp[i + 1].k - wp[i].k); // 槽數差（不是像素差），同槽跳線 span=0 自然只給最小弧高
-        const h = Math.min(front ? frontAreaH - 10 : rearAreaH - 10, 16 + span * 6);
-        const path = front
-          ? 'M ' + x1 + ' ' + bodyTop + ' C ' + x1 + ' ' + (bodyTop - h) + ', ' + x2 + ' ' + (bodyTop - h) + ', ' + x2 + ' ' + bodyTop
-          : 'M ' + x1 + ' ' + rearTop + ' C ' + x1 + ' ' + (rearTop + h) + ', ' + x2 + ' ' + (rearTop + h) + ', ' + x2 + ' ' + rearTop;
-        svg.appendChild(svgEl('path', {
-          d: path, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity,
-        }));
-      }
-    });
-  } else {
-    // 單層：整條相線串成一條連續接線，畫在齒排上方；車道分配已在前面算好
-    ['A', 'B', 'C'].forEach(function (phase) {
-      if (phaseFilter !== 'all' && phaseFilter !== phase) return;
-      const cd = chainByPhase[phase];
-      const dimmed = phaseFilter !== 'all';
-      const opacity = dimmed ? 0.85 : 0.5;
-      const laneYAt = function (i) { return busBaseY - (cd.laneOfHop[i] || 0) * laneStepPx; };
-      const d = buildLinearChainPath(symbolY, laneYAt, cd.wp, cd.xAt, cd.isWrapHop);
-      svg.appendChild(svgEl('path', { d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity }));
-      drawLinearChainArrows(svg, symbolY, laneYAt, cd.wp, cd.xAt, cd.signAt, PHASE_COLOR[phase], opacity, 6, cd.isWrapHop);
-    });
-  }
+  ['A', 'B', 'C'].forEach(function (phase) {
+    if (phaseFilter !== 'all' && phaseFilter !== phase) return;
+    const cd = chainByPhase[phase];
+    const dimmed = phaseFilter !== 'all'; // 單相模式下其餘相已被濾掉，此處不用再淡化
+    const opacity = dimmed ? 0.85 : 0.5;
+    const laneYAt = function (i) { return busBaseY - (cd.laneOfHop[i] || 0) * laneStepPx; };
+    const d = buildLinearChainPath(symbolY, laneYAt, cd.wp, cd.xAt, cd.isWrapHop);
+    svg.appendChild(svgEl('path', { d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity }));
+    drawLinearChainArrows(svg, symbolY, laneYAt, cd.wp, cd.xAt, cd.signAt, PHASE_COLOR[phase], opacity, 6, cd.isWrapHop);
+  });
 }
 
 
