@@ -179,12 +179,15 @@ function renderLinearDiagram(result) {
   // 只畫「同一枚線圈自己」的去回程接線（entry↔exit），線圈跟線圈之間的跳線
   // 不畫——單層／雙層都用同一套（buildPhaseChains／buildSingleLayerChains
   // 回傳的線圈陣列，不用 phaseWaypoints 展開成整條鏈，也不用管串接順序，
-  // 每顆線圈各自獨立畫一段）。三相合併統一分配車道（x 區間重疊才需要分開），
-  // 車道數決定上緣要留多高。
+  // 每顆線圈各自獨立畫一段）。車道分配比照剖面圖：三相「各自」分配車道、
+  // 由下而上疊成三段（A 最靠近齒排、C 最遠），不是三相合併共用一個車道池
+  // ——三相合併雖然車道數較省，但不同相的線會夾在一起造成不必要的交叉，
+  // 跟剖面圖 A/B/C 各佔一段匯流環的做法不一致。同一相自己的線圈如果剛好
+  // 交錯（角度區間互相穿插、不是誰包住誰），車道再多也無法完全避免視覺
+  // 上的交叉——這是這批線圈本身的幾何關係決定的，不是車道分配的問題。
   const chainsRaw = isDouble ? buildPhaseChains(result) : buildSingleLayerChains(result);
-  const laneStepPx = 12;
-  const coilsByPhase = {};
-  const allIntervals = [], meta = [];
+  const laneStepPx = 12, phaseGapPx = 8;
+  const coilsByPhase = {}, intervalsByPhase = {};
   ['A', 'B', 'C'].forEach(function (phase) {
     const coils = chainsRaw[phase].map(function (c) {
       const wp = [{ k: c.goK, top: c.goTop }, { k: c.retK, top: c.retTop }];
@@ -198,24 +201,29 @@ function renderLinearDiagram(result) {
       return { wp: wp, xAt: xAt, isWrap: isWrap, lane: 0 };
     });
     coilsByPhase[phase] = coils;
+    const ivs = [], idxMap = [];
     coils.forEach(function (c, ci) {
       if (c.isWrap) return;
-      const x1 = c.xAt(0), x2 = c.xAt(1);
-      allIntervals.push([Math.min(x1, x2), Math.max(x1, x2)]);
-      meta.push({ phase: phase, ci: ci });
+      ivs.push([Math.min(c.xAt(0), c.xAt(1)), Math.max(c.xAt(0), c.xAt(1))]);
+      idxMap.push(ci);
+    });
+    intervalsByPhase[phase] = ivs;
+    coilsByPhase[phase].idxMap = idxMap;
+  });
+  const bandLayout = layoutPhaseBuses(intervalsByPhase, 0, laneStepPx, phaseGapPx);
+  ['A', 'B', 'C'].forEach(function (phase) {
+    coilsByPhase[phase].idxMap.forEach(function (ci, i) {
+      coilsByPhase[phase][ci].lane = bandLayout[phase].laneOf[i];
+      coilsByPhase[phase][ci].bandBase = bandLayout[phase].base;
     });
   });
-  const lanes = assignLanes(allIntervals);
-  const laneCount = lanes.laneCount;
-  meta.forEach(function (m, idx) { coilsByPhase[m.phase][m.ci].lane = lanes.laneOf[idx]; });
 
   // 由齒排上緣（bodyTop）往上，依序疊出：出線 stub → ⊙/⊗ 符號 → 到符號的間距
   // → 正負號標籤（含字元本身的視覺高度，不能只留基線到符號的距離，字元往上
   // 還要再佔一截，之前漏算這塊才會被最底下那條車道的線切到）→ 到車道0的
-  // 間距 → 車道逐層往上疊 → 最上面留一點緩衝，不然頂端箭頭三角形會被裁到。
-  const stubGap = 7, symbolR = 5, symbolToLabelGap = 8, labelTextH = 11, labelToBusGap = 8, busTopBuffer = 6;
-  const aboveBody = stubGap + symbolR * 2 + symbolToLabelGap + labelTextH + labelToBusGap +
-    Math.max(0, laneCount - 1) * laneStepPx + busTopBuffer;
+  // 間距 → 三相車道逐層往上疊（bandLayout.labelR 已含車道、相間留白、緩衝）。
+  const stubGap = 7, symbolR = 5, symbolToLabelGap = 8, labelTextH = 11, labelToBusGap = 8;
+  const aboveBody = stubGap + symbolR * 2 + symbolToLabelGap + labelTextH + labelToBusGap + bandLayout.labelR;
   const marginTop = aboveBody + 8;
 
   const width = Q * pitch + gapW;
@@ -225,7 +233,7 @@ function renderLinearDiagram(result) {
   const height = labelY + 6;
   const symbolY = bodyTop - stubGap - symbolR;
   const signLabelY = symbolY - symbolR - symbolToLabelGap; // 正負號標籤基線
-  const busBaseY = signLabelY - labelTextH - labelToBusGap; // 車道 0（最靠近齒排的車道）
+  const busBaseY = signLabelY - labelTextH - labelToBusGap; // 車道 0（A 相最靠近齒排的車道）
 
   svg.setAttribute('width', width);
   svg.setAttribute('height', height);
@@ -277,8 +285,8 @@ function renderLinearDiagram(result) {
     const dimmed = phaseFilter !== 'all'; // 單相模式下其餘相已被濾掉，此處不用再淡化
     const opacity = dimmed ? 0.85 : 0.5;
     coilsByPhase[phase].forEach(function (c) {
-      if (c.isWrap) { drawWrapEdgeStubs(svg, width, busBaseY, c.wp, c.xAt, PHASE_COLOR[phase], opacity); return; }
-      const laneYAt = function () { return busBaseY - c.lane * laneStepPx; };
+      if (c.isWrap) { drawWrapEdgeStubs(svg, width, symbolY, busBaseY, c.wp, c.xAt, PHASE_COLOR[phase], opacity); return; }
+      const laneYAt = function () { return busBaseY - (c.bandBase + c.lane * laneStepPx); };
       const d = buildLinearChainPath(symbolY, laneYAt, c.wp, c.xAt, null);
       svg.appendChild(svgEl('path', { d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity }));
     });
@@ -388,14 +396,16 @@ function buildLinearChainPath(symbolY, laneYAt, wp, xAt, isWrapHop) {
  * 了一段。改成兩端各自往最近的畫布邊緣拉一小段虛線，暗示「這裡接到圖外
  * （其實是圓周上緊鄰的另一端）」，實際完整走向要看剖面圖（真圓周，不會斷）。
  */
-function drawWrapEdgeStubs(svg, width, busBaseY, wp, xAt, color, opacity) {
+function drawWrapEdgeStubs(svg, width, symbolY, busBaseY, wp, xAt, color, opacity) {
   [0, 1].forEach(function (idx) {
     const x = xAt(idx);
     const toLeft = x < width / 2;
     const edgeX = toLeft ? 0 : width;
-    svg.appendChild(svgEl('line', {
-      x1: x, y1: busBaseY, x2: edgeX, y2: busBaseY,
-      stroke: color, 'stroke-width': 1.3, opacity: opacity * 0.8, 'stroke-dasharray': '3,3',
+    // 先從符號往上接到 busBaseY 這個高度（虛線一律走最靠近齒排的車道），
+    // 再往邊緣拉平——不然虛線只在半空中，跟槽上的符號中間會留一截空隙
+    svg.appendChild(svgEl('path', {
+      d: 'M ' + x + ' ' + symbolY + ' L ' + x + ' ' + busBaseY + ' L ' + edgeX + ' ' + busBaseY,
+      fill: 'none', stroke: color, 'stroke-width': 1.3, opacity: opacity * 0.8, 'stroke-dasharray': '3,3',
     }));
   });
 }
