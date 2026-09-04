@@ -669,18 +669,20 @@ function renderRadialDiagram(result) {
     });
   }
 
-  // 所有色塊畫完後，補一層背景色的細縫，把每一槽（雙層還包含同一槽內左右
-  // 兩半的分界）跟鄰居清楚隔開——鐵芯灰跟色塊的對比不夠明顯，兩側剛好同
-  // 相同色時，那條窄縫幾乎看不出來，會讓使用者誤以為是同一槽。改成疊一層
-  // 頁面背景色（跟色塊、跟鐵芯灰都有反差），不管兩側顏色是否相同都看得出來。
+  // 所有色塊畫完後，補一層縫，把每一槽（雙層還包含同一槽內左右兩半的分界）
+  // 跟鄰居清楚隔開——鐵芯灰跟色塊的對比不夠明顯，兩側剛好同相同色時，那條
+  // 窄縫幾乎看不出來，會讓使用者誤以為是同一槽。原本改成頁面背景色，但背景
+  // 色跟頁面本身融為一體，看起來像「齒不見了、變成空隙」；改用 --border
+  // （介於背景與鐵芯灰之間、跟三個相色都有反差的淺灰），還是讀得出「這裡有
+  // 齒」，不會被誤認成鏤空。
   result.slots.forEach(function (s, k) {
     const a1 = -90 + (k + 1) * step - gapDeg / 2;
     const nextA0 = -90 + (k + 1) * step + gapDeg / 2;
-    svg.appendChild(svgEl('path', { d: annularSectorPath(cx, cy, rInner, rOuter, a1, nextA0), fill: 'var(--bg)' }));
+    svg.appendChild(svgEl('path', { d: annularSectorPath(cx, cy, rInner, rOuter, a1, nextA0), fill: 'var(--border)' }));
     if (isDouble) {
       const a0 = -90 + k * step + gapDeg / 2, aMid = (a0 + a1) / 2;
       svg.appendChild(svgEl('path', {
-        d: annularSectorPath(cx, cy, rInner, rOuter, aMid - halfGapDeg / 2, aMid + halfGapDeg / 2), fill: 'var(--bg)',
+        d: annularSectorPath(cx, cy, rInner, rOuter, aMid - halfGapDeg / 2, aMid + halfGapDeg / 2), fill: 'var(--border)',
       }));
     }
   });
