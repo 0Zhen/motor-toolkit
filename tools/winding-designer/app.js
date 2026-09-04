@@ -283,6 +283,7 @@ function renderLinearDiagram(result) {
     const d = buildLinearChainPath(symbolY, laneYAt, cd.wp, cd.xAt, cd.isWrapHop);
     svg.appendChild(svgEl('path', { d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity }));
     drawLinearChainArrows(svg, symbolY, laneYAt, cd.wp, cd.xAt, cd.signAt, PHASE_COLOR[phase], opacity, 6, cd.isWrapHop);
+    drawWrapEdgeStubs(svg, width, busBaseY, cd.wp, cd.xAt, cd.isWrapHop, PHASE_COLOR[phase], opacity);
   });
 }
 
@@ -441,6 +442,29 @@ function drawLinearChainArrows(svg, symbolY, laneYAt, wp, xAt, signAt, color, op
     const forward = signAt(i) > 0; // wp[i] 是 + 端就指向 i→i+1；是 − 端就反過來
     const pointRight = forward ? (x2 >= x1) : (x2 < x1);
     linearArrowMarker(svg, (x1 + x2) / 2, y, pointRight, color, size, opacity);
+  }
+}
+
+/**
+ * 跨槽1／槽Q接縫的那段接線（isWrapHop）沒有畫成一條線橫跨整張圖，但兩端不能
+ * 就這樣懸空——不然使用者會以為那顆線圈少接了一段。改成兩端各自往最近的
+ * 畫布邊緣拉一小段虛線＋箭頭，暗示「這裡接到圖外（其實是圓周上緊鄰的另一
+ * 端）」，實際完整走向要看剖面圖（真圓周，不會斷）。
+ */
+function drawWrapEdgeStubs(svg, width, busBaseY, wp, xAt, isWrapHop, color, opacity) {
+  if (!isWrapHop) return;
+  for (let i = 0; i < wp.length - 1; i++) {
+    if (!isWrapHop(i)) continue;
+    [i, i + 1].forEach(function (idx) {
+      const x = xAt(idx);
+      const toLeft = x < width / 2;
+      const edgeX = toLeft ? 0 : width;
+      svg.appendChild(svgEl('line', {
+        x1: x, y1: busBaseY, x2: edgeX, y2: busBaseY,
+        stroke: color, 'stroke-width': 1.3, opacity: opacity * 0.8, 'stroke-dasharray': '3,3',
+      }));
+      linearArrowMarker(svg, (x + edgeX) / 2, busBaseY, !toLeft, color, 5.5, opacity * 0.8);
+    });
   }
 }
 
