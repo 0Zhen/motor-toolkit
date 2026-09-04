@@ -169,6 +169,7 @@ function circularSlotDist(Q, a, b) {
  * 不合法的跳線，例如某槽兩條都是同號時無法直接同槽相接）。
  */
 function chainByNearestEntry(Q, coils) {
+  if (!coils.length) return []; // 某相在這個槽極組合下一顆線圈也沒配到（見 buildSingleLayerChains 的說明），避免 remaining.shift() 出來的 undefined 炸掉下面
   const remaining = coils.slice();
   const ordered = [remaining.shift()];
   while (remaining.length) {
@@ -222,6 +223,72 @@ function phaseWaypoints(coils) {
     wp.push({ k: c.retK, top: c.retTop });
   });
   return wp;
+}
+
+/** 把連續槽依「同相」合併成一組（僅比對相鄰，不處理跨越槽1的回捲合併），單層用 */
+function groupConsecutiveSlots(Q, phaseAt) {
+  const groups = [];
+  let i = 0;
+  while (i < Q) {
+    const ph = phaseAt(i);
+    let j = i;
+    while (j + 1 < Q && phaseAt(j + 1) === ph) j++;
+    groups.push({ startK: i, endK: j, phase: ph });
+    i = j + 1;
+  }
+  return groups;
+}
+
+/**
+ * 單層（集中繞組）齒配對：把連續同相的齒兩兩配成一個線圈單元（相鄰齒一正
+ * 一負，物理上是同一枚集中繞組線圈的兩端）。若頭尾兩段剛好同相且都落單一顆，
+ * 視為跨越槽1／槽Q接縫的一對（`wraps:true`）——沿圓周本來就相鄰，只是陣列
+ * 上斷成兩截；這一對是真實存在的線圈，不能丟掉（否則 sidesPerPhase 會少算），
+ * `buildSingleLayerChains()` 串鏈時一併當作正常線圈處理即可（圓周拓樸下沒有
+ * 「跨接縫」這種特例，`chainByNearestEntry` 的環狀距離本來就吃得下）。
+ */
+function buildSingleLayerPairs(result) {
+  const Q = result.Q;
+  const runs = groupConsecutiveSlots(Q, function (k) { return result.slots[k].top.phase; });
+  const pairs = [];
+  runs.forEach(function (run) {
+    for (let k = run.startK; k + 1 <= run.endK; k += 2) {
+      pairs.push({ aK: k, bK: k + 1, phase: run.phase, wraps: false });
+    }
+  });
+  if (runs.length > 1) {
+    const first = runs[0], last = runs[runs.length - 1];
+    const firstLen = first.endK - first.startK + 1;
+    const lastLen = last.endK - last.startK + 1;
+    if (first.phase === last.phase && firstLen % 2 === 1 && lastLen % 2 === 1) {
+      pairs.push({ aK: last.endK, bK: first.startK, phase: first.phase, wraps: true });
+    }
+  }
+  return pairs;
+}
+
+/**
+ * 依相別把單層繞組的所有線圈（`buildSingleLayerPairs` 配對出的齒對）串成一條
+ * 序列，串接規則與 `buildPhaseChains`（雙層）完全一樣：線圈固定「−進+出」、
+ * 跳線只能「出接進」、優先接最近槽號。單層每槽只有一個導體邊（`top`），沒有
+ * 上下半之分，waypoint 一律標 `top:true`（下游 `phaseWaypoints`/`buildChainPath`
+ * 只認 `.k`/`.top` 欄位，沿用即可，不用另外寫一套）。
+ * @returns {{A:Array, B:Array, C:Array}|null} 雙層繞組無此結構，回傳 null
+ */
+function buildSingleLayerChains(result) {
+  if (!result.feasible || !result.slots.length || result.slots[0].bottom) return null;
+  const Q = result.Q;
+  const pairs = buildSingleLayerPairs(result);
+  const byPhase = { A: [], B: [], C: [] };
+  pairs.forEach(function (p) {
+    const aSign = result.slots[p.aK].top.sign;
+    const entryK = aSign < 0 ? p.aK : p.bK;
+    const exitK = aSign < 0 ? p.bK : p.aK;
+    byPhase[p.phase].push({ entry: { k: entryK, top: true }, exit: { k: exitK, top: true } });
+  });
+  const chains = {};
+  ['A', 'B', 'C'].forEach(function (phase) { chains[phase] = chainByNearestEntry(Q, byPhase[phase]); });
+  return chains;
 }
 
 /**
