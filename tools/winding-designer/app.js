@@ -197,6 +197,13 @@ function renderLinearDiagram(result) {
   // 單層：整條相線串成一條連續接線（比照剖面圖 buildChainPath 的做法），畫在
   // 齒排上方；三相合併統一分配車道（角度換成 x 區間），車道數決定上緣要留多高
   // ——跟參考圖一樣，車道多會自然錯開成階梯狀，不會疊在同一高度分不出來。
+  // 有個跟剖面圖不一樣的地方：圓周上「短邊」是繞過槽1／槽Q接縫的那種跳線
+  // （例如槽12接槽1，圓周上緊鄰），在剖面圖是真圓周所以自然短；但在這張
+  // 展開圖是把圓周剪開拉直的長條，槽1在最左、槽Q在最右，這種接線的 x 距離
+  // 反而是全圖最長，會被誤判成需要獨立車道的「長接線」，把其他本來很短的
+  // 接線也一起往上擠、甚至讓那條線橫掃過整排齒——這種接線在展開圖上本來就
+  // 畫不出合理的直線（跟舊版 buildSingleLayerPairs 的 wraps 特例是同一件事），
+  // 所以跳過不畫（isWrapHop），車道分配也把它排除，不然車道數會被它拉爆。
   let chainByPhase = null, laneCount = 0;
   const laneStepPx = 12, symbolGap = 15, busGapTop = 8, stubGap = 7;
   if (!isDouble) {
@@ -207,8 +214,13 @@ function renderLinearDiagram(result) {
       const wp = phaseWaypoints(chains[phase]);
       const xAt = function (idx) { return slotX(wp[idx].k); };
       const signAt = function (idx) { return result.slots[wp[idx].k].top.sign; };
-      chainByPhase[phase] = { wp: wp, xAt: xAt, signAt: signAt, laneOfHop: {} };
+      const isWrapHop = function (idx) {
+        const d = Math.abs(wp[idx].k - wp[idx + 1].k);
+        return Q - d < d; // 繞過接縫那邊比直接距離短，代表這段在圓周上其實是鄰近的
+      };
+      chainByPhase[phase] = { wp: wp, xAt: xAt, signAt: signAt, isWrapHop: isWrapHop, laneOfHop: {} };
       for (let i = 0; i < wp.length - 1; i++) {
+        if (isWrapHop(i)) continue;
         allIntervals.push([Math.min(xAt(i), xAt(i + 1)), Math.max(xAt(i), xAt(i + 1))]);
         meta.push({ phase: phase, hopIdx: i });
       }
@@ -321,9 +333,9 @@ function renderLinearDiagram(result) {
       const dimmed = phaseFilter !== 'all';
       const opacity = dimmed ? 0.85 : 0.5;
       const laneYAt = function (i) { return busBaseY - (cd.laneOfHop[i] || 0) * laneStepPx; };
-      const d = buildLinearChainPath(symbolY, laneYAt, cd.wp, cd.xAt);
+      const d = buildLinearChainPath(symbolY, laneYAt, cd.wp, cd.xAt, cd.isWrapHop);
       svg.appendChild(svgEl('path', { d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity }));
-      drawLinearChainArrows(svg, symbolY, laneYAt, cd.wp, cd.xAt, cd.signAt, PHASE_COLOR[phase], opacity, 6);
+      drawLinearChainArrows(svg, symbolY, laneYAt, cd.wp, cd.xAt, cd.signAt, PHASE_COLOR[phase], opacity, 6, cd.isWrapHop);
     });
   }
 }
@@ -450,12 +462,14 @@ function drawChainArrows(svg, cx, cy, r0, busRAt, wp, angleAt, signAt, color, op
  * 每顆線圈符號所在的固定高度（每段接線的起訖都會先回到這個高度再轉向）；
  * laneYAt(i) 決定第 i 段接線要走哪一條車道。
  */
-function buildLinearChainPath(symbolY, laneYAt, wp, xAt) {
+function buildLinearChainPath(symbolY, laneYAt, wp, xAt, isWrapHop) {
   if (!wp.length) return '';
-  const x0 = xAt(0);
-  const parts = ['M ' + x0 + ' ' + symbolY];
+  const parts = [];
+  let started = false;
   for (let i = 0; i < wp.length - 1; i++) {
+    if (isWrapHop && isWrapHop(i)) { started = false; continue; } // 跳過接縫那段，路徑在這裡斷開重新起筆
     const x1 = xAt(i), x2 = xAt(i + 1), y = laneYAt(i);
+    if (!started) { parts.push('M ' + x1 + ' ' + symbolY); started = true; }
     parts.push('L ' + x1 + ' ' + y);
     parts.push('L ' + x2 + ' ' + y);
     parts.push('L ' + x2 + ' ' + symbolY);
@@ -474,8 +488,9 @@ function linearArrowMarker(svg, x, y, pointRight, color, size, opacity) {
 }
 
 /** 展開圖版方向箭頭：跟剖面圖 drawChainArrows 同規則，一律從 + 端指向 − 端 */
-function drawLinearChainArrows(svg, symbolY, laneYAt, wp, xAt, signAt, color, opacity, size) {
+function drawLinearChainArrows(svg, symbolY, laneYAt, wp, xAt, signAt, color, opacity, size, isWrapHop) {
   for (let i = 0; i < wp.length - 1; i++) {
+    if (isWrapHop && isWrapHop(i)) continue; // 這段沒畫線，箭頭也跳過
     const x1 = xAt(i), x2 = xAt(i + 1), y = laneYAt(i);
     const forward = signAt(i) > 0; // wp[i] 是 + 端就指向 i→i+1；是 − 端就反過來
     const pointRight = forward ? (x2 >= x1) : (x2 < x1);
