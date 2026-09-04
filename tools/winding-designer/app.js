@@ -563,7 +563,7 @@ function renderRadialDiagram(result) {
     const a0 = -90 + k * step + gapDeg / 2, a1 = -90 + (k + 1) * step - gapDeg / 2, aMid = (a0 + a1) / 2;
     return isTop ? (aMid + a1) / 2 : (a0 + aMid) / 2;
   };
-  const laneStep = 12, phaseGap = 8;
+  const laneStep = 20, phaseGap = 10;
   const overlap = {};
 
   // ── 先在角度空間（不需要畫布尺寸）算出每相跨槽接線要用幾條匯流車道；
