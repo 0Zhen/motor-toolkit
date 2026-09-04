@@ -188,7 +188,7 @@ function renderLinearDiagram(result) {
   // 畫不出合理的直線，所以跳過不畫（isWrapHop），車道分配也把它排除。
   const chains = isDouble ? buildPhaseChains(result) : buildSingleLayerChains(result);
   const chainByPhase = {};
-  const laneStepPx = 12, symbolGap = 15, busGapTop = 8, stubGap = 7;
+  const laneStepPx = 12;
   const allIntervals = [], meta = [];
   ['A', 'B', 'C'].forEach(function (phase) {
     const wp = phaseWaypoints(chains[phase]);
@@ -211,16 +211,23 @@ function renderLinearDiagram(result) {
   const laneCount = lanes.laneCount;
   meta.forEach(function (m, idx) { chainByPhase[m.phase].laneOfHop[m.hopIdx] = lanes.laneOf[idx]; });
 
-  const frontAreaH = labelH + busGapTop + Math.max(1, laneCount) * laneStepPx + symbolGap + stubGap;
-  const marginTop = frontAreaH + 8;
+  // 由齒排上緣（bodyTop）往上，依序疊出：出線 stub → ⊙/⊗ 符號 → 到符號的間距
+  // → 正負號標籤（含字元本身的視覺高度，不能只留基線到符號的距離，字元往上
+  // 還要再佔一截，之前漏算這塊才會被最底下那條車道的線切到）→ 到車道0的
+  // 間距 → 車道逐層往上疊 → 最上面留一點緩衝，不然頂端箭頭三角形會被裁到。
+  const stubGap = 7, symbolR = 5, symbolToLabelGap = 8, labelTextH = 11, labelToBusGap = 8, busTopBuffer = 6;
+  const aboveBody = stubGap + symbolR * 2 + symbolToLabelGap + labelTextH + labelToBusGap +
+    Math.max(0, laneCount - 1) * laneStepPx + busTopBuffer;
+  const marginTop = aboveBody + 8;
 
   const width = Q * pitch + gapW;
   const bodyTop = marginTop;
   const bodyBottom = bodyTop + blockH;
   const labelY = bodyBottom + labelGap + labelH;
   const height = labelY + 6;
-  const symbolY = bodyTop - stubGap - 5;
-  const busBaseY = symbolY - symbolGap;
+  const symbolY = bodyTop - stubGap - symbolR;
+  const signLabelY = symbolY - symbolR - symbolToLabelGap; // 正負號標籤基線
+  const busBaseY = signLabelY - labelTextH - labelToBusGap; // 車道 0（最靠近齒排的車道）
 
   svg.setAttribute('width', width);
   svg.setAttribute('height', height);
@@ -235,9 +242,9 @@ function renderLinearDiagram(result) {
       fill: color, opacity: 0.85,
     }));
     svg.appendChild(textEl(labelBottomX, labelY, phase, { fill: color, 'font-weight': 700, 'font-size': isDouble ? 10 : 12 }));
-    svg.appendChild(svgEl('line', { x1: symX, y1: symbolY + 5, x2: symX, y2: bodyTop, stroke: 'var(--text3)', 'stroke-width': 1 }));
-    currentDirSymbolOutlined(svg, symX, symbolY, 5, sign, color);
-    svg.appendChild(textEl(symX, symbolY - 10, (sign > 0 ? '+' : '−') + phase, { fill: color, 'font-weight': 700, 'font-size': isDouble ? 7.5 : 9 }));
+    svg.appendChild(svgEl('line', { x1: symX, y1: symbolY + symbolR, x2: symX, y2: bodyTop, stroke: 'var(--text3)', 'stroke-width': 1 }));
+    currentDirSymbolOutlined(svg, symX, symbolY, symbolR, sign, color);
+    svg.appendChild(textEl(symX, signLabelY, (sign > 0 ? '+' : '−') + phase, { fill: color, 'font-weight': 700, 'font-size': isDouble ? 7.5 : 9 }));
   }
 
   result.slots.forEach(function (s, k) {
