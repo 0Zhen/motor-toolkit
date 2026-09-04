@@ -185,6 +185,7 @@ function renderLinearDiagram(result) {
   // 跟剖面圖 A/B/C 各佔一段匯流環的做法不一致。同一相自己的線圈如果剛好
   // 交錯（角度區間互相穿插、不是誰包住誰），車道再多也無法完全避免視覺
   // 上的交叉——這是這批線圈本身的幾何關係決定的，不是車道分配的問題。
+  const width = Q * pitch + gapW;
   const chainsRaw = isDouble ? buildPhaseChains(result) : buildSingleLayerChains(result);
   const laneStepPx = 12, phaseGapPx = 8;
   const coilsByPhase = {}, intervalsByPhase = {};
@@ -195,7 +196,7 @@ function renderLinearDiagram(result) {
       // 圓周上「短邊」是繞過槽1／槽Q接縫的那種線圈（例如槽12接槽1，圓周上緊
       // 鄰），在展開圖是把圓周剪開拉直的長條，槽1在最左、槽Q在最右，這種
       // 線圈的 x 距離反而是全圖最長、畫不出合理的直線，改成兩端往邊緣拉虛線
-      // 指示（drawWrapEdgeStubs），不算進車道分配。
+      // 指示（drawWrapEdgeStubs）。
       const d = Math.abs(wp[0].k - wp[1].k);
       const isWrap = Q - d < d;
       return { wp: wp, xAt: xAt, isWrap: isWrap, lane: 0 };
@@ -203,8 +204,11 @@ function renderLinearDiagram(result) {
     coilsByPhase[phase] = coils;
     const ivs = [], idxMap = [];
     coils.forEach(function (c, ci) {
-      if (c.isWrap) return;
-      ivs.push([Math.min(c.xAt(0), c.xAt(1)), Math.max(c.xAt(0), c.xAt(1))]);
+      // wrap 線圈用「整個畫布寬」當它的區間餵進車道分配——它兩端各自拉到左右
+      // 邊緣，視覺上等於占滿整個寬度，這樣同一相如果有不只一顆 wrap 線圈，
+      // 會各自搶到自己的車道，虛線就不會疊在同一高度分不出來（之前沒把 wrap
+      // 算進車道，一相有兩顆以上 wrap 時，兩條虛線會疊在同一條 busBaseY 上）。
+      ivs.push(c.isWrap ? [0, width] : [Math.min(c.xAt(0), c.xAt(1)), Math.max(c.xAt(0), c.xAt(1))]);
       idxMap.push(ci);
     });
     intervalsByPhase[phase] = ivs;
@@ -226,7 +230,6 @@ function renderLinearDiagram(result) {
   const aboveBody = stubGap + symbolR * 2 + symbolToLabelGap + labelTextH + labelToBusGap + bandLayout.labelR;
   const marginTop = aboveBody + 8;
 
-  const width = Q * pitch + gapW;
   const bodyTop = marginTop;
   const bodyBottom = bodyTop + blockH;
   const labelY = bodyBottom + labelGap + labelH;
@@ -285,8 +288,9 @@ function renderLinearDiagram(result) {
     const dimmed = phaseFilter !== 'all'; // 單相模式下其餘相已被濾掉，此處不用再淡化
     const opacity = dimmed ? 0.85 : 0.5;
     coilsByPhase[phase].forEach(function (c) {
-      if (c.isWrap) { drawWrapEdgeStubs(svg, width, symbolY, busBaseY, c.wp, c.xAt, PHASE_COLOR[phase], opacity); return; }
-      const laneYAt = function () { return busBaseY - (c.bandBase + c.lane * laneStepPx); };
+      const laneY = busBaseY - (c.bandBase + c.lane * laneStepPx);
+      if (c.isWrap) { drawWrapEdgeStubs(svg, width, symbolY, laneY, c.wp, c.xAt, PHASE_COLOR[phase], opacity); return; }
+      const laneYAt = function () { return laneY; };
       const d = buildLinearChainPath(symbolY, laneYAt, c.wp, c.xAt, null);
       svg.appendChild(svgEl('path', { d: d, fill: 'none', stroke: PHASE_COLOR[phase], 'stroke-width': 1.3, opacity: opacity }));
     });
@@ -415,6 +419,39 @@ function shortWayInterval(aStart, aEndRaw) {
   const delta = ((aEndRaw - aStart + 540) % 360) - 180;
   const aEnd = aStart + delta;
   return [Math.min(aStart, aEnd), Math.max(aStart, aEnd)];
+}
+
+/**
+ * `shortWayInterval` 回傳的區間是相對「各自的 aStart」算出來的原始角度，不同
+ * 線圈的數值範圍彼此沒有統一基準——同一個實際角度位置，可能一顆線圈算出來
+ * 落在 [260,340]，另一顆算出來卻是 [-70,10]（差了 360），兩者用普通線性比大小
+ * 的 assignLanes 判斷會誤判成「沒有重疊」，實際上在圓上是真的疊在一起
+ * （已用腳本驗證過這個 bug：同車道兩段角度區間換算成同一基準後其實有重疊）。
+ * 這裡先找一個「安全切點」——排序所有端點，取相鄰端點間最大的角度間隙，
+ * 缺口中點通常不會被任何一段蓋住——把圓周從那裡剪開，所有區間依此切點
+ * 重新展開成同一條不循環的數線，再交給線性版 assignLanes 判斷，就不會有
+ * 上述「同一位置兩種數值表示法」的誤判。
+ */
+function unwrapCircularIntervals(intervals) {
+  if (!intervals.length) return intervals;
+  const norm = intervals.reduce(function (acc, iv) {
+    acc.push(((iv[0] % 360) + 360) % 360, ((iv[1] % 360) + 360) % 360);
+    return acc;
+  }, []);
+  norm.sort(function (a, b) { return a - b; });
+  const uniq = norm.filter(function (v, i) { return i === 0 || v !== norm[i - 1]; });
+  let cut = 0, maxGap = -1;
+  for (let i = 0; i < uniq.length; i++) {
+    const a = uniq[i], b = uniq[(i + 1) % uniq.length];
+    const gap = ((b - a + 360) % 360) || 360;
+    if (gap > maxGap) { maxGap = gap; cut = (a + gap / 2) % 360; }
+  }
+  return intervals.map(function (iv) {
+    const s = ((iv[0] - cut) % 360 + 360) % 360;
+    let e = ((iv[1] - cut) % 360 + 360) % 360;
+    if (e < s) e += 360;
+    return [s, e];
+  });
 }
 
 /**
@@ -561,7 +598,11 @@ function renderRadialDiagram(result) {
   });
   const intervalsByPhase = {};
   ['A', 'B', 'C'].forEach(function (phase) {
-    intervalsByPhase[phase] = coilsByPhase[phase].map(function (c) { return shortWayInterval(c.angleAt(0), c.angleAt(1)); });
+    const raw = coilsByPhase[phase].map(function (c) { return shortWayInterval(c.angleAt(0), c.angleAt(1)); });
+    // 這批區間各自用自己的基準表示角度，同一相若有兩顆以上線圈，直接拿去比
+    // 大小可能誤判「沒重疊」（見 unwrapCircularIntervals 說明），先統一展開成
+    // 同一條數線再交給車道分配。
+    intervalsByPhase[phase] = unwrapCircularIntervals(raw);
   });
   const layout = layoutPhaseBuses(intervalsByPhase, rYoke + 20, laneStep, phaseGap);
 
