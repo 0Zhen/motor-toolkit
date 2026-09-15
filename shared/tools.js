@@ -60,4 +60,13 @@ const MT_TOOLS = [
     icon:    '🌀',
     path:    'tools/winding-designer/',
   },
+  {
+    id:      'cost-calculator',
+    name:    'Cost Calculator',
+    name_zh: '成本計算機',
+    desc:    'Estimate silicon steel / copper / magnet or rotor material cost from geometry, slot/pole count and winding data. Supports PMSM, EESM and induction motors.',
+    desc_zh: '依幾何尺寸、槽極數與繞組資料估算矽鋼片／銅／磁鐵或轉子材料成本，支援 PMSM、EESM 與感應馬達。',
+    icon:    '💰',
+    path:    'tools/cost-calculator/',
+  },
 ];

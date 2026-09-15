@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cost Calculator | Motor Toolkit</title>
+<meta name="description"
+  content="Estimate motor material cost from stator/rotor geometry, slot/pole count, winding turns and wire diameter, magnet grade, and silicon steel/copper/magnet unit prices. Supports PMSM, EESM and induction motors. Free, browser-based, runs entirely client-side.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/cost-calculator/">
+<link rel="icon" type="image/png" href="../../favicon.png">
+<link rel="stylesheet" href="../../shared/theme.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-title="Cost Calculator" data-sub="Silicon steel · Copper · Magnet / Rotor material"
+      data-title-zh="成本計算機" data-sub-zh="矽鋼片 · 銅 · 磁鐵/轉子材料">
+<script src="../../shared/tools.js"></script>
+<script src="../../shared/shell.js"></script>
+
+<div class="layout">
+
+  <!-- ── 左側：輸入欄 ── -->
+  <div class="panel input-panel">
+
+    <!-- 馬達類型切換 -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tab_pmsm" onclick="switchType('pmsm')">
+        <span data-i18n="typePMSM">PMSM</span>
+      </button>
+      <button class="mode-tab" id="tab_eesm" onclick="switchType('eesm')">
+        <span data-i18n="typeEESM">EESM</span>
+      </button>
+      <button class="mode-tab" id="tab_im" onclick="switchType('im')">
+        <span data-i18n="typeIM">Induction</span>
+      </button>
+    </div>
+
+    <!-- 幾何尺寸 -->
+    <div class="params-box">
+      <div class="section-title" data-i18n="geomTitle">Geometry</div>
+      <div class="param-row-2"><span class="param-label" data-i18n="statorOD">Stator OD [mm]</span>
+        <input type="text" class="param-input" id="c_statorOD" value="90"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="statorID">Stator ID [mm]</span>
+        <input type="text" class="param-input" id="c_statorID" value="55"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="rotorOD">Rotor OD [mm]</span>
+        <input type="text" class="param-input" id="c_rotorOD" value="54"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="rotorID">Rotor ID [mm]</span>
+        <input type="text" class="param-input" id="c_rotorID" value="20"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="stackLength">Stack length [mm]</span>
+        <input type="text" class="param-input" id="c_stackLength" value="30"></div>
+    </div>
+
+    <!-- 槽極數 -->
+    <div class="params-box">
+      <div class="section-title" data-i18n="slotPoleTitle">Slots / Poles</div>
+      <div class="param-row-2"><span class="param-label" data-i18n="slots">Slots</span>
+        <input type="text" class="param-input" id="c_slots" value="12"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="poles">Poles</span>
+        <input type="text" class="param-input" id="c_poles" value="10"></div>
+    </div>
+
+    <!-- 矽鋼片 -->
+    <div class="params-box">
+      <div class="section-title" data-i18n="steelTitle">Silicon Steel</div>
+      <div class="param-row-2"><span class="param-label" data-i18n="steelGrade">Grade</span>
+        <select class="mini-select" id="c_steelGrade"></select></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="steelDensity">Density [kg/m³]</span>
+        <input type="text" class="param-input readonly-derived" id="c_steelDensity" value="7650" readonly></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="stackFactor">Stacking factor</span>
+        <input type="text" class="param-input" id="c_stackFactor" value="0.97"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="steelPrice">Price [$/kg]</span>
+        <input type="text" class="param-input readonly-derived" id="c_steelPrice" value="1.13" readonly></div>
+      <div class="hint-text" data-i18n="steelHint">
+        Gross annulus of stator + rotor lamination OD/ID. Slot cutout area is NOT subtracted (confirmed simplification). Density/price come from the price table above — edit it to match your own grades.
+      </div>
+    </div>
+
+    <!-- 定子繞組 -->
+    <div class="params-box">
+      <div class="section-title" data-i18n="windingTitle">Stator Winding (Copper)</div>
+      <div class="param-row-2"><span class="param-label" data-i18n="turnsPerSlot">Turns / slot</span>
+        <input type="text" class="param-input" id="c_turnsPerSlot" value="66"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="wireDia">Bare wire dia. [mm]</span>
+        <input type="text" class="param-input" id="c_wireDia" value="0.7"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="copperGrade">Cu grade</span>
+        <select class="mini-select" id="c_copperGrade"></select></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="copperDensity">Cu density [kg/m³]</span>
+        <input type="text" class="param-input readonly-derived" id="c_copperDensity" value="8960" readonly></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="copperPrice">Cu price [$/kg]</span>
+        <input type="text" class="param-input readonly-derived" id="c_copperPrice" value="13.7" readonly></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="mltFactor">MLT factor</span>
+        <input type="text" class="param-input" id="c_mltFactor" value="2.5"></div>
+      <div class="hint-text" data-i18n="mltHint">
+        MLT = stack length × MLT factor (same simplified model as the DCR Calculator).
+      </div>
+    </div>
+
+    <!-- PMSM 專屬 -->
+    <div class="params-box" id="box_pmsm">
+      <div class="section-title" data-i18n="pmsmTitle">PMSM — Magnet</div>
+      <div class="param-row-2"><span class="param-label" data-i18n="magnetArea">Magnet area / pole [mm²]</span>
+        <input type="text" class="param-input" id="c_magnetArea" value="40"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="magnetGrade">Magnet grade</span>
+        <select class="mini-select" id="c_magnetGrade"></select></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="magnetDensity">Magnet density [kg/m³]</span>
+        <input type="text" class="param-input readonly-derived" id="c_magnetDensity" value="7500" readonly></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="magnetPrice">Magnet price [$/kg]</span>
+        <input type="text" class="param-input readonly-derived" id="c_magnetPrice" value="45" readonly></div>
+      <div class="hint-text" data-i18n="magnetAreaHint">
+        Total magnet volume = area/pole × poles × stack length. Density/price come from the price table above.
+      </div>
+    </div>
+
+    <!-- EESM 專屬 -->
+    <div class="params-box" id="box_eesm" style="display:none">
+      <div class="section-title" data-i18n="eesmTitle">EESM — Rotor Field Winding</div>
+      <div class="param-row-2"><span class="param-label" data-i18n="rotorTurnsPerPole">Rotor turns / pole</span>
+        <input type="text" class="param-input" id="c_rotorTurnsPerPole" value="40"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="rotorWireDia">Rotor wire dia. [mm]</span>
+        <input type="text" class="param-input" id="c_rotorWireDia" value="0.6"></div>
+      <div class="hint-text" data-i18n="eesmHint">
+        Uses the same Cu density / Cu price / MLT factor as the stator winding above. Slip ring / brush cost not included.
+      </div>
+    </div>
+
+    <!-- 感應馬達 專屬 -->
+    <div class="params-box" id="box_im" style="display:none">
+      <div class="section-title" data-i18n="imTitle">Induction — Rotor Cage</div>
+      <div class="param-row-2"><span class="param-label" data-i18n="rotorCageWeight">Rotor cage weight [kg]</span>
+        <input type="text" class="param-input" id="c_rotorCageWeight" value="0.3"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="rotorCageMaterial">Cage material</span>
+        <select class="mini-select" id="c_rotorCageMaterial">
+          <option value="al">Al</option>
+          <option value="cu">Cu</option>
+        </select></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="rotorCagePrice">Cage material price [$/kg]</span>
+        <input type="text" class="param-input" id="c_rotorCagePrice" value="2.5"></div>
+      <div class="hint-text" data-i18n="imHint">
+        Simplified: total cage weight entered directly (bar/end-ring geometry not modeled).
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── 右側：結果欄 ── -->
+  <div class="results-col">
+
+    <div class="result-cards">
+      <div class="warning-box" id="geomWarning" hidden></div>
+
+      <div class="result-card highlight">
+        <div class="result-card-label" data-i18n="totalLabel">Total material cost</div>
+        <div class="result-card-body" id="totalCostOut">$0.00</div>
+      </div>
+
+      <div class="result-card">
+        <div class="result-card-label" data-i18n="resultTitle">Cost Breakdown</div>
+        <div class="sweep-table-wrap">
+          <table class="sweep-table" id="costTable"></table>
+        </div>
+      </div>
+
+      <div class="result-card">
+        <div class="chart-wrap">
+          <canvas id="chartCanvas"></canvas>
+        </div>
+      </div>
+
+      <div class="hint-text" data-i18n="mvpHint">
+        Material cost only — labor, processing, yield loss and margin are NOT included.
+      </div>
+
+      <!-- 統整價目表：矽鋼片／磁鐵／銅 -->
+      <div class="params-box" id="priceTableBox">
+        <div class="collapsible-header" onclick="toggleSection('priceTableBox')">
+          <div class="section-title" data-i18n="priceTableTitle">Material Price Table (editable)</div>
+          <span class="collapsible-arrow">▾</span>
+        </div>
+        <div class="collapsible-body">
+          <div class="hint-text" data-i18n="priceTableHint">
+            Edit grade / density / price here — the dropdowns below stay in sync automatically. Saved in your browser (localStorage).
+          </div>
+
+          <div class="price-table-cols">
+            <div class="price-table-group">
+              <div class="price-table-label" data-i18n="steelTitle">Silicon Steel</div>
+              <table class="grade-table">
+                <thead><tr>
+                  <th data-i18n="thGrade">Grade</th><th data-i18n="thDensity2">ρ [kg/m³]</th><th data-i18n="thPrice2">$/kg</th><th></th>
+                </tr></thead>
+                <tbody id="steelGradeTbody"></tbody>
+              </table>
+              <button type="button" class="add-row-btn" id="steelAddRow" data-i18n="addRowBtn">+ Add grade</button>
+            </div>
+
+            <div class="price-table-group">
+              <div class="price-table-label" data-i18n="pmsmTitle">Magnet</div>
+              <table class="grade-table">
+                <thead><tr>
+                  <th data-i18n="thGrade">Grade</th><th data-i18n="thDensity2">ρ [kg/m³]</th><th data-i18n="thPrice2">$/kg</th><th></th>
+                </tr></thead>
+                <tbody id="magnetGradeTbody"></tbody>
+              </table>
+              <button type="button" class="add-row-btn" id="magnetAddRow" data-i18n="addRowBtn">+ Add grade</button>
+            </div>
+
+            <div class="price-table-group">
+              <div class="price-table-label" data-i18n="copperTitle">Copper</div>
+              <table class="grade-table">
+                <thead><tr>
+                  <th data-i18n="thGrade">Grade</th><th data-i18n="thDensity2">ρ [kg/m³]</th><th data-i18n="thPrice2">$/kg</th><th></th>
+                </tr></thead>
+                <tbody id="copperGradeTbody"></tbody>
+              </table>
+              <button type="button" class="add-row-btn" id="copperAddRow" data-i18n="addRowBtn">+ Add grade</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="../../vendor/chart.umd.min.js"></script>
+<script src="physics.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
