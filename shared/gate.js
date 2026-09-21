@@ -18,8 +18,8 @@
 
   var CFG = {
     iter: 100000,
-    salt: '47a0093d28f330caf67fce76ee606ef6',
-    hash: '5899d4e09c7bf80b37057aeeaa025d2ce2df94982972bf7180de34bae8ac055e'
+    salt: 'c54d6ce2f5646a51652c7cfd5f1cf4c1',
+    hash: '429e7b09a5730ba4b5d875d765948bf848fac470f1a967c43835b805f22acdb0'
   };
   var SESSION_KEY = 'mt-gate-ok';
 
