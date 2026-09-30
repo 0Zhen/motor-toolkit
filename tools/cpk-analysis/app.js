@@ -1,8 +1,9 @@
 /* ═══════════════════════════════════════════════════════════════
    CPK Analysis
-   IQR outlier removal, Cp/Cpk/k, histogram + spec/sigma lines.
-   Logic ported from an Excel VBA CPK macro (same IQR rule, same
-   fixed 1.0 / 1.33 capability thresholds).
+   Configurable IQR outlier removal (percentiles + multiplier, or
+   off), Cp/Cpk/k, histogram + spec/sigma lines.
+   Logic ported from an Excel VBA CPK macro (default 25/75/1.5 IQR
+   rule, same fixed 1.0 / 1.33 capability thresholds).
    ═══════════════════════════════════════════════════════════════ */
 var MT_I18N = {
   data:        { en: 'Data', zh: '資料' },
@@ -18,16 +19,25 @@ var MT_I18N = {
   calcBtn:     { en: 'Calculate', zh: '計算' },
   pngBtn:      { en: 'Download chart PNG', zh: '下載圖表 PNG' },
   hint:        {
-    en: 'Outliers are removed with the IQR rule (values outside Q1 − 1.5×IQR … Q3 + 1.5×IQR) before computing statistics. All processing happens in your browser.',
-    zh: '計算統計量之前，會先用IQR規則（保留 Q1 − 1.5×IQR 到 Q3 + 1.5×IQR 之間的值）移除離群值。所有計算都在你的瀏覽器本機完成。',
+    en: 'Outliers are removed with the IQR rule before computing statistics (percentiles and multiplier are adjustable above, or turn removal off entirely). All processing happens in your browser.',
+    zh: '計算統計量之前，會先用IQR規則移除離群值（上方可調整百分位數與倍數，或整個關閉）。所有計算都在你的瀏覽器本機完成。',
   },
   emptyState:  { en: 'Paste data, enter USL/LSL, then click Calculate.', zh: '貼上資料、輸入USL/LSL後按下計算。' },
   errNeedData: { en: 'Need at least 2 numeric values. Parsed {n}.', zh: '至少需要2筆數值資料，目前解析到{n}筆。' },
   errNeedLimits:{ en: 'Enter at least one of USL / LSL.', zh: '請至少輸入USL或LSL其中一個。' },
   errLimitOrder:{ en: 'USL must be greater than LSL.', zh: 'USL（上限）必須大於 LSL（下限），請確認兩者是否填反了。' },
 
+  outlierTitle:    { en: 'Outlier Removal', zh: '離群值移除' },
+  outlierEnable:   { en: 'Remove outliers (IQR rule)', zh: '移除離群值（IQR規則）' },
+  outlierLowLabel: { en: 'Lower percentile (Q1)', zh: '下百分位數（Q1）' },
+  outlierHighLabel:{ en: 'Upper percentile (Q3)', zh: '上百分位數（Q3）' },
+  outlierMultLabel:{ en: 'IQR multiplier (k)', zh: 'IQR 倍數（k）' },
+  errOutlierPct:   { en: 'Percentiles must satisfy 0 ≤ lower < upper ≤ 100.', zh: '百分位數須滿足 0 ≤ 下限 < 上限 ≤ 100。' },
+  errOutlierMult:  { en: 'IQR multiplier must be ≥ 0.', zh: 'IQR 倍數必須 ≥ 0。' },
+
   statsTitle:  { en: 'Statistics', zh: '統計量' },
   statN:       { en: 'n (after outlier removal)', zh: 'n（離群值過濾後）' },
+  statNRaw:    { en: 'n (outlier removal off)', zh: 'n（未移除離群值）' },
   statMean:    { en: 'Mean', zh: '平均值' },
   statSd:      { en: 'Std. dev.', zh: '標準差' },
   statAbove:   { en: 'Above USL', zh: '超出上限' },
@@ -80,12 +90,12 @@ function quantile(sorted, p) {
   return sorted[lo] + (idx - lo) * (sorted[hi] - sorted[lo]);
 }
 
-function iqrFilter(values) {
+function iqrFilter(values, lowPct, highPct, mult) {
   if (values.length < 4) return values.slice();
   var sorted = values.slice().sort(function (a, b) { return a - b; });
-  var q1 = quantile(sorted, 0.25), q3 = quantile(sorted, 0.75);
+  var q1 = quantile(sorted, lowPct / 100), q3 = quantile(sorted, highPct / 100);
   var iqr = q3 - q1;
-  var lo = q1 - 1.5 * iqr, hi = q3 + 1.5 * iqr;
+  var lo = q1 - mult * iqr, hi = q3 + mult * iqr;
   return values.filter(function (v) { return v >= lo && v <= hi; });
 }
 
@@ -107,8 +117,10 @@ function capabilityVerdict(cls) {
 }
 
 /* ── main compute ────────────────────────────────────────────── */
-function compute(raw, usl, lslVal, hasUsl, hasLsl) {
-  var filtered = iqrFilter(raw);
+function compute(raw, usl, lslVal, hasUsl, hasLsl, outlierOpts) {
+  var filtered = outlierOpts.enabled
+    ? iqrFilter(raw, outlierOpts.lowPct, outlierOpts.highPct, outlierOpts.mult)
+    : raw.slice();
   var n = filtered.length;
   var m = mean(filtered);
   var sd = stdev(filtered, m);
@@ -139,6 +151,7 @@ function compute(raw, usl, lslVal, hasUsl, hasLsl) {
     above: above, below: below,
     usl: hasUsl ? usl : null, lsl: hasLsl ? lslVal : null,
     cpu: cpu, cpl: cpl, cpk: cpk, cp: cp, k: k,
+    outlierEnabled: outlierOpts.enabled,
   };
 }
 
@@ -177,6 +190,9 @@ function buildHistogram(r) {
 function fmt(v, d) { return v === null || v === undefined || isNaN(v) ? mtT('naText') : v.toFixed(d === undefined ? 3 : d); }
 
 function renderStats(r) {
+  var nKey = r.outlierEnabled ? 'statN' : 'statNRaw';
+  $('statNLabel').setAttribute('data-i18n', nKey);
+  $('statNLabel').textContent = mtT(nKey);
   $('outN').textContent = r.n;
   $('outMean').textContent = fmt(r.mean, 4);
   $('outSd').textContent = fmt(r.sd, 4);
@@ -386,7 +402,23 @@ function runCalculate() {
     return;
   }
 
-  var r = compute(values, usl, lslVal, hasUsl, hasLsl);
+  var outlierEnabled = $('outlierEnabled').checked;
+  var lowPct = parseFloat($('outlierLowPct').value);
+  var highPct = parseFloat($('outlierHighPct').value);
+  var mult = parseFloat($('outlierMult').value);
+  if (outlierEnabled) {
+    if (isNaN(lowPct) || isNaN(highPct) || lowPct < 0 || highPct > 100 || lowPct >= highPct) {
+      showError(mtT('errOutlierPct'));
+      return;
+    }
+    if (isNaN(mult) || mult < 0) {
+      showError(mtT('errOutlierMult'));
+      return;
+    }
+  }
+
+  var r = compute(values, usl, lslVal, hasUsl, hasLsl,
+    { enabled: outlierEnabled, lowPct: lowPct, highPct: highPct, mult: mult });
 
   lastResult = r;
   $('emptyState').style.display = 'none';
@@ -399,6 +431,15 @@ function runCalculate() {
 }
 
 $('btnCalc').addEventListener('click', runCalculate);
+
+function updateOutlierInputsState() {
+  var enabled = $('outlierEnabled').checked;
+  ['outlierLowPct', 'outlierHighPct', 'outlierMult'].forEach(function (id) {
+    $(id).disabled = !enabled;
+  });
+}
+$('outlierEnabled').addEventListener('change', updateOutlierInputsState);
+updateOutlierInputsState();
 
 $('btnCsv').addEventListener('click', function () { $('csvFile').click(); });
 $('csvFile').addEventListener('change', function () {

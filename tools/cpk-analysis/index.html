@@ -35,6 +35,26 @@
     </div>
 
     <div class="params-box">
+      <div class="section-title" data-i18n="outlierTitle">Outlier Removal</div>
+      <label class="cpk-check">
+        <input type="checkbox" id="outlierEnabled" checked>
+        <span data-i18n="outlierEnable">Remove outliers (IQR rule)</span>
+      </label>
+      <div class="param-row-2">
+        <span class="param-label" data-i18n="outlierLowLabel">Lower percentile (Q1)</span>
+        <input type="text" class="param-input" id="outlierLowPct" value="25">
+      </div>
+      <div class="param-row-2">
+        <span class="param-label" data-i18n="outlierHighLabel">Upper percentile (Q3)</span>
+        <input type="text" class="param-input" id="outlierHighPct" value="75">
+      </div>
+      <div class="param-row-2">
+        <span class="param-label" data-i18n="outlierMultLabel">IQR multiplier (k)</span>
+        <input type="text" class="param-input" id="outlierMult" value="1.5">
+      </div>
+    </div>
+
+    <div class="params-box">
       <div class="section-title" data-i18n="specTitle">Specification Limits</div>
       <div class="param-row-2">
         <span class="param-label" data-i18n="uslLabel">USL — upper limit</span>
@@ -47,8 +67,9 @@
       <button class="query-btn" id="btnCalc" data-i18n="calcBtn">Calculate</button>
       <div class="cpk-error" id="errBox"></div>
       <p class="hint-text" data-i18n="hint">
-        Outliers are removed with the IQR rule (values outside Q1 − 1.5×IQR … Q3 + 1.5×IQR) before
-        computing statistics. All processing happens in your browser.
+        Outliers are removed with the IQR rule before computing statistics (percentiles and
+        multiplier are adjustable above, or turn removal off entirely). All processing happens
+        in your browser.
       </p>
     </div>
   </div>
@@ -65,7 +86,7 @@
       <div class="result-card">
         <div class="result-card-label" data-i18n="statsTitle">Statistics</div>
         <div class="result-card-body">
-          <div><span data-i18n="statN">n (after outlier removal)</span>: <b class="rv" id="outN">—</b></div>
+          <div><span id="statNLabel" data-i18n="statN">n (after outlier removal)</span>: <b class="rv" id="outN">—</b></div>
           <div><span data-i18n="statMean">Mean</span>: <b class="rv" id="outMean">—</b></div>
           <div><span data-i18n="statSd">Std. dev.</span>: <b class="rv" id="outSd">—</b></div>
           <div><span data-i18n="statAbove">Above USL</span>: <b class="rv" id="outAbove">—</b></div>

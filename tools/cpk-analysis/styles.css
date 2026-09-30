@@ -111,8 +111,20 @@ body > * { min-width: 0; }
   transition: border-color 0.15s;
 }
 .param-input:focus { border-color: var(--accent); background: #fff; }
+.param-input:disabled { opacity: 0.45; cursor: not-allowed; }
 [data-theme="dark"] .param-input { background: #1e2235; color: #c9d1e0; border-color: #2d3148; }
 [data-theme="dark"] .param-input:focus { background: #252840; }
+
+.cpk-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9.5px;
+  color: var(--text);
+  font-weight: 500;
+  margin-top: 6px;
+  cursor: pointer;
+}
 
 .hint-text {
   font-size: 8.5px;
