@@ -438,8 +438,20 @@ function updateOutlierInputsState() {
     $(id).disabled = !enabled;
   });
 }
-$('outlierEnabled').addEventListener('change', updateOutlierInputsState);
 updateOutlierInputsState();
+
+/* re-run automatically once results already exist, so toggling/adjusting
+   outlier removal after the first Calculate click updates the numbers
+   immediately instead of silently doing nothing until Calculate is
+   pressed again */
+function onOutlierSettingChanged() {
+  updateOutlierInputsState();
+  if (lastResult) runCalculate();
+}
+$('outlierEnabled').addEventListener('change', onOutlierSettingChanged);
+['outlierLowPct', 'outlierHighPct', 'outlierMult'].forEach(function (id) {
+  $(id).addEventListener('change', onOutlierSettingChanged);
+});
 
 $('btnCsv').addEventListener('click', function () { $('csvFile').click(); });
 $('csvFile').addEventListener('change', function () {
