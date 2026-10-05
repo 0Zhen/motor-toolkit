@@ -177,11 +177,13 @@ function clipPolygonMinY(points, minY) {
 
 /**
  * 槽內線材堆疊（簡單逐排視覺化，不是最佳圓形填充演算法）：
- * 由槽口往槽底逐排排列，每排用掃描線算出該高度的實際寬度，
- * 該排置中擺放能放下的圓（一律同直徑），放滿 count 顆或掃到槽底為止。
- * 呼叫端應該先用 offsetPolygonInward() 把 liner 內縮做完，這裡只管
- * 單純在給定的多邊形裡塞圓，不再處理壁面餘隙。
- * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮後的繞線窗）
+ * 由槽底往槽口方向逐排排列（貼槽底與兩側壁面開始疊，跟實際繞線的物理
+ * 直覺一致——線是從槽口塞進去，會先落到槽底再一層層往外疊，不是堆在
+ * 槽口附近），每排用掃描線算出該高度的實際寬度，該排置中擺放能放下的
+ * 圓（一律同直徑），放滿 count 顆或疊到不繞線區為止。
+ * 呼叫端應該先用 offsetPolygonInward() 把 liner 內縮、clipPolygonMinY()
+ * 把開口喉裁掉，這裡只管單純在給定的多邊形裡由下往上塞圓。
+ * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮＋裁掉喉部後的繞線窗）
  * @param {number} diameter 線材外徑（mm，含漆膜）
  * @param {number} count 要擺的線材總數（= 每槽匝數×每槽線圈數×股數/匝）
  * @returns {{placed:Array<{x,y,d}>, placedCount:number, requestedCount:number}}
@@ -192,8 +194,8 @@ function packCirclesInPolygon(points, diameter, count) {
   const r = diameter / 2;
   const bbox = polygonBBox(points);
 
-  let y = bbox.minY + r;
-  while (y <= bbox.maxY - r + 1e-9 && result.placed.length < count) {
+  let y = bbox.maxY - r;
+  while (y >= bbox.minY + r - 1e-9 && result.placed.length < count) {
     const spans = horizontalSpans(points, y)
       .filter(([a, b]) => b - a >= diameter - 1e-9);
 
@@ -207,7 +209,7 @@ function packCirclesInPolygon(points, diameter, count) {
         result.placed.push({ x: startX + k * diameter, y, d: diameter });
       }
     }
-    y += diameter; // 矩形排距（非六方最密堆積），確保排與排之間絕不重疊
+    y -= diameter; // 矩形排距（非六方最密堆積），確保排與排之間絕不重疊
   }
   result.placedCount = result.placed.length;
   return result;
