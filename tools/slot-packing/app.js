@@ -92,8 +92,8 @@ var MT_I18N = {
     zh: '槽滿率 % = (線材總數 × 單根截面積) / 繞線窗面積（liner內縮後） × 100 — 跟下面的排列演算法擺不擺得下無關，純粹面積比。',
   },
   outPackedTip:  {
-    en: 'How many of the wires this simple row-by-row packer could actually place without overlapping, inside the liner-offset winding window. Rows build up from the slot bottom toward the opening (like wire actually settles when wound in), so with fewer turns than the slot could hold, the empty space shows up near the opening, not scattered. Not placing all of them does not necessarily mean they don’t physically fit — a better arrangement might.',
-    zh: '這個簡易逐排演算法在liner內縮後的繞線窗裡，實際能無重疊擺進去幾根。排列是從槽底往槽口方向疊（符合線材繞進去時實際會貼槽底落下的直覺），所以匝數不多時，空出來的地方會在槽口附近，不會散落各處。沒有全部擺進去，不代表實際上真的塞不下——換個排法可能塞得進去。',
+    en: 'How many of the wires this simple packer could actually place without overlapping, inside the liner-offset winding window. It fills one column (hugging a side wall) all the way from the slot bottom toward the opening before moving to the next column, working inward from both side walls — so with fewer turns than the slot could hold, the empty space shows up as missing columns in the middle, not a band near the opening. Not placing all of them does not necessarily mean they don’t physically fit — a better arrangement might.',
+    zh: '這個簡易演算法在liner內縮後的繞線窗裡，實際能無重疊擺進去幾根。排列方式是「一欄一欄」處理：先把貼著其中一側壁面的那一欄從槽底往槽口方向疊滿，再換下一欄，兩側壁面同時往中間收攏——所以匝數不多時，空出來的地方會是中間幾欄不見了，不是槽口附近缺一截。沒有全部擺進去，不代表實際上真的塞不下——換個排法可能塞得進去。',
   },
 };
 

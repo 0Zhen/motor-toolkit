@@ -223,13 +223,39 @@ function clipPolygonMinX(points, minX) {
 }
 
 /**
- * 槽內線材堆疊（簡單逐排視覺化，不是最佳圓形填充演算法）：
- * 由槽底往槽口方向逐排排列（貼槽底與兩側壁面開始疊，跟實際繞線的物理
- * 直覺一致——線是從槽口塞進去，會先落到槽底再一層層往外疊，不是堆在
- * 槽口附近），每排用掃描線算出該高度的實際寬度，該排置中擺放能放下的
- * 圓（一律同直徑），放滿 count 顆或疊到不繞線區為止。
+ * horizontalSpans 的縱向版：垂直線 x 與多邊形邊界的交點，成對回傳「在
+ * 多邊形內部」的 y 區間（even-odd 規則，凹凸多邊形皆可）。
+ * @returns {Array<[number,number]>} 由小到大排序的 [yTop,yBottom] 區間
+ *   （y 往下遞增，yTop 離槽口近、yBottom 離槽底近）
+ */
+function verticalSpans(points, x) {
+  const n = points.length;
+  const ys = [];
+  for (let i = 0; i < n; i++) {
+    const a = points[i], b = points[(i + 1) % n];
+    const x1 = a.x, x2 = b.x;
+    if ((x1 <= x && x2 > x) || (x2 <= x && x1 > x)) {
+      const t = (x - x1) / (x2 - x1);
+      ys.push(a.y + t * (b.y - a.y));
+    }
+  }
+  ys.sort((p, q) => p - q);
+  const spans = [];
+  for (let i = 0; i + 1 < ys.length; i += 2) spans.push([ys[i], ys[i + 1]]);
+  return spans;
+}
+
+/**
+ * 槽內線材堆疊（簡單視覺化，不是最佳圓形填充演算法）：「欄優先」——
+ * 一欄（固定 x）先由槽底往槽口方向疊滿，疊滿或疊到不繞線區才換下一
+ * 欄，不是一排一排橫著疊。欄的處理順序從兩側壁面開始、往中間收攏
+ * （左邊緣、右邊緣、次左、次右...），這樣如果線材數量不夠疊滿整個
+ * 槽，缺口會出現在寬度方向的中間，而不是在深度方向的槽口附近——跟
+ * 貼槽邊、由下往上疊的物理直覺一致（Y 方向優先疊滿）。
+ * 相鄰欄中心 x 一律差整數倍 diameter，不管各欄起疊的 y 基準點位移多
+ * 少，水平距離本身就 >= diameter，所以欄跟欄之間保證不會疊到。
  * 呼叫端應該先用 offsetPolygonInward() 把 liner 內縮、clipPolygonMinY()
- * 把開口喉裁掉，這裡只管單純在給定的多邊形裡由下往上塞圓。
+ * 把開口喉裁掉，這裡只管單純在給定的多邊形裡塞圓。
  * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮＋裁掉喉部後的繞線窗）
  * @param {number} diameter 線材外徑（mm，含漆膜）
  * @param {number} count 要擺的線材總數（= 每槽匝數×每槽線圈數×股數/匝）
@@ -241,22 +267,27 @@ function packCirclesInPolygon(points, diameter, count) {
   const r = diameter / 2;
   const bbox = polygonBBox(points);
 
-  let y = bbox.maxY - r;
-  while (y >= bbox.minY + r - 1e-9 && result.placed.length < count) {
-    const spans = horizontalSpans(points, y)
-      .filter(([a, b]) => b - a >= diameter - 1e-9);
+  const columnXs = [];
+  for (let x = bbox.minX + r; x <= bbox.maxX - r + 1e-9; x += diameter) columnXs.push(x);
 
-    for (const [left, right] of spans) {
-      const spanWidth = right - left;
-      const extraSlots = Math.floor((spanWidth - diameter) / diameter + 1e-9);
-      const n = extraSlots + 1;
-      const totalWidth = (n - 1) * diameter;
-      const startX = left + (spanWidth - totalWidth) / 2;
-      for (let k = 0; k < n && result.placed.length < count; k++) {
-        result.placed.push({ x: startX + k * diameter, y, d: diameter });
+  // 兩側壁面優先、往中間收攏的欄位順序
+  const order = [];
+  for (let lo = 0, hi = columnXs.length - 1; lo <= hi; lo++, hi--) {
+    order.push(columnXs[lo]);
+    if (hi !== lo) order.push(columnXs[hi]);
+  }
+
+  for (const x of order) {
+    if (result.placed.length >= count) break;
+    const spans = verticalSpans(points, x).filter(([top, bot]) => bot - top >= diameter - 1e-9);
+    for (const [top, bottom] of spans) {
+      let y = bottom - r; // 從該段區間的槽底那端開始疊
+      const topLimit = top + r;
+      while (y >= topLimit - 1e-9 && result.placed.length < count) {
+        result.placed.push({ x, y, d: diameter });
+        y -= diameter;
       }
     }
-    y -= diameter; // 矩形排距（非六方最密堆積），確保排與排之間絕不重疊
   }
   result.placedCount = result.placed.length;
   return result;
