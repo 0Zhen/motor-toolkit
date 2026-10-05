@@ -1,0 +1,267 @@
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { height: 100%; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+body > * { min-width: 0; }
+
+/* ══════════════════════════════════════════════════════════
+   主版面：左側輸入欄（固定寬）＋ 右側結果欄（吃剩餘寬度）
+   ══════════════════════════════════════════════════════════ */
+.layout {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  padding: 0 10px 8px;
+  overflow: hidden;
+  width: 100%;
+  gap: 8px;
+}
+
+.input-panel {
+  width: 360px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 6px 8px 0;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+.input-panel::-webkit-scrollbar { width: 5px; }
+.input-panel::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+[data-theme="dark"] .input-panel { scrollbar-color: #374151 transparent; }
+[data-theme="dark"] .input-panel::-webkit-scrollbar-thumb { background: #374151; }
+
+.results-col {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 2px 4px 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   輸入區塊（沿用 dcr-calculator 的視覺語言）
+   ══════════════════════════════════════════════════════════ */
+.params-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 8px 8px;
+  flex-shrink: 0;
+}
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: center;
+  letter-spacing: 0.04em;
+  padding: 2px 0;
+}
+.param-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 98px;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+.param-label {
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+}
+.param-input {
+  font-family: var(--mono);
+  font-size: 12px; font-weight: 600;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 5px;
+  color: #1a1d23;
+  text-align: right;
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.param-input:focus { border-color: var(--accent); background: #fff; }
+[data-theme="dark"] .param-input { background: #1e2235; color: #c9d1e0; border-color: #2d3148; }
+[data-theme="dark"] .param-input:focus { background: #252840; }
+
+.hint-text {
+  font-size: 10.5px;
+  color: #9ca3af;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+.full-btn { width: 100%; margin-top: 8px; }
+
+/* ══════════════════════════════════════════════════════════
+   模式切換 tabs（沿用 dcr-calculator）
+   ══════════════════════════════════════════════════════════ */
+.mode-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 3px;
+  margin-top: 6px;
+}
+.mode-tab {
+  flex: 1;
+  padding: 6px 4px;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  background: none;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.mode-tab:hover { background: rgba(0,0,0,0.04); }
+.mode-tab.active { background: var(--accent); color: #fff; }
+[data-theme="dark"] .mode-tab:hover { background: rgba(255,255,255,0.06); }
+
+/* ══════════════════════════════════════════════════════════
+   頂點編輯表格
+   ══════════════════════════════════════════════════════════ */
+.vertex-table-wrap {
+  max-height: 220px;
+  overflow-y: auto;
+  margin-top: 6px;
+}
+.vertex-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.vertex-table th {
+  position: sticky; top: 0;
+  background: var(--surface);
+  color: #6b7280;
+  font-weight: 600;
+  text-align: right;
+  padding: 4px 5px;
+  border-bottom: 1.5px solid var(--border);
+}
+.vertex-table th:first-child { text-align: left; }
+.vertex-table td {
+  padding: 3px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.vertex-table td:first-child {
+  color: #9ca3af;
+  text-align: left;
+  width: 18px;
+}
+.vertex-table input {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: right;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 4px;
+  background: #fafafa;
+  color: #1a1d23;
+  outline: none;
+}
+.vertex-table input:focus { border-color: var(--accent); background: #fff; }
+[data-theme="dark"] .vertex-table input { background: #1e2235; color: #c9d1e0; border-color: #2d3148; }
+.vertex-del-btn {
+  border: none;
+  background: none;
+  color: var(--red);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 4px;
+}
+.vertex-del-btn:hover { opacity: 0.7; }
+
+/* ══════════════════════════════════════════════════════════
+   結果卡片 / SVG
+   ══════════════════════════════════════════════════════════ */
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px 12px;
+}
+.result-card.highlight {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+.result-card-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #6b7280;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.result-card-body {
+  font-family: var(--mono);
+  font-size: 15.5px;
+  line-height: 1.9;
+  color: var(--text);
+}
+.result-card-body .rv { font-weight: 700; color: var(--accent); }
+[data-theme="dark"] .result-card-body .rv { color: #93b4ff; }
+.result-card-body .ru { font-size: 12px; color: #9ca3af; margin-left: 2px; }
+.result-card-body .warn { color: var(--amber); }
+.result-card-body .bad { color: var(--red); }
+.result-card-body .rv.warn { color: var(--amber); }
+.result-card-body .rv.bad { color: var(--red); }
+
+.sub-note { font-size: 10px; color: #9ca3af; font-family: var(--mono); }
+
+/* 公式提示：滑鼠移過去看背後計算式（原生 title tooltip） */
+.formula-tip {
+  cursor: help;
+  border-bottom: 1px dotted var(--text3);
+}
+
+.svg-wrap {
+  width: 100%;
+  min-height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#packingSvg {
+  width: 100%;
+  height: 360px;
+}
+.slot-outline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 0.6;
+}
+.slot-circle {
+  fill: color-mix(in srgb, var(--accent) 55%, transparent);
+  stroke: var(--accent);
+  stroke-width: 0.15;
+}
+
+/* ══════════════════════════════════════════════════════════
+   Dark theme overrides
+   ══════════════════════════════════════════════════════════ */
+[data-theme="dark"] .mode-tabs { background: #13151f; }

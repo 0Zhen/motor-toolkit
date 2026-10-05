@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slot Packing Viewer | Motor Toolkit</title>
+<meta name="description"
+  content="Visualize how turns pack into a stator slot: parametric trapezoid or custom vertices, editable point table, simple row-by-row circle packing. Free, browser-based, runs entirely client-side.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/slot-packing/">
+<link rel="icon" type="image/png" href="../../favicon.png">
+<link rel="stylesheet" href="../../shared/theme.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-title="Slot Packing Viewer" data-sub="Slot shape · Vertex editor · Turn packing"
+      data-title-zh="槽內排列工具" data-sub-zh="槽型 · 頂點編輯 · 線材堆疊">
+<script src="../../shared/tools.js"></script>
+<script src="../../shared/shell.js"></script>
+
+<div class="layout">
+
+  <!-- ── 左側：輸入欄 ── -->
+  <div class="panel input-panel">
+
+    <!-- 槽型輸入 -->
+    <div class="params-box">
+      <div class="section-title" data-i18n="shapeTitle">Slot Shape</div>
+      <div class="mode-tabs">
+        <button class="mode-tab active" id="tabParam" onclick="switchShapeMode('param')">
+          <span data-i18n="tabParam">Parametric</span>
+        </button>
+        <button class="mode-tab" id="tabCustom" onclick="switchShapeMode('custom')">
+          <span data-i18n="tabCustom">Custom points</span>
+        </button>
+      </div>
+
+      <div id="paramPanel">
+        <div class="param-row-2"><span class="param-label" data-i18n="topWidth">Top width [mm]</span>
+          <input type="text" class="param-input" id="p_topWidth" value="4"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="bottomWidth">Bottom width [mm]</span>
+          <input type="text" class="param-input" id="p_bottomWidth" value="7"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="slotDepth">Depth [mm]</span>
+          <input type="text" class="param-input" id="p_depth" value="12"></div>
+        <button class="mt-btn-ghost full-btn" id="btnGenerate" data-i18n="generateBtn">Generate points (overwrites below)</button>
+        <div class="hint-text" data-i18n="paramHint">
+          Symmetric trapezoid: y=0 is the slot opening (air-gap side), y=depth is the slot bottom
+          (yoke side). Generates 4 points below — add more afterwards to refine the shape.
+        </div>
+      </div>
+      <div id="customPanel" style="display:none">
+        <div class="hint-text" data-i18n="customHint">
+          Start from scratch, or switch to Parametric, generate a trapezoid, then come back here —
+          every point is editable either way.
+        </div>
+      </div>
+    </div>
+
+    <!-- 頂點編輯表格 -->
+    <div class="params-box">
+      <div class="section-title" data-i18n="verticesTitle">Vertices</div>
+      <div class="vertex-table-wrap">
+        <table class="vertex-table" id="vertexTable">
+          <thead><tr><th>#</th><th data-i18n="colX">X [mm]</th><th data-i18n="colY">Y [mm]</th><th></th></tr></thead>
+          <tbody id="vertexTableBody"></tbody>
+        </table>
+      </div>
+      <button class="mt-btn-ghost full-btn" id="btnAddPoint" data-i18n="addPointBtn">+ Add point</button>
+      <div class="hint-text" data-i18n="vertexHint">
+        Points connect in order and close back to the first one. No self-intersection check — keep
+        them tracing a simple outline.
+      </div>
+    </div>
+
+    <!-- 線材 -->
+    <div class="params-box">
+      <div class="section-title" data-i18n="wireTitle">Wire / Turns</div>
+      <div class="param-row-2"><span class="param-label" data-i18n="bareDia">Bare copper dia. [mm]</span>
+        <input type="text" class="param-input" id="w_bareDia" value="0.7"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="enamelThk">Enamel thk., one side [mm]</span>
+        <input type="text" class="param-input" id="w_enamel" value="0.025"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="turnsPerSlot">Turns / slot</span>
+        <input type="text" class="param-input" id="w_turns" value="20"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="coilsPerSlot">Coils / slot</span>
+        <input type="text" class="param-input" id="w_coils" value="1"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="strandsPerTurn">Strands / turn</span>
+        <input type="text" class="param-input" id="w_strands" value="1"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="wallClearance">Wall clearance [mm]</span>
+        <input type="text" class="param-input" id="w_wallClearance" value="0.1"></div>
+      <div class="hint-text" data-i18n="wireHint">
+        Wall clearance is a flat inset applied to each row's width — a simplification, not a real
+        liner/wedge geometry.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── 右側：結果欄 ── -->
+  <div class="results-col">
+
+    <div class="hint-text" data-i18n="toolHint" style="margin:0 0 2px">
+      💡 This is a simple row-by-row visual, not an optimal circle-packing solver — a real winding
+      may fit tighter than shown. The area-based fill % is the reliable number; the packed count is
+      indicative only.
+    </div>
+
+    <div class="result-card">
+      <div class="svg-wrap">
+        <svg id="packingSvg" viewBox="-50 -10 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+    </div>
+
+    <div class="result-card highlight">
+      <div class="result-card-label" data-i18n="statsTitle">Stats</div>
+      <div class="result-card-body" id="statsOut">—</div>
+    </div>
+
+  </div>
+</div>
+
+<script src="geometry.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

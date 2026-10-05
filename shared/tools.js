@@ -69,4 +69,13 @@ const MT_TOOLS = [
     icon:    '💰',
     path:    'tools/cost-calculator/',
   },
+  {
+    id:      'slot-packing',
+    name:    'Slot Packing Viewer',
+    name_zh: '槽內排列工具',
+    desc:    'Visualize how turns pack into a stator slot — parametric trapezoid or custom vertices, editable point table, simple row-by-row circle packing.',
+    desc_zh: '視覺化線材在槽內的堆疊——參數化梯形或自訂頂點，可編輯頂點表格，簡易逐排圓形堆疊示意。',
+    icon:    '🧩',
+    path:    'tools/slot-packing/',
+  },
 ];

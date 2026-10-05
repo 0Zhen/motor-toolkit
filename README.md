@@ -16,6 +16,7 @@ Works both on GitHub Pages and opened directly from disk (`file://`).
 | DCR Calculator | `tools/dcr-calculator/` | Convert turns / wire diameter / DCR / slot fill factor, quick calibration or full geometry mode, wire-diameter sweep table |
 | Winding Designer | `tools/winding-designer/` | Star-of-slots winding layout for any pole/slot/layer combination (integer- and fractional-slot), fundamental winding factor |
 | Cost Calculator | `tools/cost-calculator/` | Estimate silicon steel / copper / magnet or rotor material cost from geometry, slot/pole count and winding data. PMSM, EESM and induction motor support |
+| Slot Packing Viewer | `tools/slot-packing/` | Visualize turns packing into a stator slot — parametric trapezoid or custom vertices, editable point table, simple row-by-row circle packing |
 
 ## Architecture
 
