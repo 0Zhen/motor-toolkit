@@ -108,8 +108,10 @@ var MT_I18N = {
     zh: 'OD = 裸銅徑 + 2 × 漆膜厚度（單邊）。',
   },
   tipMlt: {
-    en: 'MLT = stack length × MLT factor, unless an MLT value is entered directly above.',
-    zh: 'MLT = 疊長 × MLT 係數，除非上方直接輸入 MLT 數值。',
+    en: 'MLT = stack length × MLT factor, unless an MLT value is entered directly above.\n' +
+      'The factor is an empirical estimate of end-turn length: 2.0 is just the two straight passes through the slot, anything above 2.0 is the end-turn looping over both ends of the core. Larger coil span, distributed (vs. concentrated) windings, and hand-wound (vs. preformed) coils all push it higher — typically ~2.0–2.3 for concentrated windings, ~2.4–2.8 for distributed. If you have an actual end-turn height from CAD/a real sample, enter MLT directly above instead of relying on this factor.',
+    zh: 'MLT = 疊長 × MLT 係數，除非上方直接輸入 MLT 數值。\n' +
+      '係數是端部繞組長度的經驗估計：2.0 只是穿過槽的來回兩段直線長度，超過2.0的部分就是兩端端部繞組繞出鐵芯外的弧長。節距越大、分佈繞（相對集中繞）、手繞（相對預成型線圈）都會讓係數變高——集中繞通常約2.0–2.3，分佈繞約2.4–2.8。如果你有CAD或實測樣品量到的實際端部高度，建議直接在上方填入MLT數值，不要依賴這個係數估算。',
   },
   tipSeriesTurns: {
     en: 'Series turns/phase = Turns/slot × Series coils/phase.',
@@ -132,6 +134,19 @@ var MT_I18N = {
     zh: '在目標槽滿率與槽面積限制下，這個線徑每槽最多能繞的匝數（無條件捨去到整數）。',
   },
 
+  formulaHint: {
+    en: '💡 Labels with a dotted underline show the formula behind the number — hover over them.',
+    zh: '💡 標籤底下有虛線的，滑鼠移過去可以看到背後的計算公式。',
+  },
+  outN:          { en: 'N (turns)',          zh: 'N（匝數）' },
+  outD:          { en: 'd (wire dia.)',      zh: 'd（線徑）' },
+  outDcr:        { en: 'DCR',                zh: 'DCR' },
+  outOd:         { en: 'Wire OD',            zh: '線材外徑（OD）' },
+  outMltUsed:    { en: 'MLT used',           zh: '採用的 MLT' },
+  outSeriesTurns:{ en: 'Series turns/phase', zh: '每相串聯匝數' },
+  outRphase:     { en: 'R_phase',            zh: 'R_phase（相電阻）' },
+  outRline:      { en: 'R_line',             zh: 'R_line（線電阻）' },
+
   sweepTitle:        { en: 'Wire Diameter Sweep',          zh: '線徑掃描' },
   sweepTargetFill:   { en: 'Target fill [%]',              zh: '目標槽滿率 [%]' },
   sweepMinLabel:     { en: 'min',                          zh: '最小' },
@@ -140,6 +155,10 @@ var MT_I18N = {
   runSweepBtn:       { en: '▶ Run Sweep',                  zh: '▶ 執行掃描' },
 
   tempCorrTitle:   { en: 'Temperature Correction',        zh: '溫度換算' },
+  tempCorrHint:    {
+    en: 'A separate utility — take any known resistance (R1/T1 default to the result above) and find its value at a different temperature (T2). Not part of the geometry calculation.',
+    zh: '這是獨立的小工具——拿任何一個已知的電阻值（R1/T1 預設帶入上面算出的結果），換算到另一個溫度 T2 下的電阻，跟上面的幾何計算是分開的。',
+  },
   tcR1:            { en: 'R @ T1 [Ω]',                    zh: 'R @ T1 [Ω]' },
   tcT1:            { en: 'T1 [°C]',                       zh: 'T1 [°C]' },
   tcT2:            { en: 'T2 [°C]',                       zh: 'T2 [°C]' },
@@ -238,18 +257,18 @@ function computeQuick() {
   try { res = quickSolve(input, calib, step); } catch (e) { return; }
 
   $('q_idealOut').innerHTML =
-    tip('N', 'tipQuickN') + ' = <span class="rv">' + fmt(res.nIdeal, 2) + '</span><span class="ru">turns</span><br>' +
-    tip('d', 'tipQuickD') + ' = <span class="rv">' + fmt(res.dIdeal, 4) + '</span><span class="ru">mm</span>';
+    tip(window.mtT('outN'), 'tipQuickN') + ' = <span class="rv">' + fmt(res.nIdeal, 2) + '</span><span class="ru">turns</span><br>' +
+    tip(window.mtT('outD'), 'tipQuickD') + ' = <span class="rv">' + fmt(res.dIdeal, 4) + '</span><span class="ru">mm</span>';
 
   $('q_practicalOut').innerHTML =
-    'N = <span class="rv">' + res.nPractical + '</span><span class="ru">turns</span><br>' +
-    'd = <span class="rv">' + fmt(res.dPractical, 2) + '</span><span class="ru">mm</span><br>' +
-    tip('DCR', 'tipQuickR') + ' = <span class="rv">' + fmt(res.rPractical, 4) + '</span><span class="ru">Ω</span>';
+    window.mtT('outN') + ' = <span class="rv">' + res.nPractical + '</span><span class="ru">turns</span><br>' +
+    window.mtT('outD') + ' = <span class="rv">' + fmt(res.dPractical, 2) + '</span><span class="ru">mm</span><br>' +
+    tip(window.mtT('outDcr'), 'tipQuickR') + ' = <span class="rv">' + fmt(res.rPractical, 4) + '</span><span class="ru">Ω</span>';
 
   $('q_fillOut').innerHTML = '<span class="rv">' + fmt(res.fillRatioPct, 1) + '</span><span class="ru">%</span>';
 
   updateQuickValidation(calib);
-  setDefaultTempInput(res.rPractical);
+  setDefaultTempInput(res.rPractical, 20);
 }
 
 /* 驗證點：用校準係數 C 反推一組不同的實測 (N,d) 應該有的 R，跟實測比對 */
@@ -328,15 +347,16 @@ function computeFull() {
   var correctionNote = p.correctionFactor != null
     ? ' <span class="ru">(×' + fmt(p.correctionFactor, 3) + ' ' + window.mtT('correctionApplied') + ')</span>'
     : '';
+  var odDerivation = ' <span class="sub-note">(' + fmt(p.bareDia, 3) + ' + 2×' + fmt(p.enamelThk, 3) + ')</span>';
   $('f_out').innerHTML =
-    tip('OD', 'tipOd') + ' = <span class="rv">' + fmt(res.od, 4) + '</span><span class="ru">mm</span><br>' +
-    tip('MLT used', 'tipMlt') + ' = <span class="rv">' + fmt(res.mlt, 2) + '</span><span class="ru">mm</span><br>' +
-    tip('Series turns/phase', 'tipSeriesTurns') + ' = <span class="rv">' + fmt(res.seriesTurnsTotal, 0) + '</span><br>' +
+    tip(window.mtT('outOd'), 'tipOd') + ' = <span class="rv">' + fmt(res.od, 4) + '</span><span class="ru">mm</span>' + odDerivation + '<br>' +
+    tip(window.mtT('outMltUsed'), 'tipMlt') + ' = <span class="rv">' + fmt(res.mlt, 2) + '</span><span class="ru">mm</span><br>' +
+    tip(window.mtT('outSeriesTurns'), 'tipSeriesTurns') + ' = <span class="rv">' + fmt(res.seriesTurnsTotal, 0) + '</span><br>' +
     tip(window.mtT('thFill'), 'tipFullFill') + ' = <span class="rv">' + fmt(res.fillPct, 1) + '</span><span class="ru">%</span><br>' +
-    tip('R_phase', 'tipFullR') + ' = <span class="rv">' + fmt(res.rPhase, 4) + '</span><span class="ru">Ω</span>' + correctionNote + '<br>' +
-    tip('R_line', 'tipRline') + ' = <span class="rv">' + fmt(res.rLine, 4) + '</span><span class="ru">Ω</span>' + correctionNote;
+    tip(window.mtT('outRphase'), 'tipFullR') + ' = <span class="rv">' + fmt(res.rPhase, 4) + '</span><span class="ru">Ω</span>' + correctionNote + '<br>' +
+    tip(window.mtT('outRline'), 'tipRline') + ' = <span class="rv">' + fmt(res.rLine, 4) + '</span><span class="ru">Ω</span>' + correctionNote;
 
-  setDefaultTempInput(res.rPhase);
+  setDefaultTempInput(res.rPhase, p.tempC);
   renderSweepTable();
 }
 
@@ -374,21 +394,29 @@ function renderSweepTable() {
   $('sweepTable').innerHTML = html;
 }
 
-/* ── 溫度換算 ── */
-function setDefaultTempInput(r) {
+/* ── 溫度換算 ──
+   R1/T1 都採「輸入框空白時用自動值」的模式：R1 自動帶入上面算出的 DCR，
+   T1 自動帶入該 DCR 實際算出時用的溫度（Quick 模式沒有溫度概念，固定視為20°C）。
+   兩者只要使用者自己填了值就不再跟著變，確保「換算哪個溫度的哪個電阻」永遠一致，
+   不會發生 R1 已經是80°C算出來的值、T1 卻還顯示20°C的錯誤換算。 */
+function setDefaultTempInput(r, baseTempC) {
   if ($('t_R1').value === '') $('t_R1').dataset.auto = fmt(r, 4);
+  if ($('t_T1').value === '') $('t_T1').dataset.auto = String(baseTempC != null ? baseTempC : 20);
   computeTempCorr();
 }
 
 function computeTempCorr() {
   var r1raw = $('t_R1').value;
   var R1 = r1raw === '' ? parseFloat($('t_R1').dataset.auto || 'NaN') : parseFloat(r1raw);
-  var T1 = num('t_T1', 20), T2 = num('t_T2', 120);
+  var t1raw = $('t_T1').value;
+  var T1 = t1raw === '' ? parseFloat($('t_T1').dataset.auto || '20') : parseFloat(t1raw);
+  var T2 = num('t_T2', 120);
   var material = $('t_material').value;
   if (!isFinite(R1)) { $('t_result').textContent = '—'; return; }
   var R2 = tempCorrectR(R1, T1, T2, material);
   $('t_result').textContent = fmt(R2, 4);
   if (r1raw === '') $('t_R1').placeholder = fmt(R1, 4);
+  if (t1raw === '') $('t_T1').placeholder = fmt(T1, 0);
 }
 
 /* ── 統一重算入口 ── */

@@ -197,10 +197,14 @@
         <span class="collapsible-arrow">▾</span>
       </div>
       <div class="collapsible-body">
+        <div class="hint-text" data-i18n="tempCorrHint">
+          A separate utility — take any known resistance (R1/T1 default to the result above) and
+          find its value at a different temperature (T2). Not part of the geometry calculation.
+        </div>
         <div class="param-row-2"><span class="param-label" data-i18n="tcR1">R @ T1 [Ω]</span>
-          <input type="text" class="param-input" id="t_R1" value=""></div>
+          <input type="text" class="param-input" id="t_R1" value="" placeholder="auto"></div>
         <div class="param-row-2"><span class="param-label" data-i18n="tcT1">T1 [°C]</span>
-          <input type="text" class="param-input" id="t_T1" value="20"></div>
+          <input type="text" class="param-input" id="t_T1" value="" placeholder="auto"></div>
         <div class="param-row-2"><span class="param-label" data-i18n="tcT2">T2 [°C]</span>
           <input type="text" class="param-input" id="t_T2" value="120"></div>
         <div class="param-row-2"><span class="param-label" data-i18n="tcMaterial">Material</span>
@@ -213,6 +217,10 @@
 
   <!-- ── 右側：結果欄 ── -->
   <div class="results-col">
+
+    <div class="hint-text" id="formulaHint" data-i18n="formulaHint" style="margin:0 0 2px">
+      💡 Labels with a dotted underline show the formula behind the number — hover over them.
+    </div>
 
     <div id="quickResults" class="result-cards">
       <div class="result-card">
