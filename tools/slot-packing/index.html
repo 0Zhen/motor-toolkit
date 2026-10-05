@@ -35,7 +35,11 @@
       </div>
 
       <div id="paramPanel">
-        <div class="param-row-2"><span class="param-label" data-i18n="topWidth">Top width [mm]</span>
+        <div class="param-row-2"><span class="param-label" data-i18n="openWidth">Opening width [mm]</span>
+          <input type="text" class="param-input" id="p_openWidth" value="3"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="openHeight">Opening height [mm]</span>
+          <input type="text" class="param-input" id="p_openHeight" value="1.5"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="topWidth">Body top width [mm]</span>
           <input type="text" class="param-input" id="p_topWidth" value="4"></div>
         <div class="param-row-2"><span class="param-label" data-i18n="bottomWidth">Bottom width [mm]</span>
           <input type="text" class="param-input" id="p_bottomWidth" value="7"></div>
@@ -43,8 +47,11 @@
           <input type="text" class="param-input" id="p_depth" value="12"></div>
         <button class="mt-btn-ghost full-btn" id="btnGenerate" data-i18n="generateBtn">Generate points (overwrites below)</button>
         <div class="hint-text" data-i18n="paramHint">
-          Symmetric trapezoid: y=0 is the slot opening (air-gap side), y=depth is the slot bottom
-          (yoke side). Generates 4 points below — add more afterwards to refine the shape.
+          Symmetric: y=0 is the slot opening (air-gap side), y=depth is the slot bottom (yoke
+          side). A narrow opening throat (opening width/height) runs from y=0, then widens to the
+          body's top width and tapers to the bottom width. Set opening width = body top width (or
+          opening height = 0) to get a plain trapezoid. Generates 8 points below — add more
+          afterwards to refine the shape.
         </div>
       </div>
       <div id="customPanel" style="display:none">
@@ -84,11 +91,11 @@
         <input type="text" class="param-input" id="w_coils" value="1"></div>
       <div class="param-row-2"><span class="param-label" data-i18n="strandsPerTurn">Strands / turn</span>
         <input type="text" class="param-input" id="w_strands" value="1"></div>
-      <div class="param-row-2"><span class="param-label" data-i18n="wallClearance">Wall clearance [mm]</span>
-        <input type="text" class="param-input" id="w_wallClearance" value="0.1"></div>
+      <div class="param-row-2"><span class="param-label" data-i18n="linerThickness">Liner thickness [mm]</span>
+        <input type="text" class="param-input" id="w_linerThickness" value="0.3"></div>
       <div class="hint-text" data-i18n="wireHint">
-        Wall clearance is a flat inset applied to each row's width — a simplification, not a real
-        liner/wedge geometry.
+        The liner is modeled as a real inward offset of the slot outline (shown in green below),
+        not just a number subtracted from the fill % — turns are packed inside that offset shape.
       </div>
     </div>
 
@@ -106,6 +113,11 @@
     <div class="result-card">
       <div class="svg-wrap">
         <svg id="packingSvg" viewBox="-50 -10 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="svg-legend">
+        <span><i class="legend-swatch" style="background:#b5392f"></i><span data-i18n="legendLam">Lamination</span></span>
+        <span><i class="legend-swatch" style="background:#5fae7c"></i><span data-i18n="legendLiner">Liner (winding window)</span></span>
+        <span><i class="legend-swatch" style="background:#f2d14c"></i><span data-i18n="legendWire">Conductor</span></span>
       </div>
     </div>
 

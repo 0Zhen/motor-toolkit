@@ -8,13 +8,15 @@ var MT_I18N = {
   shapeTitle:   { en: 'Slot Shape', zh: '槽型' },
   tabParam:     { en: 'Parametric', zh: '參數化' },
   tabCustom:    { en: 'Custom points', zh: '自訂頂點' },
-  topWidth:     { en: 'Top width [mm]', zh: '上寬（槽口）[mm]' },
+  openWidth:    { en: 'Opening width [mm]', zh: '開口寬 [mm]' },
+  openHeight:   { en: 'Opening height [mm]', zh: '開口高 [mm]' },
+  topWidth:     { en: 'Body top width [mm]', zh: '本體上寬 [mm]' },
   bottomWidth:  { en: 'Bottom width [mm]', zh: '下寬（槽底）[mm]' },
   slotDepth:    { en: 'Depth [mm]', zh: '槽深 [mm]' },
   generateBtn:  { en: 'Generate points (overwrites below)', zh: '產生頂點（覆蓋下方表格）' },
   paramHint:    {
-    en: 'Symmetric trapezoid: y=0 is the slot opening (air-gap side), y=depth is the slot bottom (yoke side). Generates 4 points below — add more afterwards to refine the shape.',
-    zh: '對稱梯形：y=0 是槽口（靠氣隙那端），y=depth 是槽底（靠軛部那端）。會產生下方4個頂點，之後可以再手動加點微調形狀。',
+    en: 'Symmetric: y=0 is the slot opening (air-gap side), y=depth is the slot bottom (yoke side). A narrow opening throat (opening width/height) runs from y=0, then widens to the body’s top width and tapers to the bottom width. Set opening width = body top width (or opening height = 0) for a plain trapezoid. Generates 8 points below — add more afterwards to refine the shape.',
+    zh: '對稱：y=0 是槽口（靠氣隙那端），y=depth 是槽底（靠軛部那端）。從y=0開始先是一段窄直的開口喉（開口寬/開口高），之後展開成本體上寬，再taper到下寬。把開口寬設成等於本體上寬（或開口高設0）就會退化成單純梯形。會產生下方8個頂點，之後可以再手動加點微調形狀。',
   },
   customHint:   {
     en: 'Start from scratch, or switch to Parametric, generate a trapezoid, then come back here — every point is editable either way.',
@@ -34,18 +36,22 @@ var MT_I18N = {
   turnsPerSlot: { en: 'Turns / slot', zh: '每槽匝數' },
   coilsPerSlot: { en: 'Coils / slot', zh: '每槽線圈數' },
   strandsPerTurn:{ en: 'Strands / turn', zh: '股數/匝' },
-  wallClearance:{ en: 'Wall clearance [mm]', zh: '壁面餘隙 [mm]' },
+  linerThickness:{ en: 'Liner thickness [mm]', zh: 'Liner 厚度 [mm]' },
   wireHint:     {
-    en: "Wall clearance is a flat inset applied to each row's width — a simplification, not a real liner/wedge geometry.",
-    zh: '壁面餘隙是每一排寬度各自內縮的簡化值，不是真正的槽絕緣紙/楔片幾何。',
+    en: 'The liner is modeled as a real inward offset of the slot outline (shown in green below), not just a number subtracted from the fill % — turns are packed inside that offset shape.',
+    zh: 'Liner 是真的把槽型輪廓向內偏移出來的幾何（下方綠色區域），不是從槽滿率扣一個數字而已——線材是塞在這個內縮後的區域裡。',
   },
   toolHint:     {
     en: '💡 This is a simple row-by-row visual, not an optimal circle-packing solver — a real winding may fit tighter than shown. The area-based fill % is the reliable number; the packed count is indicative only.',
     zh: '💡 這只是簡單的逐排視覺化，不是最佳圓形填充演算法——實際繞線可能比畫面上塞得更緊。「面積槽滿率」才是可靠的數字，「堆疊顆數」只是示意。',
   },
   statsTitle:   { en: 'Stats', zh: '統計' },
+  legendLam:    { en: 'Lamination', zh: '鐵芯' },
+  legendLiner:  { en: 'Liner (winding window)', zh: 'Liner（繞線窗）' },
+  legendWire:   { en: 'Conductor', zh: '導線' },
 
-  outArea:       { en: 'Slot area', zh: '槽面積' },
+  outSlotArea:   { en: 'Slot area (outer)', zh: '槽面積（外緣）' },
+  outWindingArea:{ en: 'Winding area (after liner)', zh: '繞線窗面積（liner內縮後）' },
   outWireOd:     { en: 'Wire OD', zh: '線材外徑（OD）' },
   outCount:      { en: 'Wire count', zh: '線材總數' },
   outFillArea:   { en: 'Fill % (area-based)', zh: '槽滿率 %（面積法）' },
@@ -55,22 +61,30 @@ var MT_I18N = {
   errFewPoints:  { en: 'Need at least 3 points to form a shape.', zh: '至少需要3個頂點才能構成形狀。' },
   errBadArea:    { en: 'These points don’t enclose a usable area — check the vertex order/values.', zh: '這些頂點圍不出有效面積，請檢查頂點順序/數值。' },
   errBadWire:    { en: 'Wire diameter and count must be greater than 0.', zh: '線徑與數量都必須大於0。' },
+  errLinerTooThick: {
+    en: 'Liner thickness is too large for this slot shape (it would cross itself, e.g. at the opening throat). Reduce the liner thickness or widen the shape there.',
+    zh: 'Liner 厚度對這個槽型來說太厚了（內縮後會在某處自我交叉，例如開口喉部太窄）。請縮小 liner 厚度，或把該處的槽型放寬。',
+  },
 
-  tipArea: {
-    en: 'Shoelace formula on the vertex list — the polygon’s own area, regardless of how many sides it has.',
-    zh: '用頂點清單算的鞋帶公式（Shoelace formula）——多邊形本身的面積，不管幾個邊都適用。',
+  tipSlotArea: {
+    en: 'Shoelace formula on the outer vertex list — the slot’s own cut area, before the liner.',
+    zh: '用槽型外緣頂點算的鞋帶公式（Shoelace formula）——liner內縮之前，槽本身的切割面積。',
+  },
+  tipWindingArea: {
+    en: 'Area of the outer slot outline offset inward by the liner thickness — the actual usable winding window.',
+    zh: '槽型外緣向內偏移liner厚度之後的面積——實際可以拿來繞線的窗口。',
   },
   outWireOdTip:  {
     en: 'Wire OD = bare copper dia. + 2 × enamel thickness (one side).',
     zh: '線材外徑 = 裸銅徑 + 2 × 漆膜厚度（單邊）。',
   },
   outFillAreaTip:{
-    en: 'Fill % = (wire count × circle area) / slot area × 100 — independent of how the row-packing below actually arranges them.',
-    zh: '槽滿率 % = (線材總數 × 單根截面積) / 槽面積 × 100 — 跟下面的排列演算法擺不擺得下無關，純粹面積比。',
+    en: 'Fill % = (wire count × circle area) / winding area (after liner) × 100 — independent of how the row-packing below actually arranges them.',
+    zh: '槽滿率 % = (線材總數 × 單根截面積) / 繞線窗面積（liner內縮後） × 100 — 跟下面的排列演算法擺不擺得下無關，純粹面積比。',
   },
   outPackedTip:  {
-    en: 'How many of the wires this simple row-by-row packer could actually place without overlapping. Not placing all of them does not necessarily mean they don’t physically fit — a better arrangement might.',
-    zh: '這個簡易逐排演算法實際能無重疊擺進去幾根。沒有全部擺進去，不代表實際上真的塞不下——換個排法可能塞得進去。',
+    en: 'How many of the wires this simple row-by-row packer could actually place without overlapping, inside the liner-offset winding window. Not placing all of them does not necessarily mean they don’t physically fit — a better arrangement might.',
+    zh: '這個簡易逐排演算法在liner內縮後的繞線窗裡，實際能無重疊擺進去幾根。沒有全部擺進去，不代表實際上真的塞不下——換個排法可能塞得進去。',
   },
 };
 
@@ -137,11 +151,12 @@ function renderVertexTable() {
 }
 
 function generateFromParametric() {
+  var openW = num('p_openWidth', 3), openH = num('p_openHeight', 1.5);
   var top = num('p_topWidth', 4), bottom = num('p_bottomWidth', 7), depth = num('p_depth', 12);
-  vertices = generateTrapezoid(top, bottom, depth);
+  vertices = generateSlotShape(openW, openH, top, bottom, depth);
   renderVertexTable();
   computeAll();
-  if (typeof gaTrack === 'function') gaTrack('slotpack_generate', 'trapezoid');
+  if (typeof gaTrack === 'function') gaTrack('slotpack_generate', 'slot');
 }
 
 function addVertexPoint() {
@@ -151,19 +166,26 @@ function addVertexPoint() {
   computeAll();
 }
 
-/* ── SVG 繪製 ── */
-function renderSvg(pack) {
+/* ── SVG 繪製：紅=鐵芯、綠=liner內縮後的繞線窗、黃=導線（仿 Motor-CAD 配色） ── */
+function renderSvg(innerPoly, pack) {
   var svg = $('packingSvg');
   if (vertices.length < 3) { svg.innerHTML = ''; return; }
 
   var bbox = polygonBBox(vertices);
   var w = bbox.maxX - bbox.minX, h = bbox.maxY - bbox.minY;
   var pad = Math.max(w, h, 1) * 0.12;
-  svg.setAttribute('viewBox', (bbox.minX - pad) + ' ' + (bbox.minY - pad) + ' ' + (w + 2 * pad) + ' ' + (h + 2 * pad));
+  var vx = bbox.minX - pad, vy = bbox.minY - pad, vw = w + 2 * pad, vh = h + 2 * pad;
+  svg.setAttribute('viewBox', vx + ' ' + vy + ' ' + vw + ' ' + vh);
 
   var strokeW = Math.max(w, h, 1) * 0.01;
-  var pts = vertices.map(function (p) { return p.x + ',' + p.y; }).join(' ');
-  var html = '<polygon class="slot-outline" points="' + pts + '" style="stroke-width:' + strokeW + '"></polygon>';
+  var outerPts = vertices.map(function (p) { return p.x + ',' + p.y; }).join(' ');
+  var html = '<rect class="slot-lamination" x="' + vx + '" y="' + vy + '" width="' + vw + '" height="' + vh + '"></rect>' +
+    '<polygon class="slot-outline" points="' + outerPts + '" style="stroke-width:' + strokeW + '"></polygon>';
+
+  if (innerPoly) {
+    var innerPts = innerPoly.map(function (p) { return p.x + ',' + p.y; }).join(' ');
+    html += '<polygon class="slot-liner" points="' + innerPts + '" style="stroke-width:' + strokeW + '"></polygon>';
+  }
   (pack ? pack.placed : []).forEach(function (c) {
     html += '<circle class="slot-circle" cx="' + c.x + '" cy="' + c.y + '" r="' + (c.d / 2) + '" style="stroke-width:' + (strokeW * 0.4) + '"></circle>';
   });
@@ -174,39 +196,52 @@ function renderSvg(pack) {
 function computeAll() {
   if (vertices.length < 3) {
     $('statsOut').innerHTML = '<span class="bad">' + mtT('errFewPoints') + '</span>';
-    renderSvg(null);
+    renderSvg(null, null);
     return;
   }
-  var area = polygonArea(vertices);
-  if (!(area > 0)) {
+  var slotArea = polygonArea(vertices);
+  if (!(slotArea > 0)) {
     $('statsOut').innerHTML = '<span class="bad">' + mtT('errBadArea') + '</span>';
-    renderSvg(null);
+    renderSvg(null, null);
+    return;
+  }
+
+  var linerThk = num('w_linerThickness', 0);
+  var innerPoly = linerThk > 0 ? offsetPolygonInward(vertices, linerThk) : vertices;
+  var innerValid = linerThk <= 0 || isOffsetValid(vertices, innerPoly);
+  var windingArea = innerValid ? polygonArea(innerPoly) : 0;
+
+  if (!innerValid || !(windingArea > 0)) {
+    $('statsOut').innerHTML =
+      tip(mtT('outSlotArea'), 'tipSlotArea') + ': <span class="rv">' + fmt(slotArea, 2) + '</span><span class="ru">mm²</span><br>' +
+      '<span class="bad">' + mtT('errLinerTooThick') + '</span>';
+    renderSvg(null, null);
     return;
   }
 
   var bareDia = num('w_bareDia', 0.7), enamel = num('w_enamel', 0.025);
   var turns = num('w_turns', 0), coils = num('w_coils', 1), strands = num('w_strands', 1);
-  var clearance = num('w_wallClearance', 0);
   var diameter = bareDia + 2 * enamel;
   var count = Math.max(0, Math.round(turns * coils * strands));
 
   if (!(diameter > 0) || count <= 0) {
     $('statsOut').innerHTML = '<span class="bad">' + mtT('errBadWire') + '</span>';
-    renderSvg(null);
+    renderSvg(innerPoly, null);
     return;
   }
 
   var circleArea = Math.PI / 4 * diameter * diameter;
-  var fillPctArea = count * circleArea / area * 100;
-  var pack = packCirclesInPolygon(vertices, diameter, count, clearance);
-  renderSvg(pack);
+  var fillPctArea = count * circleArea / windingArea * 100;
+  var pack = packCirclesInPolygon(innerPoly, diameter, count);
+  renderSvg(innerPoly, pack);
 
   var fillClass = fillPctArea > 100 ? 'bad' : (fillPctArea > 85 ? 'warn' : '');
   var packedClass = pack.placedCount >= count ? '' : 'warn';
   var packedNote = pack.placedCount >= count ? mtT('packedAll') : mtT('packedPartial');
 
   $('statsOut').innerHTML =
-    tip(mtT('outArea'), 'tipArea') + ': <span class="rv">' + fmt(area, 2) + '</span><span class="ru">mm²</span><br>' +
+    tip(mtT('outSlotArea'), 'tipSlotArea') + ': <span class="rv">' + fmt(slotArea, 2) + '</span><span class="ru">mm²</span><br>' +
+    tip(mtT('outWindingArea'), 'tipWindingArea') + ': <span class="rv">' + fmt(windingArea, 2) + '</span><span class="ru">mm²</span><br>' +
     tip(mtT('outWireOd'), 'outWireOdTip') + ' = <span class="rv">' + fmt(diameter, 4) + '</span><span class="ru">mm</span>' +
       ' <span class="sub-note">(' + fmt(bareDia, 3) + ' + 2×' + fmt(enamel, 3) + ')</span><br>' +
     mtT('outCount') + ' = <span class="rv">' + count + '</span><br>' +
@@ -220,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function () {
   $('btnGenerate').addEventListener('click', generateFromParametric);
   $('btnAddPoint').addEventListener('click', addVertexPoint);
 
-  ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_wallClearance']
+  ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_linerThickness']
     .forEach(function (id) { $(id).addEventListener('input', computeAll); });
 
   document.addEventListener('mt-lang-change', computeAll);

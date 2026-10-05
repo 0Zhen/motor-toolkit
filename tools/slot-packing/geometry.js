@@ -10,16 +10,24 @@
    ══════════════════════════════════════════════════════════ */
 
 /**
- * 梯形開口槽：對稱等腰梯形，y=0 是槽口（靠氣隙那端），y=depth 是槽底
- * （靠軛部那端）。4 個頂點，當作後續「加點微調」的起始外形。
- * @returns {Array<{x:number,y:number}>} 依順時針排列的 4 個頂點
+ * 開口槽：對稱，y=0 是槽口最外緣（靠氣隙那端），y=depth 是槽底（靠軛部
+ * 那端）。槽口先是一段窄直的「開口喉」(openWidth × openHeight)，之後
+ * 才展開成梯形本體（topWidth 在喉部結束處，taper 到 bottomWidth 在槽
+ * 底）。openWidth=topWidth 或 openHeight=0 時會自然退化成單純梯形
+ * （喉部兩側的點重合，不用另外特判）。8 個頂點，當作後續「加點微調」
+ * 的起始外形。
+ * @returns {Array<{x:number,y:number}>} 依順時針排列的 8 個頂點
  */
-function generateTrapezoid(topWidth, bottomWidth, depth) {
+function generateSlotShape(openWidth, openHeight, topWidth, bottomWidth, depth) {
   return [
-    { x: -topWidth / 2, y: 0 },
-    { x: topWidth / 2, y: 0 },
+    { x: -openWidth / 2, y: 0 },
+    { x: openWidth / 2, y: 0 },
+    { x: openWidth / 2, y: openHeight },
+    { x: topWidth / 2, y: openHeight },
     { x: bottomWidth / 2, y: depth },
     { x: -bottomWidth / 2, y: depth },
+    { x: -topWidth / 2, y: openHeight },
+    { x: -openWidth / 2, y: openHeight },
   ];
 }
 
@@ -65,27 +73,100 @@ function horizontalSpans(points, y) {
 }
 
 /**
+ * 兩條線段所在「直線」的交點（不限制在線段範圍內，offsetPolygonInward
+ * 要的是無限長直線的交點）。平行/重合時回傳 null。
+ */
+function lineIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+  const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (Math.abs(d) < 1e-9) return null;
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
+  return { x: x1 + t * (x2 - x1), y: y1 + t * (y2 - y1) };
+}
+
+/**
+ * 多邊形向內偏移（簡化版 Liner 幾何）：每條邊沿法線方向內移
+ * distance，再求相鄰兩條偏移後直線的交點，得到內縮後的新頂點。
+ * 法線方向用「邊中點→重心」的內積判斷要不要翻面，所以不管輸入頂點是
+ * 順時針還逆時針都能正確內縮，不依賴固定的環繞方向假設。
+ *
+ * 已知限制：這是簡化演算法，遇到凹多邊形或內縮距離相對局部幾何過大
+ * 時（例如 liner 厚度比槽口喉部寬度還大），偏移後的邊可能互相穿越、
+ * 算出畸形結果——呼叫端應該檢查回傳多邊形的面積是否合理（> 0 且小於
+ * 原始面積），不合理就當作「這個厚度在這個形狀上不成立」處理，不要
+ * 直接拿來用。
+ * @returns {Array<{x,y}>} 內縮後的頂點，點數與輸入相同
+ */
+function offsetPolygonInward(points, distance) {
+  const n = points.length;
+  if (n < 3 || !(distance > 0)) return points.map(p => ({ x: p.x, y: p.y }));
+
+  const centroid = points.reduce(
+    (acc, p) => ({ x: acc.x + p.x / n, y: acc.y + p.y / n }),
+    { x: 0, y: 0 }
+  );
+
+  const shifted = [];
+  for (let i = 0; i < n; i++) {
+    const a = points[i], b = points[(i + 1) % n];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    let nx = -dy / len, ny = dx / len; // 邊方向的其中一個法向量
+    const midx = (a.x + b.x) / 2, midy = (a.y + b.y) / 2;
+    if (nx * (centroid.x - midx) + ny * (centroid.y - midy) < 0) { nx = -nx; ny = -ny; }
+    shifted.push({
+      ax: a.x + nx * distance, ay: a.y + ny * distance,
+      bx: b.x + nx * distance, by: b.y + ny * distance,
+    });
+  }
+
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    const prev = shifted[(i - 1 + n) % n], cur = shifted[i];
+    const pt = lineIntersect(prev.ax, prev.ay, prev.bx, prev.by, cur.ax, cur.ay, cur.bx, cur.by);
+    result.push(pt || { x: points[i].x, y: points[i].y }); // 平行時退回原頂點（已知限制）
+  }
+  return result;
+}
+
+/**
+ * 檢查 offsetPolygonInward() 的結果有沒有「內縮過頭」（相鄰邊互相穿越、
+ * 幾何已經不成立）：逐邊比較內縮前後的方向向量，只要有一邊的方向反過
+ * 來了（內積 ≤ 0），就代表那段邊被壓縮穿越、不是真正的內縮結果。
+ * 這是輕量啟發式檢查，不是嚴謹的多邊形自我相交偵測，但足以攔住
+ * 「liner 厚度超過局部幾何能容許範圍」這種最常見的失敗情況。
+ */
+function isOffsetValid(original, inset) {
+  const n = original.length;
+  if (n !== inset.length || n < 3) return false;
+  for (let i = 0; i < n; i++) {
+    const a = original[i], b = original[(i + 1) % n];
+    const ai = inset[i], bi = inset[(i + 1) % n];
+    const dot = (b.x - a.x) * (bi.x - ai.x) + (b.y - a.y) * (bi.y - ai.y);
+    if (dot <= 0) return false;
+  }
+  return true;
+}
+
+/**
  * 槽內線材堆疊（簡單逐排視覺化，不是最佳圓形填充演算法）：
  * 由槽口往槽底逐排排列，每排用掃描線算出該高度的實際寬度，
  * 該排置中擺放能放下的圓（一律同直徑），放滿 count 顆或掃到槽底為止。
- * @param {Array<{x,y}>} points 槽型頂點（mm）
+ * 呼叫端應該先用 offsetPolygonInward() 把 liner 內縮做完，這裡只管
+ * 單純在給定的多邊形裡塞圓，不再處理壁面餘隙。
+ * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮後的繞線窗）
  * @param {number} diameter 線材外徑（mm，含漆膜）
  * @param {number} count 要擺的線材總數（= 每槽匝數×每槽線圈數×股數/匝）
- * @param {number} wallClearance 每排兩側各自內縮的壁面餘隙（mm，簡化模型，
- *   不是真正的多邊形內縮，只在每排的左右邊界各扣掉這個值）
  * @returns {{placed:Array<{x,y,d}>, placedCount:number, requestedCount:number}}
  */
-function packCirclesInPolygon(points, diameter, count, wallClearance) {
+function packCirclesInPolygon(points, diameter, count) {
   const result = { placed: [], placedCount: 0, requestedCount: count };
   if (!(diameter > 0) || !(count > 0) || points.length < 3) return result;
-  const clearance = wallClearance || 0;
   const r = diameter / 2;
   const bbox = polygonBBox(points);
 
   let y = bbox.minY + r;
   while (y <= bbox.maxY - r + 1e-9 && result.placed.length < count) {
     const spans = horizontalSpans(points, y)
-      .map(([a, b]) => [a + clearance, b - clearance])
       .filter(([a, b]) => b - a >= diameter - 1e-9);
 
     for (const [left, right] of spans) {
