@@ -42,6 +42,15 @@ var MT_I18N = {
   },
   linerThickness:{ en: 'Liner thickness [mm]', zh: 'Liner 厚度 [mm]' },
   windStartY:   { en: 'No-wind depth (opening) [mm]', zh: '不繞線深度（開口）[mm]' },
+  layersCount:  { en: 'Layers', zh: '層數' },
+  layersHint:   {
+    en: 'Like a needle-winding machine program: turns are split evenly across this many layers (front layers get the remainder), stacked from the slot bottom toward the opening, one horizontal row per layer.',
+    zh: '仿導針繞線機的繞法：匝數平均分配到這個層數（除不盡時前面幾層多一顆），沿槽深方向從槽底往槽口疊，一層一個橫排。',
+  },
+  layerOverfull:{ en: 'Layer(s) too full for this width', zh: '有層的匝數超過該處寬度能塞下的量' },
+  layerNum:     { en: 'Layer {n}', zh: '第{n}層' },
+  sideLeft:     { en: 'Left', zh: '左' },
+  sideRight:    { en: 'Right', zh: '右' },
   windStartHint:{
     en: 'The opening throat is too narrow for wire — auto-filled from Opening height when you Generate, but editable (e.g. for a custom shape with no formal throat).',
     zh: '開口喉太窄塞不了線——按 Generate 時會自動帶入「開口高」，也可以自己改（例如自訂頂點的槽型沒有正式的開口喉概念時）。',
@@ -92,8 +101,8 @@ var MT_I18N = {
     zh: '槽滿率 % = (線材總數 × 單根截面積) / 繞線窗面積（liner內縮後） × 100 — 跟下面的排列演算法擺不擺得下無關，純粹面積比。',
   },
   outPackedTip:  {
-    en: 'How many of the wires this simple packer could actually place without overlapping, inside the liner-offset winding window. It fills one column (hugging a side wall) all the way from the slot bottom toward the opening before moving to the next column, working inward from both side walls — so with fewer turns than the slot could hold, the empty space shows up as missing columns in the middle, not a band near the opening. Not placing all of them does not necessarily mean they don’t physically fit — a better arrangement might.',
-    zh: '這個簡易演算法在liner內縮後的繞線窗裡，實際能無重疊擺進去幾根。排列方式是「一欄一欄」處理：先把貼著其中一側壁面的那一欄從槽底往槽口方向疊滿，再換下一欄，兩側壁面同時往中間收攏——所以匝數不多時，空出來的地方會是中間幾欄不見了，不是槽口附近缺一截。沒有全部擺進去，不代表實際上真的塞不下——換個排法可能塞得進去。',
+    en: 'How many of the wires actually got placed, following the explicit layer pattern (turns split evenly across the Layers count, one horizontal row per layer, stacked from the slot bottom toward the opening) — like a needle-winding machine program, not an auto-fill solver. If this is less than the wire count, some layer was assigned more turns than fit in that row’s width (see the warning below) — try more layers or fewer turns.',
+    zh: '按照明確的層數排法實際擺進去幾根——匝數平均分配到設定的層數，一層一個橫排，沿槽深方向從槽底往槽口疊，仿照導針繞線機的繞法，不是自動塞滿演算法。如果這個數字比線材總數少，代表某一層分配到的匝數超過那個高度的寬度塞得下的量（見下方警告），試試看增加層數或減少匝數。',
   },
 };
 
@@ -244,6 +253,7 @@ function computeAll() {
 
   var bareDia = num('w_bareDia', 0.7), enamel = num('w_enamel', 0.025);
   var turns = num('w_turns', 0), coils = num('w_coils', 1), strands = num('w_strands', 1);
+  var layers = Math.max(1, Math.round(num('w_layers', 1)));
   var diameter = bareDia + 2 * enamel;
   var count = Math.max(0, Math.round(turns * coils * strands));
 
@@ -256,35 +266,43 @@ function computeAll() {
   var circleArea = Math.PI / 4 * diameter * diameter;
   var fillPctArea = count * circleArea / windingArea * 100;
 
-  // 雙層（coils/slot >= 2）：繞線窗切成左右兩束，各自獨立堆疊，中間留
-  // 一道 liner 厚度當間隙；單層（coils/slot <= 1）：整批線材只佔其中一
-  // 側（這裡固定取左半），右半在畫面上留白——跟 Winding Designer 既有
-  // 的雙層左右並排慣例一致。bbox 用裁完喉部後的 packableArea 算，分界
-  // 線在它的左右正中央，不是寫死 x=0（自訂頂點的非對稱槽型也適用）。
+  // 仿導針繞線機：匝數先按「層數」平均分配到每一層，層與層沿槽深方向
+  // 從槽底往槽口疊——層數、每層匝數都是明確指定的結果，不是自動塞滿。
+  // 雙層（coils/slot >= 2）：繞線窗先切成左右兩束，中間留一道 liner 厚
+  // 度當間隙，每束各自獨立套用同一套「層數」疊法；單層（coils/slot
+  // <= 1）：整批線材只佔其中一側（固定左半），右半留白——跟 Winding
+  // Designer 既有的雙層左右並排慣例一致。bbox 用裁完喉部後的
+  // packableArea 算，分界線在它的左右正中央，不是寫死 x=0。
   var packBbox = polygonBBox(packableArea);
   var splitX = (packBbox.minX + packBbox.maxX) / 2;
-  var pack;
+  var pack, layerWarnings = [];
   if (coils >= 2) {
     var gap = linerThk / 2;
     var leftArea = clipPolygonMaxX(packableArea, splitX - gap);
     var rightArea = clipPolygonMinX(packableArea, splitX + gap);
     var perSide = Math.round(count / 2);
-    var packL = packCirclesInPolygon(leftArea, diameter, perSide);
-    var packR = packCirclesInPolygon(rightArea, diameter, count - perSide);
+    var packL = packLayersInPolygon(leftArea, diameter, perSide, layers);
+    var packR = packLayersInPolygon(rightArea, diameter, count - perSide, layers);
     pack = {
       placed: packL.placed.concat(packR.placed),
       placedCount: packL.placedCount + packR.placedCount,
       requestedCount: count,
     };
+    collectLayerWarnings(packL.layers, mtT('sideLeft')).forEach(function (w) { layerWarnings.push(w); });
+    collectLayerWarnings(packR.layers, mtT('sideRight')).forEach(function (w) { layerWarnings.push(w); });
   } else {
     var singleSideArea = clipPolygonMaxX(packableArea, splitX);
-    pack = packCirclesInPolygon(singleSideArea, diameter, count);
+    pack = packLayersInPolygon(singleSideArea, diameter, count, layers);
+    collectLayerWarnings(pack.layers, null).forEach(function (w) { layerWarnings.push(w); });
   }
   renderSvg(innerPoly, pack);
 
   var fillClass = fillPctArea > 100 ? 'bad' : (fillPctArea > 85 ? 'warn' : '');
   var packedClass = pack.placedCount >= count ? '' : 'warn';
   var packedNote = pack.placedCount >= count ? mtT('packedAll') : mtT('packedPartial');
+  var warningsHtml = layerWarnings.length
+    ? '<br><span class="warn sub-note">' + mtT('layerOverfull') + ': ' + layerWarnings.join('; ') + '</span>'
+    : '';
 
   $('statsOut').innerHTML =
     tip(mtT('outSlotArea'), 'tipSlotArea') + ': <span class="rv">' + fmt(slotArea, 2) + '</span><span class="ru">mm²</span><br>' +
@@ -294,7 +312,17 @@ function computeAll() {
     mtT('outCount') + ' = <span class="rv">' + count + '</span><br>' +
     tip(mtT('outFillArea'), 'outFillAreaTip') + ' = <span class="rv ' + fillClass + '">' + fmt(fillPctArea, 1) + '</span><span class="ru">%</span><br>' +
     tip(mtT('outPacked'), 'outPackedTip') + ': <span class="rv ' + packedClass + '">' + pack.placedCount + ' / ' + count + '</span>' +
-      ' <span class="ru">(' + packedNote + ')</span>';
+      ' <span class="ru">(' + packedNote + ')</span>' + warningsHtml;
+}
+
+/* 收集「某一層指定匝數超過那個寬度塞得下的量」的警告文字 */
+function collectLayerWarnings(layerInfos, sideLabel) {
+  return (layerInfos || [])
+    .filter(function (l) { return l.placed < l.requested; })
+    .map(function (l) {
+      var prefix = sideLabel ? sideLabel + ' ' : '';
+      return prefix + mtT('layerNum').replace('{n}', l.index + 1) + ': ' + l.placed + '/' + l.requested;
+    });
 }
 
 /* ── 事件綁定 ── */
@@ -302,7 +330,7 @@ document.addEventListener('DOMContentLoaded', function () {
   $('btnGenerate').addEventListener('click', generateFromParametric);
   $('btnAddPoint').addEventListener('click', addVertexPoint);
 
-  ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_linerThickness', 'w_windStartY']
+  ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_layers', 'w_linerThickness', 'w_windStartY']
     .forEach(function (id) { $(id).addEventListener('input', computeAll); });
 
   document.addEventListener('mt-lang-change', computeAll);

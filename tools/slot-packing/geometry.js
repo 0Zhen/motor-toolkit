@@ -223,72 +223,69 @@ function clipPolygonMinX(points, minX) {
 }
 
 /**
- * horizontalSpans 的縱向版：垂直線 x 與多邊形邊界的交點，成對回傳「在
- * 多邊形內部」的 y 區間（even-odd 規則，凹凸多邊形皆可）。
- * @returns {Array<[number,number]>} 由小到大排序的 [yTop,yBottom] 區間
- *   （y 往下遞增，yTop 離槽口近、yBottom 離槽底近）
- */
-function verticalSpans(points, x) {
-  const n = points.length;
-  const ys = [];
-  for (let i = 0; i < n; i++) {
-    const a = points[i], b = points[(i + 1) % n];
-    const x1 = a.x, x2 = b.x;
-    if ((x1 <= x && x2 > x) || (x2 <= x && x1 > x)) {
-      const t = (x - x1) / (x2 - x1);
-      ys.push(a.y + t * (b.y - a.y));
-    }
-  }
-  ys.sort((p, q) => p - q);
-  const spans = [];
-  for (let i = 0; i + 1 < ys.length; i += 2) spans.push([ys[i], ys[i + 1]]);
-  return spans;
-}
-
-/**
- * 槽內線材堆疊（簡單視覺化，不是最佳圓形填充演算法）：「欄優先」——
- * 一欄（固定 x）先由槽底往槽口方向疊滿，疊滿或疊到不繞線區才換下一
- * 欄，不是一排一排橫著疊。欄的處理順序從兩側壁面開始、往中間收攏
- * （左邊緣、右邊緣、次左、次右...），這樣如果線材數量不夠疊滿整個
- * 槽，缺口會出現在寬度方向的中間，而不是在深度方向的槽口附近——跟
- * 貼槽邊、由下往上疊的物理直覺一致（Y 方向優先疊滿）。
- * 相鄰欄中心 x 一律差整數倍 diameter，不管各欄起疊的 y 基準點位移多
- * 少，水平距離本身就 >= diameter，所以欄跟欄之間保證不會疊到。
+ * 槽內線材堆疊——仿導針繞線機的繞法：總匝數先依「層數」平均分配到每
+ * 一層（除不盡時前面幾層多分一顆），每一層是沿槽寬方向橫向排一整排
+ * （置中），層與層沿槽深方向、從槽底往槽口方向疊上去，層數、每層匝
+ * 數都是明確指定的結果，不是「塞到滿為止」的自動最佳化。
+ * 如果某一層指定的匝數超過那個高度實際塞得下的數量，那一層就只放得
+ * 下部分、其餘視為那一層放不下（不會自動搬去別層），`layers` 回傳
+ * 陣列裡每層的 requested/placed 兩個數字可以看出是哪一層出問題。
  * 呼叫端應該先用 offsetPolygonInward() 把 liner 內縮、clipPolygonMinY()
- * 把開口喉裁掉，這裡只管單純在給定的多邊形裡塞圓。
+ * 把開口喉裁掉，這裡只管單純在給定的多邊形裡按層疊圓。
  * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮＋裁掉喉部後的繞線窗）
  * @param {number} diameter 線材外徑（mm，含漆膜）
- * @param {number} count 要擺的線材總數（= 每槽匝數×每槽線圈數×股數/匝）
- * @returns {{placed:Array<{x,y,d}>, placedCount:number, requestedCount:number}}
+ * @param {number} count 要擺的線材總數（= 每槽匝數×股數/匝，單一線圈邊的量，
+ *   coils/slot>=2 時呼叫端會各自對左右兩束各呼叫一次）
+ * @param {number} layers 層數（沿槽深方向疊幾層）
+ * @returns {{placed:Array<{x,y,d}>, placedCount:number, requestedCount:number,
+ *   layers:Array<{index:number, requested:number, placed:number}>}}
  */
-function packCirclesInPolygon(points, diameter, count) {
-  const result = { placed: [], placedCount: 0, requestedCount: count };
+function packLayersInPolygon(points, diameter, count, layers) {
+  const result = { placed: [], placedCount: 0, requestedCount: count, layers: [] };
+  const nLayers = Math.max(1, Math.round(layers || 1));
   if (!(diameter > 0) || !(count > 0) || points.length < 3) return result;
+
   const r = diameter / 2;
   const bbox = polygonBBox(points);
 
-  const columnXs = [];
-  for (let x = bbox.minX + r; x <= bbox.maxX - r + 1e-9; x += diameter) columnXs.push(x);
+  // 總匝數平均分配到每一層，除不盡時前面幾層多分一顆
+  const base = Math.floor(count / nLayers);
+  const extra = count - base * nLayers;
+  const perLayerTarget = [];
+  for (let i = 0; i < nLayers; i++) perLayerTarget.push(base + (i < extra ? 1 : 0));
 
-  // 兩側壁面優先、往中間收攏的欄位順序
-  const order = [];
-  for (let lo = 0, hi = columnXs.length - 1; lo <= hi; lo++, hi--) {
-    order.push(columnXs[lo]);
-    if (hi !== lo) order.push(columnXs[hi]);
-  }
+  let y = bbox.maxY - r;
+  for (let li = 0; li < nLayers; li++) {
+    const target = perLayerTarget[li];
+    const layerInfo = { index: li, requested: target, placed: 0 };
 
-  for (const x of order) {
-    if (result.placed.length >= count) break;
-    const spans = verticalSpans(points, x).filter(([top, bot]) => bot - top >= diameter - 1e-9);
-    for (const [top, bottom] of spans) {
-      let y = bottom - r; // 從該段區間的槽底那端開始疊
-      const topLimit = top + r;
-      while (y >= topLimit - 1e-9 && result.placed.length < count) {
-        result.placed.push({ x, y, d: diameter });
-        y -= diameter;
+    if (y < bbox.minY + r - 1e-9 || target <= 0) {
+      result.layers.push(layerInfo);
+      y -= diameter;
+      continue;
+    }
+
+    // 理論上一排只有一段區間（簡單凸形狀），保留多段處理以防自訂凹形
+    const spans = horizontalSpans(points, y).filter(([a, b]) => b - a >= diameter - 1e-9);
+    let placedThisLayer = 0;
+    for (const [left, right] of spans) {
+      if (placedThisLayer >= target) break;
+      const spanWidth = right - left;
+      const maxFit = Math.floor((spanWidth - diameter) / diameter + 1e-9) + 1;
+      const n = Math.min(maxFit, target - placedThisLayer);
+      if (n <= 0) continue;
+      const totalWidth = (n - 1) * diameter;
+      const startX = left + (spanWidth - totalWidth) / 2;
+      for (let k = 0; k < n; k++) {
+        result.placed.push({ x: startX + k * diameter, y, d: diameter });
+        placedThisLayer++;
       }
     }
+    layerInfo.placed = placedThisLayer;
+    result.layers.push(layerInfo);
+    y -= diameter;
   }
+
   result.placedCount = result.placed.length;
   return result;
 }
