@@ -37,6 +37,11 @@ var MT_I18N = {
   coilsPerSlot: { en: 'Coils / slot', zh: '每槽線圈數' },
   strandsPerTurn:{ en: 'Strands / turn', zh: '股數/匝' },
   linerThickness:{ en: 'Liner thickness [mm]', zh: 'Liner 厚度 [mm]' },
+  windStartY:   { en: 'No-wind depth (opening) [mm]', zh: '不繞線深度（開口）[mm]' },
+  windStartHint:{
+    en: 'The opening throat is too narrow for wire — auto-filled from Opening height when you Generate, but editable (e.g. for a custom shape with no formal throat).',
+    zh: '開口喉太窄塞不了線——按 Generate 時會自動帶入「開口高」，也可以自己改（例如自訂頂點的槽型沒有正式的開口喉概念時）。',
+  },
   wireHint:     {
     en: 'The liner is modeled as a real inward offset of the slot outline (shown in green below), not just a number subtracted from the fill % — turns are packed inside that offset shape.',
     zh: 'Liner 是真的把槽型輪廓向內偏移出來的幾何（下方綠色區域），不是從槽滿率扣一個數字而已——線材是塞在這個內縮後的區域裡。',
@@ -71,8 +76,8 @@ var MT_I18N = {
     zh: '用槽型外緣頂點算的鞋帶公式（Shoelace formula）——liner內縮之前，槽本身的切割面積。',
   },
   tipWindingArea: {
-    en: 'Area of the outer slot outline offset inward by the liner thickness — the actual usable winding window.',
-    zh: '槽型外緣向內偏移liner厚度之後的面積——實際可以拿來繞線的窗口。',
+    en: 'Area of the outer slot outline offset inward by the liner thickness, with the opening throat (no-wind depth) excluded — the actual usable winding window.',
+    zh: '槽型外緣向內偏移liner厚度之後、再扣掉開口喉（不繞線深度）的面積——實際可以拿來繞線的窗口。',
   },
   outWireOdTip:  {
     en: 'Wire OD = bare copper dia. + 2 × enamel thickness (one side).',
@@ -155,6 +160,7 @@ function generateFromParametric() {
   var top = num('p_topWidth', 4), bottom = num('p_bottomWidth', 7), depth = num('p_depth', 12);
   vertices = generateSlotShape(openW, openH, top, bottom, depth);
   renderVertexTable();
+  $('w_windStartY').value = fmt(openH, 3); // 開口喉不繞線，跟著參數化的開口高自動帶
   computeAll();
   if (typeof gaTrack === 'function') gaTrack('slotpack_generate', 'slot');
 }
@@ -209,13 +215,26 @@ function computeAll() {
   var linerThk = num('w_linerThickness', 0);
   var innerPoly = linerThk > 0 ? offsetPolygonInward(vertices, linerThk) : vertices;
   var innerValid = linerThk <= 0 || isOffsetValid(vertices, innerPoly);
-  var windingArea = innerValid ? polygonArea(innerPoly) : 0;
 
-  if (!innerValid || !(windingArea > 0)) {
+  if (!innerValid) {
     $('statsOut').innerHTML =
       tip(mtT('outSlotArea'), 'tipSlotArea') + ': <span class="rv">' + fmt(slotArea, 2) + '</span><span class="ru">mm²</span><br>' +
       '<span class="bad">' + mtT('errLinerTooThick') + '</span>';
     renderSvg(null, null);
+    return;
+  }
+
+  // 開口喉塞不下線：繞線用的多邊形先在 y=windStartY 裁掉喉部，liner 本身（innerPoly，
+  // 畫面上的綠色區域）仍然包含喉部兩側——喉部有襯墊但不繞線，這兩件事分開處理
+  var windStartY = Math.max(0, num('w_windStartY', 0));
+  var packableArea = clipPolygonMinY(innerPoly, windStartY);
+  var windingArea = polygonArea(packableArea);
+
+  if (!(windingArea > 0)) {
+    $('statsOut').innerHTML =
+      tip(mtT('outSlotArea'), 'tipSlotArea') + ': <span class="rv">' + fmt(slotArea, 2) + '</span><span class="ru">mm²</span><br>' +
+      '<span class="bad">' + mtT('errLinerTooThick') + '</span>';
+    renderSvg(innerPoly, null);
     return;
   }
 
@@ -232,7 +251,7 @@ function computeAll() {
 
   var circleArea = Math.PI / 4 * diameter * diameter;
   var fillPctArea = count * circleArea / windingArea * 100;
-  var pack = packCirclesInPolygon(innerPoly, diameter, count);
+  var pack = packCirclesInPolygon(packableArea, diameter, count);
   renderSvg(innerPoly, pack);
 
   var fillClass = fillPctArea > 100 ? 'bad' : (fillPctArea > 85 ? 'warn' : '');
@@ -255,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function () {
   $('btnGenerate').addEventListener('click', generateFromParametric);
   $('btnAddPoint').addEventListener('click', addVertexPoint);
 
-  ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_linerThickness']
+  ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_linerThickness', 'w_windStartY']
     .forEach(function (id) { $(id).addEventListener('input', computeAll); });
 
   document.addEventListener('mt-lang-change', computeAll);

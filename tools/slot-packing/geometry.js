@@ -148,6 +148,34 @@ function isOffsetValid(original, inset) {
 }
 
 /**
+ * Sutherland-Hodgman 單一半平面裁切：只留下 y >= minY 的部分（y 往下遞
+ * 增的座標系裡，這就是「槽口以下」的本體部分）。凹凸多邊形都適用。
+ * 用來把「開口喉不繞線」這件事從堆疊/面積計算裡排除——喉部本身還是
+ * 槽型/liner 的一部分（照樣畫出來），只是不會被當成可以塞線的區域。
+ * @returns {Array<{x,y}>} 裁切後的多邊形頂點，minY 以上整個不相交時回傳 []
+ */
+function clipPolygonMinY(points, minY) {
+  const n = points.length;
+  if (n < 3) return [];
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const cur = points[i], prev = points[(i - 1 + n) % n];
+    const curIn = cur.y >= minY, prevIn = prev.y >= minY;
+    if (curIn) {
+      if (!prevIn) {
+        const t = (minY - prev.y) / (cur.y - prev.y);
+        out.push({ x: prev.x + t * (cur.x - prev.x), y: minY });
+      }
+      out.push({ x: cur.x, y: cur.y });
+    } else if (prevIn) {
+      const t = (minY - prev.y) / (cur.y - prev.y);
+      out.push({ x: prev.x + t * (cur.x - prev.x), y: minY });
+    }
+  }
+  return out;
+}
+
+/**
  * 槽內線材堆疊（簡單逐排視覺化，不是最佳圓形填充演算法）：
  * 由槽口往槽底逐排排列，每排用掃描線算出該高度的實際寬度，
  * 該排置中擺放能放下的圓（一律同直徑），放滿 count 顆或掃到槽底為止。
