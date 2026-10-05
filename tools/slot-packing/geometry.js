@@ -223,6 +223,32 @@ function clipPolygonMinX(points, minX) {
 }
 
 /**
+ * 把繞線窗沿槽寬方向切成 n 等份（由左到右），相鄰兩份中間各留一道
+ * gap 間隙（最外側兩道槽壁不留）。「層數＝N」時呼叫端會傳 n=2N（左右
+ * 對稱成對），每一份各自獨立疊線——這是左右幾束線圈邊排列的唯一分割
+ * 依據，不再跟 Coils/slot 的數值綁在一起（Coils/slot 現在純粹只貢獻
+ * 總線材數量 turns×coils×strands，不決定怎麼切）。
+ * @returns {Array<Array<{x,y}>>} n 份子多邊形，由左到右排列
+ */
+function splitIntoRegions(points, n, gap) {
+  const count = Math.max(1, Math.round(n));
+  if (count === 1) return [points];
+  const bbox = polygonBBox(points);
+  const w = bbox.maxX - bbox.minX;
+  const regions = [];
+  for (let i = 0; i < count; i++) {
+    const left = bbox.minX + (i / count) * w;
+    const right = bbox.minX + ((i + 1) / count) * w;
+    const innerLeft = i === 0 ? left : left + gap / 2;
+    const innerRight = i === count - 1 ? right : right - gap / 2;
+    let region = clipPolygonMinX(points, innerLeft);
+    region = clipPolygonMaxX(region, innerRight);
+    regions.push(region);
+  }
+  return regions;
+}
+
+/**
  * 純幾何算「這個槽深最多能疊幾層」：從槽底往槽口方向，只要那個高度的
  * 寬度還塞得下至少一顆線，就算一層，直到寬度小於線徑為止——跟總共有
  * 幾顆線材完全無關，只跟深度、寬度輪廓、線徑有關。

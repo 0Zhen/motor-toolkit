@@ -90,23 +90,19 @@
       <div class="param-row-2"><span class="param-label" data-i18n="coilsPerSlot">Coils / slot</span>
         <input type="text" class="param-input" id="w_coils" value="2"></div>
       <div class="hint-text" data-i18n="coilsSplitHint">
-        2 or more: split into a left and a right bundle (one per coil side), like a double-layer
-        slot. 1: the whole bundle sits in just one side, the other side left empty.
+        Just multiplies the total wire count (turns × coils × strands) — doesn't affect how the
+        winding window is divided. See Layers below for that.
       </div>
       <div class="param-row-2"><span class="param-label" data-i18n="strandsPerTurn">Strands / turn</span>
         <input type="text" class="param-input" id="w_strands" value="1"></div>
       <div class="param-row-2"><span class="param-label" data-i18n="layersCount">Layers</span>
-        <input type="text" class="param-input" id="w_layers" value="12"></div>
+        <input type="text" class="param-input" id="w_layers" value="1"></div>
       <div class="hint-text" data-i18n="layersHint">
-        Like a needle-winding machine program: turns are split evenly across this many layers
-        (front layers get the remainder), stacked from the slot bottom toward the opening, one
-        horizontal row per layer.
-      </div>
-      <label class="check-row"><input type="checkbox" id="w_autoLayers"> <span data-i18n="autoLayers">Auto-fit layers to slot depth</span></label>
-      <div class="hint-text" data-i18n="autoLayersHint">
-        Ignores the Layers number above. Each layer fills to whatever that row's actual width
-        allows, moving to the next layer, until the turns run out or the slot depth does — no
-        manual tuning of Layers needed, and no overfull-layer warnings possible.
+        Splits the winding width into this many left-right pairs of columns (Layers=1 → 2 columns,
+        Layers=2 → 4 columns, ...), symmetric about the centerline. Each column independently fills
+        from the slot bottom toward the opening to whatever its own width allows — outer columns
+        are narrower (and often shorter, since the slot tapers) than inner ones, so they naturally
+        hold less.
       </div>
       <div class="param-row-2"><span class="param-label" data-i18n="linerThickness">Liner thickness [mm]</span>
         <input type="text" class="param-input" id="w_linerThickness" value="0.3"></div>
