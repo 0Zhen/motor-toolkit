@@ -98,6 +98,7 @@ body > * { min-width: 0; }
   transition: border-color 0.15s;
 }
 .param-input:focus { border-color: var(--accent); background: #fff; }
+.param-input:disabled { opacity: 0.45; cursor: not-allowed; }
 [data-theme="dark"] .param-input { background: #1e2235; color: #c9d1e0; border-color: #2d3148; }
 [data-theme="dark"] .param-input:focus { background: #252840; }
 
@@ -109,6 +110,17 @@ body > * { min-width: 0; }
 }
 
 .full-btn { width: 100%; margin-top: 8px; }
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+  margin-top: 8px;
+  cursor: pointer;
+}
 
 /* ══════════════════════════════════════════════════════════
    模式切換 tabs（沿用 dcr-calculator）

@@ -47,10 +47,17 @@ var MT_I18N = {
     en: 'Like a needle-winding machine program: turns are split evenly across this many layers (front layers get the remainder), stacked from the slot bottom toward the opening, one horizontal row per layer.',
     zh: '仿導針繞線機的繞法：匝數平均分配到這個層數（除不盡時前面幾層多一顆），沿槽深方向從槽底往槽口疊，一層一個橫排。',
   },
+  autoLayers:   { en: 'Auto-fit layers to slot depth', zh: '自動排線（切齊槽深）' },
+  autoLayersHint:{
+    en: 'Ignores the Layers number above. Each layer fills to whatever that row’s actual width allows, moving to the next layer, until the turns run out or the slot depth does — no manual tuning of Layers needed, and no overfull-layer warnings possible.',
+    zh: '忽略上面的層數。每一層直接疊到那個高度寬度實際容得下的最大顆數才換下一層，疊到匝數用完或槽深用完為止——不用手動調層數，也不會有層數太滿的警告。',
+  },
   layerOverfull:{ en: 'Layer(s) too full for this width', zh: '有層的匝數超過該處寬度能塞下的量' },
   layerNum:     { en: 'Layer {n}', zh: '第{n}層' },
   sideLeft:     { en: 'Left', zh: '左' },
   sideRight:    { en: 'Right', zh: '右' },
+  outLayersUsed:{ en: 'Layers used', zh: '實際層數' },
+  packedDepthLimited: { en: 'slot depth ran out', zh: '槽深不夠疊完' },
   windStartHint:{
     en: 'The opening throat is too narrow for wire — auto-filled from Opening height when you Generate, but editable (e.g. for a custom shape with no formal throat).',
     zh: '開口喉太窄塞不了線——按 Generate 時會自動帶入「開口高」，也可以自己改（例如自訂頂點的槽型沒有正式的開口喉概念時）。',
@@ -253,6 +260,7 @@ function computeAll() {
 
   var bareDia = num('w_bareDia', 0.7), enamel = num('w_enamel', 0.025);
   var turns = num('w_turns', 0), coils = num('w_coils', 1), strands = num('w_strands', 1);
+  var autoLayers = $('w_autoLayers').checked;
   var layers = Math.max(1, Math.round(num('w_layers', 1)));
   var diameter = bareDia + 2 * enamel;
   var count = Math.max(0, Math.round(turns * coils * strands));
@@ -266,40 +274,51 @@ function computeAll() {
   var circleArea = Math.PI / 4 * diameter * diameter;
   var fillPctArea = count * circleArea / windingArea * 100;
 
-  // 仿導針繞線機：匝數先按「層數」平均分配到每一層，層與層沿槽深方向
-  // 從槽底往槽口疊——層數、每層匝數都是明確指定的結果，不是自動塞滿。
+  // 仿導針繞線機：匝數依「層數」疊，層與層沿槽深方向從槽底往槽口疊。
+  // 手動模式：層數是輸入，匝數平均分配到每層，某層分到太多塞不下時回報
+  // 警告。自動模式（切齊槽深）：不給層數，每層直接疊到那個高度實際塞
+  // 得下的最大顆數，疊到匝數用完或槽深用完為止，層數是疊出來的結果。
   // 雙層（coils/slot >= 2）：繞線窗先切成左右兩束，中間留一道 liner 厚
-  // 度當間隙，每束各自獨立套用同一套「層數」疊法；單層（coils/slot
-  // <= 1）：整批線材只佔其中一側（固定左半），右半留白——跟 Winding
-  // Designer 既有的雙層左右並排慣例一致。bbox 用裁完喉部後的
-  // packableArea 算，分界線在它的左右正中央，不是寫死 x=0。
+  // 度當間隙，每束各自獨立套用同一套疊法；單層（coils/slot <= 1）：
+  // 整批線材只佔其中一側（固定左半），右半留白——跟 Winding Designer
+  // 既有的雙層左右並排慣例一致。bbox 用裁完喉部後的 packableArea 算，
+  // 分界線在它的左右正中央，不是寫死 x=0。
   var packBbox = polygonBBox(packableArea);
   var splitX = (packBbox.minX + packBbox.maxX) / 2;
-  var pack, layerWarnings = [];
+  var pack, layerWarnings = [], layersUsed;
+  var packOneArea = function (area, areaCount) {
+    return autoLayers
+      ? packAutoLayersInPolygon(area, diameter, areaCount)
+      : packLayersInPolygon(area, diameter, areaCount, layers);
+  };
   if (coils >= 2) {
     var gap = linerThk / 2;
     var leftArea = clipPolygonMaxX(packableArea, splitX - gap);
     var rightArea = clipPolygonMinX(packableArea, splitX + gap);
     var perSide = Math.round(count / 2);
-    var packL = packLayersInPolygon(leftArea, diameter, perSide, layers);
-    var packR = packLayersInPolygon(rightArea, diameter, count - perSide, layers);
+    var packL = packOneArea(leftArea, perSide);
+    var packR = packOneArea(rightArea, count - perSide);
     pack = {
       placed: packL.placed.concat(packR.placed),
       placedCount: packL.placedCount + packR.placedCount,
       requestedCount: count,
     };
-    collectLayerWarnings(packL.layers, mtT('sideLeft')).forEach(function (w) { layerWarnings.push(w); });
-    collectLayerWarnings(packR.layers, mtT('sideRight')).forEach(function (w) { layerWarnings.push(w); });
+    if (!autoLayers) {
+      collectLayerWarnings(packL.layers, mtT('sideLeft')).forEach(function (w) { layerWarnings.push(w); });
+      collectLayerWarnings(packR.layers, mtT('sideRight')).forEach(function (w) { layerWarnings.push(w); });
+    }
+    layersUsed = Math.max(packL.layers.length, packR.layers.length);
   } else {
     var singleSideArea = clipPolygonMaxX(packableArea, splitX);
-    pack = packLayersInPolygon(singleSideArea, diameter, count, layers);
-    collectLayerWarnings(pack.layers, null).forEach(function (w) { layerWarnings.push(w); });
+    pack = packOneArea(singleSideArea, count);
+    if (!autoLayers) collectLayerWarnings(pack.layers, null).forEach(function (w) { layerWarnings.push(w); });
+    layersUsed = pack.layers.length;
   }
   renderSvg(innerPoly, pack);
 
   var fillClass = fillPctArea > 100 ? 'bad' : (fillPctArea > 85 ? 'warn' : '');
   var packedClass = pack.placedCount >= count ? '' : 'warn';
-  var packedNote = pack.placedCount >= count ? mtT('packedAll') : mtT('packedPartial');
+  var packedNote = pack.placedCount >= count ? mtT('packedAll') : (autoLayers ? mtT('packedDepthLimited') : mtT('packedPartial'));
   var warningsHtml = layerWarnings.length
     ? '<br><span class="warn sub-note">' + mtT('layerOverfull') + ': ' + layerWarnings.join('; ') + '</span>'
     : '';
@@ -310,6 +329,7 @@ function computeAll() {
     tip(mtT('outWireOd'), 'outWireOdTip') + ' = <span class="rv">' + fmt(diameter, 4) + '</span><span class="ru">mm</span>' +
       ' <span class="sub-note">(' + fmt(bareDia, 3) + ' + 2×' + fmt(enamel, 3) + ')</span><br>' +
     mtT('outCount') + ' = <span class="rv">' + count + '</span><br>' +
+    mtT('outLayersUsed') + ' = <span class="rv">' + layersUsed + '</span><br>' +
     tip(mtT('outFillArea'), 'outFillAreaTip') + ' = <span class="rv ' + fillClass + '">' + fmt(fillPctArea, 1) + '</span><span class="ru">%</span><br>' +
     tip(mtT('outPacked'), 'outPackedTip') + ': <span class="rv ' + packedClass + '">' + pack.placedCount + ' / ' + count + '</span>' +
       ' <span class="ru">(' + packedNote + ')</span>' + warningsHtml;
@@ -332,6 +352,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
   ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_layers', 'w_linerThickness', 'w_windStartY']
     .forEach(function (id) { $(id).addEventListener('input', computeAll); });
+
+  function updateAutoLayersState() {
+    $('w_layers').disabled = $('w_autoLayers').checked;
+    computeAll();
+  }
+  $('w_autoLayers').addEventListener('change', updateAutoLayersState);
+  updateAutoLayersState();
 
   document.addEventListener('mt-lang-change', computeAll);
   document.addEventListener('mt-theme-change', function () { computeAll(); });

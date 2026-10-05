@@ -102,6 +102,12 @@
         (front layers get the remainder), stacked from the slot bottom toward the opening, one
         horizontal row per layer.
       </div>
+      <label class="check-row"><input type="checkbox" id="w_autoLayers"> <span data-i18n="autoLayers">Auto-fit layers to slot depth</span></label>
+      <div class="hint-text" data-i18n="autoLayersHint">
+        Ignores the Layers number above. Each layer fills to whatever that row's actual width
+        allows, moving to the next layer, until the turns run out or the slot depth does — no
+        manual tuning of Layers needed, and no overfull-layer warnings possible.
+      </div>
       <div class="param-row-2"><span class="param-label" data-i18n="linerThickness">Liner thickness [mm]</span>
         <input type="text" class="param-input" id="w_linerThickness" value="0.3"></div>
       <div class="param-row-2"><span class="param-label" data-i18n="windStartY">No-wind depth (opening) [mm]</span>

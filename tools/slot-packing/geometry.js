@@ -223,6 +223,56 @@ function clipPolygonMinX(points, minX) {
 }
 
 /**
+ * 自動排線：不用使用者指定層數，每一層直接疊到那個高度寬度實際容得
+ * 下的最大顆數（跟 packLayersInPolygon 同一套置中公式），疊滿才換下
+ * 一層，一路疊到「匝數用完」或「疊到不繞線區（槽深用完）」為止——層
+ * 數是疊的結果，不是輸入。因為每層一定疊到剛好等於該層容量，不會有
+ * 「某層指定太多塞不下」這種情況，所以不會有 overfull 警告，只需要看
+ * placedCount 是否等於 count（不夠代表槽深不夠深，不是某層出問題）。
+ * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮＋裁掉喉部後的繞線窗）
+ * @param {number} diameter 線材外徑（mm，含漆膜）
+ * @param {number} count 要擺的線材總數
+ * @returns {{placed:Array<{x,y,d}>, placedCount:number, requestedCount:number,
+ *   layers:Array<{index:number, requested:number, placed:number}>}}
+ */
+function packAutoLayersInPolygon(points, diameter, count) {
+  const result = { placed: [], placedCount: 0, requestedCount: count, layers: [] };
+  if (!(diameter > 0) || !(count > 0) || points.length < 3) return result;
+
+  const r = diameter / 2;
+  const bbox = polygonBBox(points);
+
+  let y = bbox.maxY - r;
+  let li = 0;
+  while (y >= bbox.minY + r - 1e-9 && result.placed.length < count) {
+    const spans = horizontalSpans(points, y).filter(([a, b]) => b - a >= diameter - 1e-9);
+    let placedThisLayer = 0;
+    for (const [left, right] of spans) {
+      const remaining = count - result.placed.length;
+      if (remaining <= 0) break;
+      const spanWidth = right - left;
+      const maxFit = Math.floor((spanWidth - diameter) / diameter + 1e-9) + 1;
+      const n = Math.min(maxFit, remaining);
+      if (n <= 0) continue;
+      const totalWidth = (n - 1) * diameter;
+      const startX = left + (spanWidth - totalWidth) / 2;
+      for (let k = 0; k < n; k++) {
+        result.placed.push({ x: startX + k * diameter, y, d: diameter });
+        placedThisLayer++;
+      }
+    }
+    if (placedThisLayer > 0) {
+      result.layers.push({ index: li, requested: placedThisLayer, placed: placedThisLayer });
+      li++;
+    }
+    y -= diameter;
+  }
+
+  result.placedCount = result.placed.length;
+  return result;
+}
+
+/**
  * 槽內線材堆疊——仿導針繞線機的繞法：總匝數先依「層數」平均分配到每
  * 一層（除不盡時前面幾層多分一顆），每一層是沿槽寬方向橫向排一整排
  * （置中），層與層沿槽深方向、從槽底往槽口方向疊上去，層數、每層匝
