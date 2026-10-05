@@ -223,12 +223,33 @@ function clipPolygonMinX(points, minX) {
 }
 
 /**
- * 自動排線：不用使用者指定層數，每一層直接疊到那個高度寬度實際容得
- * 下的最大顆數（跟 packLayersInPolygon 同一套置中公式），疊滿才換下
- * 一層，一路疊到「匝數用完」或「疊到不繞線區（槽深用完）」為止——層
- * 數是疊的結果，不是輸入。因為每層一定疊到剛好等於該層容量，不會有
- * 「某層指定太多塞不下」這種情況，所以不會有 overfull 警告，只需要看
- * placedCount 是否等於 count（不夠代表槽深不夠深，不是某層出問題）。
+ * 純幾何算「這個槽深最多能疊幾層」：從槽底往槽口方向，只要那個高度的
+ * 寬度還塞得下至少一顆線，就算一層，直到寬度小於線徑為止——跟總共有
+ * 幾顆線材完全無關，只跟深度、寬度輪廓、線徑有關。
+ */
+function maxLayersForDepth(points, diameter) {
+  const r = diameter / 2;
+  const bbox = polygonBBox(points);
+  let n = 0;
+  let y = bbox.maxY - r;
+  while (y >= bbox.minY + r - 1e-9) {
+    const spans = horizontalSpans(points, y).filter(([a, b]) => b - a >= diameter - 1e-9);
+    if (spans.length === 0) break;
+    n++;
+    y -= diameter;
+  }
+  return Math.max(1, n);
+}
+
+/**
+ * 自動排線（切齊槽深）：不用使用者指定層數，先用 maxLayersForDepth()
+ * 算出這個槽深、這個線徑最多能疊幾層，再把總匝數用 packLayersInPolygon
+ * 同一套「平均分配」邏輯疊進去——保證層與層一路疊到槽口附近用滿整個
+ * 槽深，不會因為匝數不夠就提早停在槽底附近（這是跟舊版「貪心塞滿就換
+ * 層」最大的差別：舊版是匝數不夠就用較少層數塞好塞滿，新版是層數先用
+ * 滿、每層按比例分攤匝數）。槽型如果上窄下寬，平均分攤到窄的那幾層仍
+ * 然可能超過那裡塞得下的量，這種情況下 packLayersInPolygon 本來就有的
+ * overfull 回報機制一樣適用，呼叫端可以直接重用同一套警告邏輯。
  * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮＋裁掉喉部後的繞線窗）
  * @param {number} diameter 線材外徑（mm，含漆膜）
  * @param {number} count 要擺的線材總數
@@ -236,40 +257,11 @@ function clipPolygonMinX(points, minX) {
  *   layers:Array<{index:number, requested:number, placed:number}>}}
  */
 function packAutoLayersInPolygon(points, diameter, count) {
-  const result = { placed: [], placedCount: 0, requestedCount: count, layers: [] };
-  if (!(diameter > 0) || !(count > 0) || points.length < 3) return result;
-
-  const r = diameter / 2;
-  const bbox = polygonBBox(points);
-
-  let y = bbox.maxY - r;
-  let li = 0;
-  while (y >= bbox.minY + r - 1e-9 && result.placed.length < count) {
-    const spans = horizontalSpans(points, y).filter(([a, b]) => b - a >= diameter - 1e-9);
-    let placedThisLayer = 0;
-    for (const [left, right] of spans) {
-      const remaining = count - result.placed.length;
-      if (remaining <= 0) break;
-      const spanWidth = right - left;
-      const maxFit = Math.floor((spanWidth - diameter) / diameter + 1e-9) + 1;
-      const n = Math.min(maxFit, remaining);
-      if (n <= 0) continue;
-      const totalWidth = (n - 1) * diameter;
-      const startX = left + (spanWidth - totalWidth) / 2;
-      for (let k = 0; k < n; k++) {
-        result.placed.push({ x: startX + k * diameter, y, d: diameter });
-        placedThisLayer++;
-      }
-    }
-    if (placedThisLayer > 0) {
-      result.layers.push({ index: li, requested: placedThisLayer, placed: placedThisLayer });
-      li++;
-    }
-    y -= diameter;
+  if (!(diameter > 0) || !(count > 0) || points.length < 3) {
+    return { placed: [], placedCount: 0, requestedCount: count, layers: [] };
   }
-
-  result.placedCount = result.placed.length;
-  return result;
+  const layers = maxLayersForDepth(points, diameter);
+  return packLayersInPolygon(points, diameter, count, layers);
 }
 
 /**

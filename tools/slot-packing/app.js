@@ -49,15 +49,14 @@ var MT_I18N = {
   },
   autoLayers:   { en: 'Auto-fit layers to slot depth', zh: '自動排線（切齊槽深）' },
   autoLayersHint:{
-    en: 'Ignores the Layers number above. Each layer fills to whatever that row’s actual width allows, moving to the next layer, until the turns run out or the slot depth does — no manual tuning of Layers needed, and no overfull-layer warnings possible.',
-    zh: '忽略上面的層數。每一層直接疊到那個高度寬度實際容得下的最大顆數才換下一層，疊到匝數用完或槽深用完為止——不用手動調層數，也不會有層數太滿的警告。',
+    en: 'Ignores the Layers number above. Figures out the most layers this depth and wire diameter can hold, then spreads the turns evenly across all of them, reaching all the way toward the opening instead of stopping partway when the turn count is modest. If the slot tapers enough that an even share doesn’t fit near the narrow end, you’ll still see the usual overfull-layer warning there.',
+    zh: '忽略上面的層數。自動算出這個槽深、這個線徑最多能疊幾層，再把匝數平均分攤到全部層——會一路疊到接近槽口，不會因為匝數不多就提早停在槽底附近。如果槽型夠窄，窄的那幾層分攤到的匝數可能還是塞不下，一樣會出現層數太滿的警告。',
   },
   layerOverfull:{ en: 'Layer(s) too full for this width', zh: '有層的匝數超過該處寬度能塞下的量' },
   layerNum:     { en: 'Layer {n}', zh: '第{n}層' },
   sideLeft:     { en: 'Left', zh: '左' },
   sideRight:    { en: 'Right', zh: '右' },
   outLayersUsed:{ en: 'Layers used', zh: '實際層數' },
-  packedDepthLimited: { en: 'slot depth ran out', zh: '槽深不夠疊完' },
   windStartHint:{
     en: 'The opening throat is too narrow for wire — auto-filled from Opening height when you Generate, but editable (e.g. for a custom shape with no formal throat).',
     zh: '開口喉太窄塞不了線——按 Generate 時會自動帶入「開口高」，也可以自己改（例如自訂頂點的槽型沒有正式的開口喉概念時）。',
@@ -303,22 +302,20 @@ function computeAll() {
       placedCount: packL.placedCount + packR.placedCount,
       requestedCount: count,
     };
-    if (!autoLayers) {
-      collectLayerWarnings(packL.layers, mtT('sideLeft')).forEach(function (w) { layerWarnings.push(w); });
-      collectLayerWarnings(packR.layers, mtT('sideRight')).forEach(function (w) { layerWarnings.push(w); });
-    }
+    collectLayerWarnings(packL.layers, mtT('sideLeft')).forEach(function (w) { layerWarnings.push(w); });
+    collectLayerWarnings(packR.layers, mtT('sideRight')).forEach(function (w) { layerWarnings.push(w); });
     layersUsed = Math.max(packL.layers.length, packR.layers.length);
   } else {
     var singleSideArea = clipPolygonMaxX(packableArea, splitX);
     pack = packOneArea(singleSideArea, count);
-    if (!autoLayers) collectLayerWarnings(pack.layers, null).forEach(function (w) { layerWarnings.push(w); });
+    collectLayerWarnings(pack.layers, null).forEach(function (w) { layerWarnings.push(w); });
     layersUsed = pack.layers.length;
   }
   renderSvg(innerPoly, pack);
 
   var fillClass = fillPctArea > 100 ? 'bad' : (fillPctArea > 85 ? 'warn' : '');
   var packedClass = pack.placedCount >= count ? '' : 'warn';
-  var packedNote = pack.placedCount >= count ? mtT('packedAll') : (autoLayers ? mtT('packedDepthLimited') : mtT('packedPartial'));
+  var packedNote = pack.placedCount >= count ? mtT('packedAll') : mtT('packedPartial');
   var warningsHtml = layerWarnings.length
     ? '<br><span class="warn sub-note">' + mtT('layerOverfull') + ': ' + layerWarnings.join('; ') + '</span>'
     : '';
