@@ -27,7 +27,7 @@ body > * { min-width: 0; }
 }
 
 .input-panel {
-  width: 320px;
+  width: 360px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -69,7 +69,7 @@ body > * { min-width: 0; }
   flex: 1;
   padding: 6px 4px;
   font-family: var(--sans);
-  font-size: 10.5px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--text);
   background: none;
@@ -93,7 +93,7 @@ body > * { min-width: 0; }
   flex-shrink: 0;
 }
 .section-title {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--accent);
   text-align: center;
@@ -102,19 +102,19 @@ body > * { min-width: 0; }
 }
 .param-row-2 {
   display: grid;
-  grid-template-columns: 1fr 88px;
+  grid-template-columns: 1fr 98px;
   align-items: center;
   gap: 5px;
   margin-top: 5px;
 }
 .param-label {
-  font-size: 9.5px;
+  font-size: 12px;
   color: var(--text);
   font-weight: 500;
 }
 .param-input {
   font-family: var(--mono);
-  font-size: 9.5px; font-weight: 600;
+  font-size: 12px; font-weight: 600;
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -132,7 +132,7 @@ body > * { min-width: 0; }
 .mini-select {
   width: 100%;
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: 12px;
   font-weight: 600;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -145,7 +145,7 @@ body > * { min-width: 0; }
 [data-theme="dark"] .mini-select { background: #1e2235; color: #c9d1e0; border-color: #2d3148; }
 
 .hint-text {
-  font-size: 8.5px;
+  font-size: 10.5px;
   color: #9ca3af;
   line-height: 1.5;
   margin-top: 6px;
@@ -155,7 +155,7 @@ body > * { min-width: 0; }
   display: flex;
   gap: 8px;
   margin-top: 5px;
-  font-size: 9.5px;
+  font-size: 12px;
   color: var(--text);
 }
 .target-select-row label { display: flex; align-items: center; gap: 3px; cursor: pointer; }
@@ -165,10 +165,10 @@ body > * { min-width: 0; }
   align-items: center;
   gap: 4px;
   margin-top: 5px;
-  font-size: 9px;
+  font-size: 11px;
   color: #6b7280;
 }
-.sweep-mini { width: 46px; }
+.sweep-mini { width: 54px; }
 
 .query-btn {
   width: 100%;
@@ -177,7 +177,7 @@ body > * { min-width: 0; }
   background: var(--accent);
   color: #fff;
   font-family: var(--sans);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   border: none;
   border-radius: 5px;
@@ -196,7 +196,7 @@ body > * { min-width: 0; }
   cursor: pointer;
   user-select: none;
 }
-.collapsible-arrow { font-size: 9px; color: #9ca3af; transition: transform 0.2s; }
+.collapsible-arrow { font-size: 10.5px; color: #9ca3af; transition: transform 0.2s; }
 .collapsed .collapsible-arrow { transform: rotate(-90deg); }
 .collapsible-body { overflow: hidden; margin-top: 2px; }
 .collapsed .collapsible-body { display: none; }
@@ -204,11 +204,22 @@ body > * { min-width: 0; }
 .result-line {
   margin-top: 6px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text);
   text-align: right;
 }
-.result-line b { color: var(--accent); font-size: 12px; }
+.result-line b { color: var(--accent); font-size: 14px; }
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+  margin-top: 8px;
+  cursor: pointer;
+}
 
 /* ══════════════════════════════════════════════════════════
    結果卡片
@@ -229,7 +240,7 @@ body > * { min-width: 0; }
   box-shadow: 0 0 0 1px var(--accent) inset;
 }
 .result-card-label {
-  font-size: 10.5px;
+  font-size: 12.5px;
   font-weight: 600;
   color: #6b7280;
   letter-spacing: 0.03em;
@@ -238,13 +249,19 @@ body > * { min-width: 0; }
 }
 .result-card-body {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 15.5px;
   line-height: 1.9;
   color: var(--text);
 }
 .result-card-body .rv { font-weight: 700; color: var(--accent); }
 [data-theme="dark"] .result-card-body .rv { color: #93b4ff; }
-.result-card-body .ru { font-size: 10px; color: #9ca3af; margin-left: 2px; }
+.result-card-body .ru { font-size: 12px; color: #9ca3af; margin-left: 2px; }
+
+/* 公式提示：滑鼠移過去看背後計算式（原生 title tooltip） */
+.formula-tip {
+  cursor: help;
+  border-bottom: 1px dotted var(--text3);
+}
 
 /* ══════════════════════════════════════════════════════════
    線徑掃描表
@@ -258,7 +275,7 @@ body > * { min-width: 0; }
   width: 100%;
   border-collapse: collapse;
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: 12.5px;
 }
 .sweep-table th {
   position: sticky; top: 0;
@@ -266,13 +283,13 @@ body > * { min-width: 0; }
   color: #6b7280;
   font-weight: 600;
   text-align: right;
-  padding: 4px 6px;
+  padding: 5px 7px;
   border-bottom: 1.5px solid var(--border);
 }
 .sweep-table th:first-child, .sweep-table td:first-child { text-align: left; }
 .sweep-table td {
   text-align: right;
-  padding: 3px 6px;
+  padding: 4px 7px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
 }

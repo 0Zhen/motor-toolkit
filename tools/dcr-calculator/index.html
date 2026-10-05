@@ -69,6 +69,27 @@
           <input type="text" class="param-input" id="q_targetVal" value="80">
         </div>
       </div>
+
+      <div class="params-box" id="qValidateBox">
+        <div class="collapsible-header" onclick="toggleSection('qValidateBox')">
+          <div class="section-title" data-i18n="validateTitle">Compare to Measured Sample</div>
+          <span class="collapsible-arrow">▾</span>
+        </div>
+        <div class="collapsible-body">
+          <div class="param-row-2"><span class="param-label" data-i18n="measuredTurns">Measured turns</span>
+            <input type="text" class="param-input" id="qv_N" value=""></div>
+          <div class="param-row-2"><span class="param-label" data-i18n="measuredWire">Measured wire dia. [mm]</span>
+            <input type="text" class="param-input" id="qv_d" value=""></div>
+          <div class="param-row-2"><span class="param-label" data-i18n="measuredR">Measured DCR [Ω]</span>
+            <input type="text" class="param-input" id="qv_R" value=""></div>
+          <div class="result-line"><span class="formula-tip" data-i18n="validatePredicted" data-i18n-title="tipQuickR">Predicted (same N, d)</span>: <b id="qv_predicted">—</b></div>
+          <div class="result-line"><span class="formula-tip" data-i18n="validateError" data-i18n-title="tipError">Error</span>: <b id="qv_error">—</b></div>
+          <div class="hint-text" data-i18n="qValidateHint">
+            Enter a second measured point (not the reference design above) to check whether the
+            R = C·N/d² relationship holds for your actual winding.
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ═══ Full 模式 ═══ -->
@@ -128,6 +149,30 @@
         </div>
       </div>
 
+      <!-- 樣品實測比對 -->
+      <div class="params-box" id="fValidateBox">
+        <div class="collapsible-header" onclick="toggleSection('fValidateBox')">
+          <div class="section-title" data-i18n="validateTitle">Compare to Measured Sample</div>
+          <span class="collapsible-arrow">▾</span>
+        </div>
+        <div class="collapsible-body">
+          <div class="param-row-2"><span class="param-label" data-i18n="measuredR">Measured DCR [Ω]</span>
+            <input type="text" class="param-input" id="v_measuredR" value=""></div>
+          <div class="param-row-2"><span class="param-label" data-i18n="measuredTemp">Measured at temp. [°C]</span>
+            <input type="text" class="param-input" id="v_measuredTemp" value="20"></div>
+          <div class="param-row-2"><span class="param-label" data-i18n="measuredWhich">Measured value is</span>
+            <select class="mini-select" id="v_which"><option value="phase">R_phase</option><option value="line">R_line</option></select></div>
+          <div class="result-line"><span class="formula-tip" data-i18n="validatePredicted" data-i18n-title="tipFullR">Predicted (at that temp.)</span>: <b id="v_predicted">—</b></div>
+          <div class="result-line"><span class="formula-tip" data-i18n="validateError" data-i18n-title="tipCorrectionFactor">Error</span>: <b id="v_error">—</b></div>
+          <label class="check-row"><input type="checkbox" id="v_applyCorrection"> <span data-i18n="validateApply">Apply correction factor to results below</span></label>
+          <div class="hint-text" data-i18n="validateHint">
+            Correction factor = measured ÷ predicted at the same temperature. When applied, it
+            scales every DCR value below (main result and sweep table) — the underlying formula
+            itself is unchanged.
+          </div>
+        </div>
+      </div>
+
       <!-- 線徑掃描表 -->
       <div class="params-box">
         <div class="section-title" data-i18n="sweepTitle">Wire Diameter Sweep</div>
@@ -160,7 +205,7 @@
           <input type="text" class="param-input" id="t_T2" value="120"></div>
         <div class="param-row-2"><span class="param-label" data-i18n="tcMaterial">Material</span>
           <select class="mini-select" id="t_material"><option value="cu">Cu</option><option value="al">Al</option></select></div>
-        <div class="result-line"><span data-i18n="tcResult">R @ T2</span>: <b id="t_result">—</b> Ω</div>
+        <div class="result-line"><span class="formula-tip" data-i18n="tcResult" data-i18n-title="tipTempCorr">R @ T2</span>: <b id="t_result">—</b> Ω</div>
       </div>
     </div>
 
@@ -171,15 +216,15 @@
 
     <div id="quickResults" class="result-cards">
       <div class="result-card">
-        <div class="result-card-label" data-i18n="ideal">Theoretical (continuous)</div>
+        <div class="result-card-label formula-tip" data-i18n="ideal" data-i18n-title="tipQuickTheoretical">Theoretical (continuous)</div>
         <div class="result-card-body" id="q_idealOut">—</div>
       </div>
       <div class="result-card highlight">
-        <div class="result-card-label" data-i18n="practical">Practical (achievable)</div>
+        <div class="result-card-label formula-tip" data-i18n="practical" data-i18n-title="tipQuickR">Practical (achievable)</div>
         <div class="result-card-body" id="q_practicalOut">—</div>
       </div>
       <div class="result-card">
-        <div class="result-card-label" data-i18n="fillRatio">Slot-fill ratio (vs. reference)</div>
+        <div class="result-card-label formula-tip" data-i18n="fillRatio" data-i18n-title="tipQuickFill">Slot-fill ratio (vs. reference)</div>
         <div class="result-card-body" id="q_fillOut">—</div>
       </div>
     </div>

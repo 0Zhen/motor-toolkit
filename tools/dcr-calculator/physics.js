@@ -103,7 +103,11 @@ function quickSolve(input, calib, wireStep) {
  *   seriesCoilsPerPhase, strandsPerTurn,
  *   bareDia, enamelThk, material ('cu'|'al'),
  *   stackLength, mlt (null→用 mltFactor 估), mltFactor,
- *   slotArea, tempC
+ *   slotArea, tempC,
+ *   correctionFactor (optional, default 1 — empirical multiplier from
+ *   comparing a measured sample against the formula; see
+ *   compareToMeasured(). Applied to rPhase/rLine only, never changes the
+ *   formula itself.)
  */
 function fullSolve(p) {
   const od = p.bareDia + 2 * p.enamelThk;
@@ -118,12 +122,30 @@ function fullSolve(p) {
   const seriesTurnsTotal = p.turnsPerSlot * p.seriesCoilsPerPhase;
   const rho = resistivityAt(p.material, p.tempC);
   // R = ρ × N_series × MLT / (股數×裸銅截面積 × a²)   [ρ單位Ω·m，其餘用mm→需統一單位]
-  const rPhase = rho * seriesTurnsTotal * (mlt / 1000) /
+  const cf = p.correctionFactor != null ? p.correctionFactor : 1;
+  const rPhase = cf * rho * seriesTurnsTotal * (mlt / 1000) /
     (p.strandsPerTurn * strandArea / 1e6 * p.parallelPaths * p.parallelPaths);
 
   const rLine = p.connection === 'Y' ? 2 * rPhase : (2 / 3) * rPhase;
 
   return { od, mlt, fillPct, seriesTurnsTotal, rPhase, rLine };
+}
+
+/**
+ * 樣品實測比對：在「量測當下的溫度」算出理論值（跟目前 Condition 區塊設的
+ * tempC 無關，純粹為了跟量測值同溫度比較），回傳誤差與校正係數。
+ * 校正係數 = 實測 / 理論值，供 fullSolve() 的 correctionFactor 使用。
+ * @param {object} p 同 fullSolve 的參數（correctionFactor 會被忽略，比較基準永遠用未校正的理論值）
+ * @param {number} measuredR 實測值（R_phase 或 R_line，由 which 指定）
+ * @param {number} measuredTempC 量測當下的溫度
+ * @param {'phase'|'line'} which
+ */
+function compareToMeasured(p, measuredR, measuredTempC, which) {
+  const baseline = fullSolve(Object.assign({}, p, { tempC: measuredTempC, correctionFactor: 1 }));
+  const predicted = which === 'line' ? baseline.rLine : baseline.rPhase;
+  const errorPct = (measuredR - predicted) / predicted * 100;
+  const correctionFactor = measuredR / predicted;
+  return { predicted, errorPct, correctionFactor };
 }
 
 /**
@@ -139,6 +161,7 @@ function sweepWireTable(p, targetFillPct, dMin, dMax, dStep) {
   const rho = resistivityAt(p.material, p.tempC);
   const allowedCopperArea = p.slotArea * (targetFillPct / 100);
 
+  const cf = p.correctionFactor != null ? p.correctionFactor : 1;
   for (let d = dMin; d <= dMax + 1e-9; d += dStep) {
     const dRound = Math.round(d * 1000) / 1000;
     const od = dRound + 2 * p.enamelThk;
@@ -150,7 +173,7 @@ function sweepWireTable(p, targetFillPct, dMin, dMax, dStep) {
 
     const actualFillPct = (nSlotMax * p.coilsPerSlot * p.strandsPerTurn * strandAreaOD) / p.slotArea * 100;
     const seriesTurnsTotal = nSlotMax * p.seriesCoilsPerPhase;
-    const rPhase = rho * seriesTurnsTotal * (mlt / 1000) /
+    const rPhase = cf * rho * seriesTurnsTotal * (mlt / 1000) /
       (p.strandsPerTurn * strandArea / 1e6 * p.parallelPaths * p.parallelPaths);
     const rLine = p.connection === 'Y' ? 2 * rPhase : (2 / 3) * rPhase;
 
