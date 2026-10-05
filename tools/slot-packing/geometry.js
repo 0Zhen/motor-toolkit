@@ -176,6 +176,53 @@ function clipPolygonMinY(points, minY) {
 }
 
 /**
+ * 跟 clipPolygonMinY 同一套 Sutherland-Hodgman 半平面裁切，只是裁的是
+ * x 軸：maxX 版留下 x <= maxX（槽內左半），minX 版留下 x >= minX
+ * （槽內右半）。雙層繞組時用這兩個函式把繞線窗切成左右兩束。
+ */
+function clipPolygonMaxX(points, maxX) {
+  const n = points.length;
+  if (n < 3) return [];
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const cur = points[i], prev = points[(i - 1 + n) % n];
+    const curIn = cur.x <= maxX, prevIn = prev.x <= maxX;
+    if (curIn) {
+      if (!prevIn) {
+        const t = (maxX - prev.x) / (cur.x - prev.x);
+        out.push({ x: maxX, y: prev.y + t * (cur.y - prev.y) });
+      }
+      out.push({ x: cur.x, y: cur.y });
+    } else if (prevIn) {
+      const t = (maxX - prev.x) / (cur.x - prev.x);
+      out.push({ x: maxX, y: prev.y + t * (cur.y - prev.y) });
+    }
+  }
+  return out;
+}
+
+function clipPolygonMinX(points, minX) {
+  const n = points.length;
+  if (n < 3) return [];
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const cur = points[i], prev = points[(i - 1 + n) % n];
+    const curIn = cur.x >= minX, prevIn = prev.x >= minX;
+    if (curIn) {
+      if (!prevIn) {
+        const t = (minX - prev.x) / (cur.x - prev.x);
+        out.push({ x: minX, y: prev.y + t * (cur.y - prev.y) });
+      }
+      out.push({ x: cur.x, y: cur.y });
+    } else if (prevIn) {
+      const t = (minX - prev.x) / (cur.x - prev.x);
+      out.push({ x: minX, y: prev.y + t * (cur.y - prev.y) });
+    }
+  }
+  return out;
+}
+
+/**
  * 槽內線材堆疊（簡單逐排視覺化，不是最佳圓形填充演算法）：
  * 由槽底往槽口方向逐排排列（貼槽底與兩側壁面開始疊，跟實際繞線的物理
  * 直覺一致——線是從槽口塞進去，會先落到槽底再一層層往外疊，不是堆在

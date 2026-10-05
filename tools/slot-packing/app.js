@@ -36,6 +36,10 @@ var MT_I18N = {
   turnsPerSlot: { en: 'Turns / slot', zh: '每槽匝數' },
   coilsPerSlot: { en: 'Coils / slot', zh: '每槽線圈數' },
   strandsPerTurn:{ en: 'Strands / turn', zh: '股數/匝' },
+  coilsSplitHint:{
+    en: '2 or more: split into a left and a right bundle (one per coil side), like a double-layer slot. 1: the whole bundle sits in just one side, the other side left empty.',
+    zh: '2 以上：分成左右兩束（各自代表一個線圈邊），跟雙層槽一樣。1：整批線材只佔其中一側，另一側留白。',
+  },
   linerThickness:{ en: 'Liner thickness [mm]', zh: 'Liner 厚度 [mm]' },
   windStartY:   { en: 'No-wind depth (opening) [mm]', zh: '不繞線深度（開口）[mm]' },
   windStartHint:{
@@ -251,7 +255,31 @@ function computeAll() {
 
   var circleArea = Math.PI / 4 * diameter * diameter;
   var fillPctArea = count * circleArea / windingArea * 100;
-  var pack = packCirclesInPolygon(packableArea, diameter, count);
+
+  // 雙層（coils/slot >= 2）：繞線窗切成左右兩束，各自獨立堆疊，中間留
+  // 一道 liner 厚度當間隙；單層（coils/slot <= 1）：整批線材只佔其中一
+  // 側（這裡固定取左半），右半在畫面上留白——跟 Winding Designer 既有
+  // 的雙層左右並排慣例一致。bbox 用裁完喉部後的 packableArea 算，分界
+  // 線在它的左右正中央，不是寫死 x=0（自訂頂點的非對稱槽型也適用）。
+  var packBbox = polygonBBox(packableArea);
+  var splitX = (packBbox.minX + packBbox.maxX) / 2;
+  var pack;
+  if (coils >= 2) {
+    var gap = linerThk / 2;
+    var leftArea = clipPolygonMaxX(packableArea, splitX - gap);
+    var rightArea = clipPolygonMinX(packableArea, splitX + gap);
+    var perSide = Math.round(count / 2);
+    var packL = packCirclesInPolygon(leftArea, diameter, perSide);
+    var packR = packCirclesInPolygon(rightArea, diameter, count - perSide);
+    pack = {
+      placed: packL.placed.concat(packR.placed),
+      placedCount: packL.placedCount + packR.placedCount,
+      requestedCount: count,
+    };
+  } else {
+    var singleSideArea = clipPolygonMaxX(packableArea, splitX);
+    pack = packCirclesInPolygon(singleSideArea, diameter, count);
+  }
   renderSvg(innerPoly, pack);
 
   var fillClass = fillPctArea > 100 ? 'bad' : (fillPctArea > 85 ? 'warn' : '');
