@@ -137,6 +137,7 @@ var shapeMode = 'param';
 var halfVertices = [];
 var vertices = [];
 var lastMaxCapacity = 0, lastCoils = 1, lastStrands = 1; // 給「自動填滿到最大容量」按鈕用
+var lastWindingArea = 0; // 給「去DCR計算機確認」按鈕用——DCR自己的槽面積欄位需要這個真實算出來的繞線窗面積，不能留它自己的預設值
 
 /** 左半邊（依序從槽口排到槽底）鏡射回去接成完整封閉多邊形：左半原封
  *  不動，右半＝左半倒序＋x取負——這樣鏡射後的右半會從槽底往槽口接回
@@ -580,6 +581,7 @@ function computeAll() {
   var windStartY = Math.max(0, num('w_windStartY', 0));
   var packableArea = clipPolygonMinY(innerPoly, windStartY);
   var windingArea = polygonArea(packableArea);
+  lastWindingArea = windingArea;
 
   if (!(windingArea > 0)) {
     $('statsOut').innerHTML =
@@ -677,7 +679,9 @@ function computeAll() {
 /* ── 跟 DCR Calculator 的雙向連結 ──
  * 兩個工具都要輸入同一組線材參數（匝數/線圈數/股數/裸銅徑/漆膜厚
  * 度），用URL query string帶一次性的「現在這組數字」過去確認，不做成
- * 持久共用的localStorage——不是要兩個工具隨時同步狀態。 */
+ * 持久共用的localStorage——不是要兩個工具隨時同步狀態。槽面積也一併
+ * 帶過去（DCR自己的槽面積欄位預設是固定小數字，不帶的話DCR算出來的
+ * 槽滿率會對不上這裡真實算出來的槽型，容易誤判成爆滿）。 */
 window.openInDcrCalculator = function () {
   var params = new URLSearchParams();
   params.set('turns', num('w_turns', 0));
@@ -685,6 +689,7 @@ window.openInDcrCalculator = function () {
   params.set('strands', num('w_strands', 1));
   params.set('bareDia', num('w_bareDia', 0.7));
   params.set('enamel', num('w_enamel', 0.025));
+  if (lastWindingArea > 0) params.set('slotArea', lastWindingArea.toFixed(4));
   window.open('../dcr-calculator/index.html?' + params.toString(), '_blank');
 };
 /** 從 DCR Calculator 帶過來的參數：有帶到的欄位覆蓋掉預設值，其餘（槽
