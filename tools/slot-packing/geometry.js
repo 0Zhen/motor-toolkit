@@ -375,11 +375,21 @@ function settlePack(points, diameter, count) {
     if (!ok) break;
     placed.push(p);
     insertBin(p);
-    if (placed.length >= requestedCount) break;
   }
 
+  // maxCapacity 一定是跑完整個沉降流程（不受 requestedCount 影響）算出
+  // 來的真實上限——之前這裡有個「放到 requestedCount 顆就提早 break」
+  // 的提早結束，當初是當成效能最佳化加的，但副作用是 maxCapacity 被
+  // 悄悄限制成「min(真實容量, 使用者要求的數量)」：只要使用者設定的匝
+  // 數低於真實容量，算出來的「最大容量」就會錯誤地跟著縮小，使用者改
+  // 小匝數卻看到最大容量跟著變小，誤以為兩者有關聯（實際上應該完全無
+  // 關，純粹是線徑/槽型決定的）。拿掉提早結束，maxCapacity 才會是真正
+  // 跟 count 無關的數字；要放的數量再用 requestedCount 截斷 placed 陣
+  // 列即可，不影響正確性，效能也沒差（最壞情況本來就已經在算全部容量
+  // ——沒有要求數量時就是這樣跑的，有驗算過、毫秒級）。
   result.maxCapacity = placed.length;
-  result.placed = placed.map(p => ({ x: p.x, y: p.y, d: diameter }));
+  const n = Math.min(requestedCount, placed.length);
+  result.placed = placed.slice(0, n).map(p => ({ x: p.x, y: p.y, d: diameter }));
   result.placedCount = result.placed.length;
   return result;
 }
