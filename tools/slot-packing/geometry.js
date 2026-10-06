@@ -176,6 +176,55 @@ function clipPolygonMinY(points, minY) {
 }
 
 /**
+ * 跟 clipPolygonMinY 同一套 Sutherland-Hodgman 半平面裁切，只是裁的是
+ * x 軸：maxX 版留下 x <= maxX（槽內左半），minX 版留下 x >= minX
+ * （槽內右半）。雙層繞組（Coils/slot >= 2）時用這兩個函式把繞線窗切
+ * 成左右兩個獨立線圈邊，各自密排——不這樣切的話，六方格點會把雙層跟
+ * 單層畫成同一種「整個繞線窗一池子」的樣子，看不出線圈邊的分別。
+ */
+function clipPolygonMaxX(points, maxX) {
+  const n = points.length;
+  if (n < 3) return [];
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const cur = points[i], prev = points[(i - 1 + n) % n];
+    const curIn = cur.x <= maxX, prevIn = prev.x <= maxX;
+    if (curIn) {
+      if (!prevIn) {
+        const t = (maxX - prev.x) / (cur.x - prev.x);
+        out.push({ x: maxX, y: prev.y + t * (cur.y - prev.y) });
+      }
+      out.push({ x: cur.x, y: cur.y });
+    } else if (prevIn) {
+      const t = (maxX - prev.x) / (cur.x - prev.x);
+      out.push({ x: maxX, y: prev.y + t * (cur.y - prev.y) });
+    }
+  }
+  return out;
+}
+
+function clipPolygonMinX(points, minX) {
+  const n = points.length;
+  if (n < 3) return [];
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const cur = points[i], prev = points[(i - 1 + n) % n];
+    const curIn = cur.x >= minX, prevIn = prev.x >= minX;
+    if (curIn) {
+      if (!prevIn) {
+        const t = (minX - prev.x) / (cur.x - prev.x);
+        out.push({ x: minX, y: prev.y + t * (cur.y - prev.y) });
+      }
+      out.push({ x: cur.x, y: cur.y });
+    } else if (prevIn) {
+      const t = (minX - prev.x) / (cur.x - prev.x);
+      out.push({ x: minX, y: prev.y + t * (cur.y - prev.y) });
+    }
+  }
+  return out;
+}
+
+/**
  * 真正的交錯密排：固定六方最密堆積格點（triangular lattice），裁進
  * 多邊形裡——不是逐排/逐欄湊數字，是業界畫線材截面示意圖常見的那種
  * 真實交錯堆疊。

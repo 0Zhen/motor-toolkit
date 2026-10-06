@@ -37,8 +37,8 @@ var MT_I18N = {
   coilsPerSlot: { en: 'Coils / slot', zh: '每槽線圈數' },
   strandsPerTurn:{ en: 'Strands / turn', zh: '股數/匝' },
   coilsSplitHint:{
-    en: 'Just multiplies the total wire count (turns × coils × strands).',
-    zh: '只是乘進線材總數（匝數×線圈數×股數）。',
+    en: '2 or more: the winding window splits into a left and a right coil side, each independently packed (double-layer winding). 1: the whole window is packed as one — doesn’t decide anything about the total wire count, which is still turns × coils × strands.',
+    zh: '2 以上：繞線窗分成左右兩個線圈邊，各自獨立密排（雙層繞組）。1：整個繞線窗當一池子密排——這個欄位不影響線材總數，總數還是匝數×線圈數×股數。',
   },
   linerThickness:{ en: 'Liner thickness [mm]', zh: 'Liner 厚度 [mm]' },
   windStartY:   { en: 'No-wind depth (opening) [mm]', zh: '不繞線深度（開口）[mm]' },
@@ -266,11 +266,33 @@ function computeAll() {
   var circleArea = Math.PI / 4 * diameter * diameter;
   var fillPctArea = count * circleArea / windingArea * 100;
 
-  // 真正的六方密排：固定格點、貼槽底、由中線往外擴散，只決定於線徑/
+  // 真正的六方密排：固定格點、貼槽底、貼其中一側槽壁，只決定於線徑/
   // 槽型本身，不用使用者設定層數/欄數——這就是整個重新設計要的「只設
   // 定匝數，工具自動排出來」。pack.maxCapacity 是同一套格點跑「不限
   // 數量」算出來的，直接回答「這個槽到底塞不塞得下」。
-  var pack = hexLatticePack(packableArea, diameter, count);
+  // 雙層繞組（Coils/slot >= 2）：繞線窗先切成左右兩個獨立線圈邊（中間
+  // 留一道 liner 厚度一半當間隙），各自密排、各自算自己的容量——理論
+  // 上只會佔其中一邊，不是整個繞線窗混在一起看起來像單層。單層
+  // （Coils/slot <= 1）：整個繞線窗當一池子密排，維持原樣。
+  var pack;
+  if (coils >= 2) {
+    var packBbox = polygonBBox(packableArea);
+    var splitX = (packBbox.minX + packBbox.maxX) / 2;
+    var gap = linerThk / 2;
+    var leftArea = clipPolygonMaxX(packableArea, splitX - gap);
+    var rightArea = clipPolygonMinX(packableArea, splitX + gap);
+    var perSide = Math.round(count / 2);
+    var packL = hexLatticePack(leftArea, diameter, perSide);
+    var packR = hexLatticePack(rightArea, diameter, count - perSide);
+    pack = {
+      placed: packL.placed.concat(packR.placed),
+      placedCount: packL.placedCount + packR.placedCount,
+      requestedCount: count,
+      maxCapacity: packL.maxCapacity + packR.maxCapacity,
+    };
+  } else {
+    pack = hexLatticePack(packableArea, diameter, count);
+  }
   renderSvg(innerPoly, pack);
 
   var maxFillPct = pack.maxCapacity * circleArea / windingArea * 100;
