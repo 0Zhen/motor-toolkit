@@ -273,11 +273,6 @@ body > * { min-width: 0; }
   border-radius: 2px;
   display: inline-block;
 }
-.legend-swatch-outline {
-  background: none;
-  border: 1.5px dashed #3b6fa8;
-  box-sizing: border-box;
-}
 #packingSvg {
   width: 100%;
   height: 360px;
@@ -285,10 +280,10 @@ body > * { min-width: 0; }
 /* 仿 Motor-CAD 繞組定義頁的配色：紅=鐵芯、綠=liner內縮後的繞線窗、黃=導線。
    這三個顏色是固定的工程圖配色，不跟著 light/dark 主題切換（跟其他工具
    的圖表固定配色同一個邏輯，顏色本身代表材料，不是裝飾）。 */
-.slot-lamination { fill: #b5392f; }
+.slot-lamination { fill: #9a9ea5; }
 .slot-outline {
   fill: none;
-  stroke: #7a241c;
+  stroke: #6b6f76;
   stroke-width: 0.6;
 }
 .slot-liner {
@@ -302,9 +297,8 @@ body > * { min-width: 0; }
   stroke-width: 0.15;
 }
 .slot-needle-channel {
-  fill: none;
+  fill: #6f9bd1;
   stroke: #3b6fa8;
-  stroke-dasharray: 2,1.2;
 }
 
 /* ══════════════════════════════════════════════════════════
