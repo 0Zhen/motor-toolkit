@@ -144,6 +144,22 @@
       </div><!-- end collapsible-body -->
     </div>
 
+    <!-- 油品資料庫：可編輯（預設收合） -->
+    <div class="oil-box collapsed" id="oilDbBox" style="margin-top:6px">
+      <div class="collapsible-header" onclick="toggleSection('oilDbBox')">
+        <div class="section-title" data-i18n="oilDbTitle">Oil Database (editable)</div>
+        <span class="collapsible-arrow">▾</span>
+      </div>
+      <div class="collapsible-body">
+        <div class="oildb-hint" data-i18n="oilDbHint">
+          Add/edit oils here — needs two viscosity points (e.g. JIS K2283) per oil. Saved in your
+          browser (localStorage).
+        </div>
+        <div id="oilDbList"></div>
+        <button class="query-btn" style="margin-top:6px" onclick="addOilRow()" data-i18n="addOilBtn">+ Add Oil</button>
+      </div>
+    </div>
+
     <!-- 可調設計參數（可收合） -->
     <div class="params-box" id="paramsBox">
       <div class="collapsible-header" onclick="toggleSection('paramsBox')">

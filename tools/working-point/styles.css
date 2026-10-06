@@ -150,6 +150,45 @@ canvas { flex: 1; min-height: 0; }
   font-weight: 500;
 }
 
+/* 油品資料庫：可編輯卡片清單 */
+.oildb-hint {
+  font-size: 8.5px;
+  color: #9ca3af;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+.oildb-card {
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.oildb-card:first-child { padding-top: 4px; }
+.oildb-card-head {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.oildb-card-head .oildb-name { flex: 1; text-align: left; }
+.oildb-del {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 0 3px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.oildb-del:hover { color: #dc2626; }
+.oildb-point-row {
+  display: grid;
+  grid-template-columns: 30px 1fr 1fr;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+.oildb-mini-label { font-size: 8px; color: #9ca3af; }
+.oildb-mini { text-align: right; }
+
 /* ══════════════════════════════════════════════════════════
    右側控制欄：共用區塊樣式
    ══════════════════════════════════════════════════════════ */

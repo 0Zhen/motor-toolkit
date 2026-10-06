@@ -57,6 +57,16 @@ var MT_I18N = {
                          zh: '請填入標定點（T1/v1/T2/v2）或 Vc_ref' },
   oilOutOfRange:      { en: 'Out of range',                      zh: '超出範圍' },
 
+  /* 油品資料庫（可編輯表格） */
+  oilDbTitle:         { en: 'Oil Database (editable)',           zh: '油品資料庫（可編輯）' },
+  oilDbHint:          { en: 'Add/edit oils here — needs two viscosity points (e.g. JIS K2283) per oil. Saved in your browser (localStorage).',
+                         zh: '在這裡新增/編輯油品——每種油品需要兩個黏度標定點（例如 JIS K2283）。存在你的瀏覽器（localStorage）。' },
+  addOilBtn:          { en: '+ Add Oil',                          zh: '+ 新增油品' },
+  deleteOilBtn:       { en: 'Delete this oil',                    zh: '刪除這筆油品' },
+  newOilName:         { en: 'New Oil',                            zh: '新油品' },
+  oilDensityOptLabel: { en: 'Density (optional)',                 zh: '密度（選填）' },
+  optionalPh:         { en: 'optional',                           zh: '選填' },
+
   /* Calibrate Ke / Run Sweep 的 alert 訊息 */
   alertNoRealSolution:{ en: 'No real solution: cannot calibrate Ke.\nTry adjusting R_C or V_rated.',
                          zh: '沒有實數解：無法校正 Ke。\n請嘗試調整 R_C 或 V_rated。' },
@@ -336,17 +346,149 @@ function applyOilDefaults(oil) {
   updateParamLabels();
 }
 
+/* ══════════════════════════════════════════════════════════
+   油品資料庫（可編輯，存瀏覽器 localStorage）
+   OIL_DB（physics.js）只當作第一次使用、localStorage 還是空的
+   時候的種子資料；之後所有讀寫都走 oilDb 這個活動陣列。
+   ══════════════════════════════════════════════════════════ */
+var OIL_DB_LS_KEY = 'mt-wp-oil-db';
+var oilDb;
+
+function loadOilDb() {
+  try {
+    const raw = localStorage.getItem(OIL_DB_LS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    }
+  } catch (e) { /* 存取失敗或資料損毀，退回種子資料 */ }
+  return OIL_DB.map(o => Object.assign({}, o));
+}
+
+function saveOilDb() {
+  try { localStorage.setItem(OIL_DB_LS_KEY, JSON.stringify(oilDb)); } catch (e) { /* 存不了就只留在記憶體裡，不中斷操作 */ }
+}
+
+/** 下拉選單重新依 oilDb 產生選項；preferIdx 給定時優先選它，否則盡量保留原本選的那筆 */
+function refreshOilSelect(preferIdx) {
+  const sel = document.getElementById('oilSelect');
+  const prevIdx = parseInt(sel.value);
+  sel.innerHTML = '';
+  oilDb.forEach((oil, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = oil.name;
+    sel.appendChild(opt);
+  });
+  let target = (preferIdx !== undefined) ? preferIdx : prevIdx;
+  if (!(target >= 0 && target < oilDb.length)) target = 0;
+  sel.value = target;
+  applyOilDefaults(oilDb[target]);
+  onOilChange();
+}
+
+function addOilRow() {
+  oilDb.push({ name: mtT('newOilName'), T1: 40, v1: 32, T2: 100, v2: 5.4 });
+  saveOilDb();
+  refreshOilSelect(oilDb.length - 1);
+  renderOilDbEditor();
+}
+
+function deleteOilRow(idx) {
+  if (oilDb.length <= 1) return; // 至少留一筆，下拉選單不能空
+  oilDb.splice(idx, 1);
+  saveOilDb();
+  refreshOilSelect(0);
+  renderOilDbEditor();
+}
+
+/** 編輯表格某一欄：name 直接存字串；其餘欄位存數字，清空代表拿掉這個選填欄位（D_oil/Vc_ref） */
+function updateOilField(idx, field, raw) {
+  const oil = oilDb[idx];
+  if (!oil) return;
+  if (field === 'name') {
+    oil.name = raw.trim() || oil.name;
+    const sel = document.getElementById('oilSelect');
+    if (sel.options[idx]) sel.options[idx].textContent = oil.name;
+  } else if (raw.trim() === '') {
+    delete oil[field];
+  } else {
+    const v = parseFloat(raw);
+    if (isFinite(v)) oil[field] = v;
+  }
+  saveOilDb();
+  onOilChange();
+}
+
+/** 畫可編輯的油品卡片清單（每筆：名稱＋刪除、T1/v1、T2/v2、密度選填） */
+function renderOilDbEditor() {
+  const list = document.getElementById('oilDbList');
+  if (!list) return;
+  list.innerHTML = '';
+
+  oilDb.forEach((oil, idx) => {
+    const card = document.createElement('div');
+    card.className = 'oildb-card';
+
+    const head = document.createElement('div');
+    head.className = 'oildb-card-head';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text'; nameInput.className = 'param-input oildb-name'; nameInput.value = oil.name;
+    nameInput.addEventListener('change', () => updateOilField(idx, 'name', nameInput.value));
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button'; delBtn.className = 'oildb-del'; delBtn.textContent = '×';
+    delBtn.title = mtT('deleteOilBtn');
+    delBtn.addEventListener('click', () => deleteOilRow(idx));
+    head.appendChild(nameInput); head.appendChild(delBtn);
+    card.appendChild(head);
+
+    [['T1', 'v1'], ['T2', 'v2']].forEach(pair => {
+      const row = document.createElement('div');
+      row.className = 'oildb-point-row';
+      const label = document.createElement('span');
+      label.className = 'oildb-mini-label';
+      label.textContent = pair[0] + '/' + pair[1];
+      row.appendChild(label);
+      pair.forEach(field => {
+        const inp = document.createElement('input');
+        inp.type = 'text'; inp.className = 'param-input oildb-mini';
+        inp.value = (oil[field] !== undefined) ? oil[field] : '';
+        inp.addEventListener('change', () => updateOilField(idx, field, inp.value));
+        row.appendChild(inp);
+      });
+      card.appendChild(row);
+    });
+
+    const dRow = document.createElement('div');
+    dRow.className = 'oil-row';
+    const dLabel = document.createElement('span');
+    dLabel.className = 'oil-label';
+    dLabel.textContent = mtT('oilDensityOptLabel');
+    const dInput = document.createElement('input');
+    dInput.type = 'text'; dInput.className = 'param-input';
+    dInput.value = (oil.D_oil !== undefined) ? oil.D_oil : '';
+    dInput.placeholder = mtT('optionalPh');
+    dInput.addEventListener('change', () => updateOilField(idx, 'D_oil', dInput.value));
+    dRow.appendChild(dLabel); dRow.appendChild(dInput);
+    card.appendChild(dRow);
+
+    list.appendChild(card);
+  });
+}
+
 /** 初始化油品下拉選單 */
 function initOilSelect() {
+  oilDb = loadOilDb();
   const sel = document.getElementById('oilSelect');
-  OIL_DB.forEach((oil, i) => {
+  oilDb.forEach((oil, i) => {
     const opt = document.createElement('option');
     opt.value = i;
     opt.textContent = oil.name;
     sel.appendChild(opt);
   });
   // 套用第一個油品的預設值
-  applyOilDefaults(OIL_DB[0]);
+  applyOilDefaults(oilDb[0]);
+  renderOilDbEditor();
   onOilChange(); // 初始計算一次
 }
 
@@ -364,7 +506,7 @@ function onOilChange() {
   const oilIdx = parseInt(oilSel.value);
   const T_amb  = parseFloat(rTamb.value);
   const T_rise = parseFloat(rTrise.value);
-  const oil    = OIL_DB[oilIdx];
+  const oil    = oilDb[oilIdx];
 
   if (!oil || isNaN(T_amb) || isNaN(T_rise)) {
     resEl.textContent = '—';
@@ -1061,7 +1203,7 @@ function runSweep() {
       const T_amb  = xKey === 'T_amb'  ? xVal : origTamb;
       const T_rise = xKey === 'T_rise' ? xVal : origTrise;
       const oilIdx = parseInt(document.getElementById('oilSelect').value);
-      const oil    = OIL_DB[oilIdx];
+      const oil    = oilDb[oilIdx];
       if (oil) {
         const { A, B, C } = getOilABC(oil);
         const Vc_calc = waltherVc(A, B, T_amb + T_rise, C);
@@ -1096,7 +1238,7 @@ function runSweep() {
   if (isTempParam) {
     // 還原 Vc（重新用原本溫度計算）
     const oilIdx = parseInt(document.getElementById('oilSelect').value);
-    const oil    = OIL_DB[oilIdx];
+    const oil    = oilDb[oilIdx];
     if (oil) {
       const { A, B, C } = getOilABC(oil);
       const Vc_calc = waltherVc(A, B, origTamb + origTrise, C);
