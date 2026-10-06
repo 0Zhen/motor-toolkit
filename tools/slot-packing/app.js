@@ -390,7 +390,10 @@ function attachVertexDragHandlers(svg) {
         rafPending = false;
         if (!latest) return;
         var p = svgPointToUser(svg, latest.clientX, latest.clientY);
-        halfVertices[i].x = p.x;
+        // 卡住x<=0，不讓左半邊的點被拖過Y軸跑到右邊——拖過去的話鏡射出來
+        // 的右半邊會變成跑到左邊，兩邊角色對調，畫面會很confusing，直
+        // 接限制住比較不會拖錯。
+        halfVertices[i].x = Math.min(p.x, 0);
         halfVertices[i].y = p.y;
         syncVerticesFromHalf();
         renderVertexTable();
