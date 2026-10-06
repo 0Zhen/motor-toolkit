@@ -324,6 +324,27 @@ function hexLatticePack(points, diameter, count) {
 }
 
 /**
+ * 點到多邊形邊界（線段集合，不是無限延伸的直線）的最短距離——逐邊算
+ * point-to-segment distance 取最小值。用來在密排演算法算完之後做最後
+ * 把關：確認每顆線材的圓心離「真實邊界」還有至少一個半徑的空間，不
+ * 是只離某條邊的無限延伸直線夠遠（轉角附近這兩者會不一樣）。
+ */
+function distanceToPolygonBoundary(p, points) {
+  let minD = Infinity;
+  const n = points.length;
+  for (let i = 0; i < n; i++) {
+    const a = points[i], b = points[(i + 1) % n];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2)) : 0;
+    const projx = a.x + t * dx, projy = a.y + t * dy;
+    const d = Math.hypot(p.x - projx, p.y - projy);
+    if (d < minD) minD = d;
+  }
+  return minD;
+}
+
+/**
  * hexLatticePack 的「沿牆版」：hexLatticePack 本身只會貼「x 較小」那一
  * 條垂直線——槽壁是斜的時候，垂直線只在格點原點那一排真正碰到牆，離
  * 那排越遠，垂直線跟斜牆的實際距離就越大，貼牆只是局部現象。這個函
@@ -345,20 +366,34 @@ function hexLatticePack(points, diameter, count) {
  * @returns {{placed:Array<{x,y,d}>, placedCount:number, requestedCount:number, maxCapacity:number}}
  */
 function hexLatticePackAlongWall(points, diameter, count) {
-  const bbox = polygonBBox(points);
-  const bottomPts = points.filter(p => Math.abs(p.y - bbox.maxY) < 1e-6);
-  const topPts = points.filter(p => Math.abs(p.y - bbox.minY) < 1e-6);
-  if (!bottomPts.length || !topPts.length) return hexLatticePack(points, diameter, count);
+  const n = points.length;
+  if (n < 3) return hexLatticePack(points, diameter, count);
 
-  const A = bottomPts.reduce((m, p) => (p.x < m.x ? p : m), bottomPts[0]);
-  const B = topPts.reduce((m, p) => (p.x < m.x ? p : m), topPts[0]);
+  // A＝槽底角：y最大（最底部），同分再取x最小（最左）那個頂點。注意
+  // 這裡一定要是「多邊形本身的一個頂點」，不能用 bbox 邊界上隨便一點
+  // ——開口喉裁切之後，裁切線本身也會貼齊 bbox 的上緣，如果直接拿
+  // 「bbox頂緣上x最小的點」當槽口端點，很容易抓到裁切線上的點，而不
+  // 是槽壁真正的端點（槽壁跟喉部肩膀之間還夾了一段短邊，是兩個不同
+  // 方向的邊，不能混用）。
+  let idxA = 0;
+  for (let i = 1; i < n; i++) {
+    const p = points[i], a = points[idxA];
+    if (p.y > a.y + 1e-9 || (Math.abs(p.y - a.y) <= 1e-9 && p.x < a.x)) idxA = i;
+  }
+  const A = points[idxA];
+  // B＝槽壁的另一端點：直接沿著多邊形邊走，取 A 的兩個相鄰頂點裡「垂直
+  // 落差比較大」的那一個——槽壁本身是斜邊、垂直落差大，另一側通常是
+  // 槽底或分裂間隙的水平邊、垂直落差接近 0，這樣選一定選到槽壁，不是
+  // 猜最高/最左這種跟多邊形實際邊界無關的全域屬性。
+  const prev = points[(idxA - 1 + n) % n];
+  const next = points[(idxA + 1) % n];
+  const B = Math.abs(prev.y - A.y) > Math.abs(next.y - A.y) ? prev : next;
   let ux = B.x - A.x, uy = B.y - A.y;
   const wallLen = Math.hypot(ux, uy);
   if (wallLen < 1e-9) return hexLatticePack(points, diameter, count); // 退化（上下緣端點重合），退回垂直版
 
   ux /= wallLen; uy /= wallLen;
   let nx = -uy, ny = ux; // 牆方向的法向量，兩個候選，用重心判斷哪個朝內
-  const n = points.length;
   const centroid = points.reduce((acc, p) => ({ x: acc.x + p.x / n, y: acc.y + p.y / n }), { x: 0, y: 0 });
   if (nx * (centroid.x - A.x) + ny * (centroid.y - A.y) < 0) { nx = -nx; ny = -ny; }
 
@@ -375,18 +410,33 @@ function hexLatticePackAlongWall(points, diameter, count) {
     return { x: t, y: -s };
   });
 
-  const localResult = hexLatticePack(localPts, diameter, count);
+  // 先不限數量，拿「整條格點清單」（已經照欄、照s排好順序），轉回原本
+  // 座標之後再過濾、再截斷到 count——不能直接把 count 傳給下面這次
+  // hexLatticePack 呼叫，因為貼牆角落那幾顆有機率在離散抽樣下算出來
+  // 的位置其實還是略微超出「真實多邊形邊界」（见下方 containment
+  // 檢查），要先過濾掉才知道真正的 maxCapacity 跟排到第幾個。
+  const localAll = hexLatticePack(localPts, diameter).placed;
 
   // 轉回原本座標：local.x=t、local.y=-s → s=-local.y
-  const placed = localResult.placed.map(p => {
-    const t = p.x, s = -p.y;
-    return { x: A.x + s * ux + t * nx, y: A.y + s * uy + t * ny, d: p.d };
-  });
+  const r = diameter / 2;
+  const allGlobal = localAll
+    .map(p => {
+      const t = p.x, s = -p.y;
+      return { x: A.x + s * ux + t * nx, y: A.y + s * uy + t * ny, d: p.d };
+    })
+    // 貼牆欄最靠近槽底角 A 那幾顆，偶爾會落在「用無限延伸的牆線量距離
+    // 剛好等於r，但用真實多邊形邊界（含相鄰那條槽底/間隙邊）量距離卻
+    // 小於r」的位置——那是圓心太靠近轉角，實際上會微幅超出邊界。這裡
+    // 直接用「到真實多邊形邊界的最短距離」重新把關一次，不合格的丟掉
+    // （寧可少排一顆，不要讓線材畫到鐵芯/liner外面去）。
+    .filter(c => distanceToPolygonBoundary(c, points) >= r - 1e-6);
 
+  const requestedCount = (count === undefined) ? Infinity : count;
+  const n2 = Math.min(requestedCount, allGlobal.length);
   return {
-    placed,
-    placedCount: localResult.placedCount,
-    requestedCount: localResult.requestedCount,
-    maxCapacity: localResult.maxCapacity,
+    placed: allGlobal.slice(0, n2),
+    placedCount: n2,
+    requestedCount,
+    maxCapacity: allGlobal.length,
   };
 }
