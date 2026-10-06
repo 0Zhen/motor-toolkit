@@ -650,9 +650,13 @@ function computeAll() {
   var packedClass = pack.placedCount >= count ? '' : 'warn';
   var packedNote = pack.placedCount >= count ? mtT('packedAll') : mtT('packedPartial');
   lastMaxCapacity = pack.maxCapacity; lastCoils = coils; lastStrands = strands;
-  // 「填滿到最大容量」按鈕只在塞不下、而且反推回去的匝數至少有1匝時才
-  // 顯示——全部放得下就沒有「填滿」這個動作好做。
-  var applyMaxBtn = (pack.placedCount < count && Math.floor(pack.maxCapacity / (coils * strands)) >= 1)
+  // 「填滿到最大容量」按鈕放在「最大容量」這個數字後面（不是放在上面的
+  // 「實際容納」那行）——按鈕的目標值就是這個數字，放在旁邊比較直覺。
+  // 顯示條件：只要目前的匝數換算回去不等於「剛好用滿容量」的匝數，不
+  // 管是塞不下（要減少）還是還有空間（可以加多），都該讓使用者一鍵套
+  // 用；剛好已經是最大匝數時沒有東西好填，不顯示。
+  var maxTurns = Math.floor(pack.maxCapacity / (coils * strands));
+  var applyMaxBtn = (maxTurns >= 1 && maxTurns !== turns)
     ? ' <button class="mini-btn" onclick="applyMaxTurns()">' + mtT('applyMaxBtn') + '</button>' : '';
 
   $('statsOut').innerHTML =
@@ -663,8 +667,8 @@ function computeAll() {
     mtT('outCount') + ' = <span class="rv">' + count + '</span><br>' +
     tip(mtT('outFillArea'), 'outFillAreaTip') + ' = <span class="rv ' + fillClass + '">' + fmt(fillPctArea, 1) + '</span><span class="ru">%</span><br>' +
     tip(mtT('outPacked'), 'outPackedTip') + ': <span class="rv ' + packedClass + '">' + pack.placedCount + ' / ' + count + '</span>' +
-      ' <span class="ru">(' + packedNote + ')</span>' + applyMaxBtn + '<br>' +
-    tip(mtT('outMaxCapacity'), 'tipMaxCapacity') + ' = <span class="rv">' + pack.maxCapacity + '</span><br>' +
+      ' <span class="ru">(' + packedNote + ')</span><br>' +
+    tip(mtT('outMaxCapacity'), 'tipMaxCapacity') + ' = <span class="rv">' + pack.maxCapacity + '</span>' + applyMaxBtn + '<br>' +
     tip(mtT('outMaxFillArea'), 'outMaxFillAreaTip') + ' = <span class="rv">' + fmt(maxFillPct, 1) + '</span><span class="ru">%</span>';
 }
 
