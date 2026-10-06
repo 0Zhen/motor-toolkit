@@ -71,8 +71,8 @@ var MT_I18N = {
   outWireOd:     { en: 'Wire OD', zh: '線材外徑（OD）' },
   outCount:      { en: 'Wire count', zh: '線材總數' },
   outFillArea:   { en: 'Fill % (area-based)', zh: '槽滿率 %（面積法）' },
-  outPacked:     { en: 'Packed (settled)', zh: '堆疊顆數（沉降排列）' },
-  outMaxCapacity:{ en: 'Max capacity (this wire size)', zh: '最大容量（這個線徑）' },
+  outPacked:     { en: 'Wires actually fit', zh: '實際容納線材數' },
+  outMaxCapacity:{ en: 'Max capacity (this wire size, regardless of your turns setting)', zh: '最大容量（這個線徑的上限，跟你設定的匝數無關）' },
   outMaxFillArea:{ en: 'Fill % at max capacity', zh: '滿載時槽滿率 %' },
   packedAll:     { en: 'all placed', zh: '全部放得下' },
   packedPartial: { en: 'this slot can’t physically fit this many at this wire size', zh: '這個線徑下，這個槽塞不下這麼多' },
@@ -106,12 +106,12 @@ var MT_I18N = {
     zh: '槽滿率 % = (線材總數 × 單根截面積) / 繞線窗面積（liner內縮後） × 100 — 跟下面的排列演算法擺不擺得下無關，純粹面積比。',
   },
   outPackedTip:  {
-    en: 'How many wires actually got placed on the hex lattice, settled against the slot bottom and spreading outward from the centerline. If this is less than the wire count, see Max capacity below — the slot genuinely can’t hold more at this wire diameter.',
-    zh: '實際擺進去幾根（按六方密排格點，貼著槽底、從中線往外擴散）。如果這個數字比線材總數少，看下面的「最大容量」——這個槽在這個線徑下真的塞不下更多了。',
+    en: 'How many wires actually got placed by the settling simulation, out of the wire count above (turns × coils × strands). Equals the wire count when everything fits; otherwise it’s capped at Max capacity below — the slot genuinely can’t hold more at this wire diameter, so this number and Max capacity end up the same.',
+    zh: '照沉降模擬實際擺得進去幾根，對照上面的線材總數（匝數×線圈數×股數）。全部放得下時兩個數字會一樣；放不下時會被限制在下面的「最大容量」——這個槽在這個線徑下真的塞不下更多了，所以這兩個數字此時會相同，不是算錯。',
   },
   tipMaxCapacity: {
-    en: 'The same hex-lattice packing run with no limit on count — how many wires of this exact diameter this slot (after liner, opening excluded) could physically hold at the theoretical densest packing.',
-    zh: '用同一套六方密排演算法、不限制數量跑出來的結果——這個槽（扣掉liner跟開口喉之後）在理論最密排列下，這個線徑最多能塞幾根。',
+    en: 'The same settling simulation run with no limit on count — the absolute ceiling for this exact wire diameter in this slot (after liner, opening excluded), independent of whatever Turns/slot you’ve set. Use "Fill to max" above to set Turns/slot to reach this number exactly.',
+    zh: '用同一套沉降模擬、不限制數量跑出來的結果——這個槽（扣掉liner跟開口喉之後）在這個線徑下的絕對上限，跟你目前設定的「每槽匝數」無關。上面的「填滿到最大容量」按鈕可以直接把匝數設成剛好達到這個數字。',
   },
   outMaxFillAreaTip: {
     en: 'Fill % if the slot were packed to its max capacity (above) instead of your requested wire count — the practical ceiling for this wire size. Hexagonal packing on an infinite plane tops out around 90.7%, but a small or tapered slot loses more to boundary effects (circles near the wall can’t nest as tightly), so the real number here is usually well below that.',
