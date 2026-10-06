@@ -189,9 +189,10 @@ function clipPolygonMinY(points, minY) {
  * 檢查——整個格點清單先生成好、只篩選落在多邊形內部的，彼此之間保
  * 證不會重疊。
  *
- * 排序：由下往上（貼槽底）、同一排由中心往兩側——所以 count 不夠疊滿
- * 整個槽時，會自然呈現「貼槽底、由中間往外擴散」的堆積形狀，跟現實
- * 中線材被塞進槽裡自然settle的樣子一致。
+ * 排序：由下往上（貼槽底）、同一排貼其中一側槽壁（x 較小那側）開始
+ * 往另一側排過去——所以 count 不夠疊滿整個槽時，會自然呈現「貼槽底、
+ * 貼其中一側槽壁，缺口留在另一側」的堆積形狀，貼合使用者要求的「由
+ * 槽壁開始往外繞」的填充順序，而不是從每排中間對稱往兩側擴散。
  * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮＋裁掉喉部後的繞線窗）
  * @param {number} diameter 線材外徑（mm，含漆膜）
  * @param {number} [count] 要擺的線材總數；省略或 Infinity 時回傳「這個槽能塞下的全部格點」
@@ -218,7 +219,7 @@ function hexLatticePack(points, diameter, count) {
       const mMax = Math.floor((right - r - offset) / diameter + 1e-9);
       for (let m = mMin; m <= mMax; m++) rowXs.push(offset + m * diameter);
     });
-    rowXs.sort((a, b) => Math.abs(a) - Math.abs(b)); // 同一排由中心往外
+    rowXs.sort((a, b) => a - b); // 同一排貼其中一側槽壁（x小的那側）開始，往另一側排過去
     rowXs.forEach(x => slots.push({ x, y }));
     y -= rowPitch;
     rowIndex++;
