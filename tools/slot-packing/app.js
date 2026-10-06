@@ -186,6 +186,28 @@ function addVertexPoint() {
   computeAll();
 }
 
+/* 槽口（y=0，靠氣隙那端）實際上是開放的，不是鐵芯/liner包起來的封閉邊
+ * ——把多邊形重新排序成「從開口的其中一個端點開始，繞一圈到開口的另一
+ * 端點結束」，畫成不封口的 polyline，開口那一段邊就不會被畫出來。找
+ * 「開口邊」用 y 最小（靠氣隙那端是整個工具固定的座標慣例）判斷，不是
+ * 只認參數化生成時的頂點順序，使用者自訂頂點也適用。找不到明顯的水平
+ * 頂緣（例如整個形狀被改到沒有任何一段貼齊最小 y）就退回整圈都畫。 */
+function openingAwarePoints(poly) {
+  var n = poly.length;
+  if (n < 2) return poly;
+  var minY = Math.min.apply(null, poly.map(function (p) { return p.y; }));
+  var eps = 1e-6;
+  for (var i = 0; i < n; i++) {
+    var a = poly[i], b = poly[(i + 1) % n];
+    if (Math.abs(a.y - minY) < eps && Math.abs(b.y - minY) < eps) {
+      var reordered = [];
+      for (var k = 0; k < n; k++) reordered.push(poly[(i + 1 + k) % n]);
+      return reordered;
+    }
+  }
+  return poly;
+}
+
 /* ── SVG 繪製：紅=鐵芯、綠=liner內縮後的繞線窗、黃=導線（仿 Motor-CAD 配色） ── */
 function renderSvg(innerPoly, pack) {
   var svg = $('packingSvg');
@@ -198,13 +220,13 @@ function renderSvg(innerPoly, pack) {
   svg.setAttribute('viewBox', vx + ' ' + vy + ' ' + vw + ' ' + vh);
 
   var strokeW = Math.max(w, h, 1) * 0.01;
-  var outerPts = vertices.map(function (p) { return p.x + ',' + p.y; }).join(' ');
+  var outerPts = openingAwarePoints(vertices).map(function (p) { return p.x + ',' + p.y; }).join(' ');
   var html = '<rect class="slot-lamination" x="' + vx + '" y="' + vy + '" width="' + vw + '" height="' + vh + '"></rect>' +
-    '<polygon class="slot-outline" points="' + outerPts + '" style="stroke-width:' + strokeW + '"></polygon>';
+    '<polyline class="slot-outline" points="' + outerPts + '" style="stroke-width:' + strokeW + '"></polyline>';
 
   if (innerPoly) {
-    var innerPts = innerPoly.map(function (p) { return p.x + ',' + p.y; }).join(' ');
-    html += '<polygon class="slot-liner" points="' + innerPts + '" style="stroke-width:' + strokeW + '"></polygon>';
+    var innerPts = openingAwarePoints(innerPoly).map(function (p) { return p.x + ',' + p.y; }).join(' ');
+    html += '<polyline class="slot-liner" points="' + innerPts + '" style="stroke-width:' + strokeW + '"></polyline>';
   }
   (pack ? pack.placed : []).forEach(function (c) {
     html += '<circle class="slot-circle" cx="' + c.x + '" cy="' + c.y + '" r="' + (c.d / 2) + '" style="stroke-width:' + (strokeW * 0.4) + '"></circle>';
