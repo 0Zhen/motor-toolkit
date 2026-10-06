@@ -312,6 +312,19 @@ body > * { min-width: 0; }
   dominant-baseline: middle;
   font-family: inherit;
 }
+.axis-line {
+  stroke: #9aa6bd;
+  stroke-dasharray: 1.5,1.5;
+  fill: none;
+}
+.axis-arrow { fill: #9aa6bd; }
+.axis-label {
+  fill: #7986a3;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: inherit;
+  font-style: italic;
+}
 
 /* ══════════════════════════════════════════════════════════
    Dark theme overrides

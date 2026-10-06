@@ -264,6 +264,19 @@ function dimV(y1, y2, xFeature1, xFeature2, xDim, label, tick, fontSize) {
   );
 }
 
+/** 座標軸箭頭：從(x1,y1)到(x2,y2)畫一條線，終點畫小三角形箭頭＋文字標籤。 */
+function axisArrow(x1, y1, x2, y2, label, arrowSize, fontSize) {
+  var dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+  var ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+  var backX = x2 - ux * arrowSize, backY = y2 - uy * arrowSize;
+  var p1x = backX + nx * arrowSize * 0.5, p1y = backY + ny * arrowSize * 0.5;
+  var p2x = backX - nx * arrowSize * 0.5, p2y = backY - ny * arrowSize * 0.5;
+  var labelX = x2 + ux * fontSize * 0.8, labelY = y2 + uy * fontSize * 0.8;
+  return '<line class="axis-line" x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"></line>' +
+    '<polygon class="axis-arrow" points="' + x2 + ',' + y2 + ' ' + p1x + ',' + p1y + ' ' + p2x + ',' + p2y + '"></polygon>' +
+    '<text class="axis-label" x="' + labelX + '" y="' + labelY + '" font-size="' + fontSize + '">' + label + '</text>';
+}
+
 /* ── SVG 繪製：紅=鐵芯、綠=liner內縮後的繞線窗、黃=導線（仿 Motor-CAD 配色） ── */
 function renderSvg(innerPoly, pack, needleRect) {
   var svg = $('packingSvg');
@@ -275,19 +288,32 @@ function renderSvg(innerPoly, pack, needleRect) {
   // 參數化模式會在圖外圍標尺寸，需要比自訂頂點模式更大的留白空間才放
   // 得下尺寸線跟文字——上方堆兩條（開口寬、上寬）、下方一條（下寬）、
   // 左右各一條（開口高、槽深）。
-  var padTop = maxDim * (shapeMode === 'param' ? 0.34 : 0.12);
-  var padBottom = maxDim * (shapeMode === 'param' ? 0.18 : 0.12);
-  var padLeft = maxDim * (shapeMode === 'param' ? 0.22 : 0.16);
-  var padRight = maxDim * (shapeMode === 'param' ? 0.22 : 0.12);
+  var padTop = maxDim * (shapeMode === 'param' ? 0.34 : 0.14);
+  var padBottom = maxDim * (shapeMode === 'param' ? 0.18 : 0.14);
+  var padLeft = maxDim * (shapeMode === 'param' ? 0.22 : 0.22);
+  var padRight = maxDim * (shapeMode === 'param' ? 0.22 : 0.22);
   var vx = bbox.minX - padLeft, vy = bbox.minY - padTop, vw = w + padLeft + padRight, vh = h + padTop + padBottom;
   svg.setAttribute('viewBox', vx + ' ' + vy + ' ' + vw + ' ' + vh);
 
   var strokeW = Math.max(w, h, 1) * 0.01;
   var outerPts = openingAwarePoints(vertices).map(function (p) { return p.x + ',' + p.y; }).join(' ');
+
+  // 自訂頂點模式：先畫座標軸當最底層參考（原點(0,0)、X向右、Y往下＝
+  // 整個工具固定的「y=0開口、y遞增往槽底」慣例），只在0落在目前視野範
+  // 圍內才畫，避免極端自訂形狀把原點甩到畫面外時畫出奇怪的線。
+  var html = '';
+  if (shapeMode === 'custom') {
+    var axisFont = maxDim * 0.04, axisArrowSize = axisFont * 0.6;
+    html += '<g style="stroke-width:' + (strokeW * 0.4) + '">';
+    if (0 >= vx && 0 <= vx + vw) html += axisArrow(0, vy, 0, vy + vh, 'Y', axisArrowSize, axisFont);
+    if (0 >= vy && 0 <= vy + vh) html += axisArrow(vx, 0, vx + vw, 0, 'X', axisArrowSize, axisFont);
+    html += '</g>';
+  }
+
   // 鐵芯（紅）只畫到槽口那條線（bbox.minY，氣隙側）為止，不要往上延伸到
   // 墊白區域——那裡是氣隙/轉子那側，不是鐵芯，照真實矽鋼片圖只有鐵芯
   // 本體是紅色，氣隙上方留白。
-  var html = '<rect class="slot-lamination" x="' + vx + '" y="' + bbox.minY + '" width="' + vw + '" height="' + (vy + vh - bbox.minY) + '"></rect>' +
+  html += '<rect class="slot-lamination" x="' + vx + '" y="' + bbox.minY + '" width="' + vw + '" height="' + (vy + vh - bbox.minY) + '"></rect>' +
     '<polyline class="slot-outline" points="' + outerPts + '" style="stroke-width:' + strokeW + '"></polyline>';
 
   if (innerPoly) {
@@ -314,15 +340,21 @@ function renderSvg(innerPoly, pack, needleRect) {
       '</g>';
   } else if (shapeMode === 'custom') {
     // 相鄰頂點常常離得很近（例如開口喉兩側的轉角），標籤固定畫在正上方
-    // 會疊字——改成依索引奇偶交錯畫在上/下方，相鄰頂點的標籤自然分開，
-    // 不用真的做碰撞偵測。
+    // 置中對齊，常常跟經過那個x的槽壁邊線疊在一起——改成：①依索引奇偶
+    // 交錯上/下方，分開相鄰頂點；②依頂點在重心的左/右側往外推一點水
+    // 平距離，同時把文字對齊方式改成「靠左/靠右」而不是置中，讓文字整
+    // 段都偏到線的外側，不會橫跨過去。不用真的做碰撞偵測。
     var vLabelFont = fontSize * 0.7;
+    var cx = vertices.reduce(function (s, v) { return s + v.x; }, 0) / vertices.length;
     html += '<g style="stroke-width:' + dimStrokeW + '">' +
       vertices.map(function (v, i) {
         var above = i % 2 === 0;
         var ly = above ? v.y - vLabelFont * 0.9 : v.y + vLabelFont * 1.5;
+        var right = v.x >= cx;
+        var lx = v.x + (right ? 1 : -1) * fontSize * 0.35;
+        var anchor = right ? 'start' : 'end';
         return '<circle cx="' + v.x + '" cy="' + v.y + '" r="' + (fontSize * 0.12) + '" fill="#3f4d66" stroke="none"></circle>' +
-          '<text class="vertex-label" x="' + v.x + '" y="' + ly + '" font-size="' + vLabelFont + '">(' + fmt(v.x, 2) + ', ' + fmt(v.y, 2) + ')</text>';
+          '<text class="vertex-label" x="' + lx + '" y="' + ly + '" font-size="' + vLabelFont + '" style="text-anchor:' + anchor + '">(' + fmt(v.x, 2) + ', ' + fmt(v.y, 2) + ')</text>';
       }).join('') +
       '</g>';
   }
