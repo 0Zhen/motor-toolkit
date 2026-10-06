@@ -370,22 +370,61 @@ function renderSvg(innerPoly, pack, needleRect) {
       dimV(0, depthV, openW / 2, bottomW / 2, bbox.maxX + maxDim * 0.10, fmt(depthV, 2), tick, fontSize) +
       '</g>';
   } else if (shapeMode === 'custom') {
-    // 相鄰頂點常常離得很近（例如開口喉兩側的轉角），標籤固定畫在正上方
-    // 置中對齊，常常跟經過那個x的槽壁邊線疊在一起——改成：①依索引奇偶
-    // 交錯上/下方，分開相鄰頂點；②依頂點在重心的左/右側往外推一點水
-    // 平距離，同時把文字對齊方式改成「靠左/靠右」而不是置中，讓文字整
-    // 段都偏到線的外側，不會橫跨過去。不用真的做碰撞偵測。
+    // 固定的「依索引奇偶交錯上/下」規則踩過兩次坑：相鄰頂點如果剛好離
+    // 得很近（不管是垂直方向近，如開口喉兩側的上下轉角；還是水平方向
+    // 近，如喉部肩膀的左右轉角），交錯规则算出來的偏移量級跟頂點間距
+    // 同一個數量級，常常又疊在一起。改成真的做碰撞收斂：每個標籤先給
+    // 一個初始位置（左右半邊決定推哪個方向、靠左右對齊），估計文字框
+    // 大小，逐對檢查重疊，沿重疊量較小的那個軸把兩個框推開，疊代到不
+    // 再重疊為止（原理跟這個工具本身的線材沉降演算法一樣，都是「先給
+    // 初始位置、迭代消除碰撞」）。每個標籤額外畫一條細引線連回對應的
+    // 頂點，推得比較遠時還能看得出標籤對應哪個點。
     var vLabelFont = fontSize * 0.85;
     var cx = vertices.reduce(function (s, v) { return s + v.x; }, 0) / vertices.length;
+    var charW = vLabelFont * 0.56, lineH = vLabelFont * 1.3;
+    var labels = vertices.map(function (v, i) {
+      var above = i % 2 === 0;
+      var right = v.x >= cx;
+      var text = '#' + (i + 1) + ' (' + fmt(v.x, 2) + ', ' + fmt(v.y, 2) + ')';
+      return {
+        x: v.x + (right ? 1 : -1) * fontSize * 0.35,
+        y: above ? v.y - vLabelFont * 0.9 : v.y + vLabelFont * 1.5,
+        width: text.length * charW, height: lineH,
+        anchor: right ? 'start' : 'end', text: text, dotX: v.x, dotY: v.y,
+      };
+    });
+    function updateBox(L) {
+      if (L.anchor === 'start') { L.x1 = L.x; L.x2 = L.x + L.width; } else { L.x1 = L.x - L.width; L.x2 = L.x; }
+      L.y1 = L.y - L.height / 2; L.y2 = L.y + L.height / 2;
+    }
+    labels.forEach(updateBox);
+    for (var iter = 0; iter < 12; iter++) {
+      var moved = false;
+      for (var a = 0; a < labels.length; a++) {
+        for (var b = a + 1; b < labels.length; b++) {
+          var A = labels[a], B = labels[b];
+          var overlapX = Math.min(A.x2, B.x2) - Math.max(A.x1, B.x1);
+          var overlapY = Math.min(A.y2, B.y2) - Math.max(A.y1, B.y1);
+          if (overlapX > 0 && overlapY > 0) {
+            moved = true;
+            if (overlapY <= overlapX) {
+              var pushY = overlapY / 2 + fontSize * 0.02;
+              if (A.y < B.y) { A.y -= pushY; B.y += pushY; } else { A.y += pushY; B.y -= pushY; }
+            } else {
+              var pushX = overlapX / 2 + fontSize * 0.02;
+              if (A.x < B.x) { A.x -= pushX; B.x += pushX; } else { A.x += pushX; B.x -= pushX; }
+            }
+            updateBox(A); updateBox(B);
+          }
+        }
+      }
+      if (!moved) break;
+    }
     html += '<g style="stroke-width:' + dimStrokeW + '">' +
-      vertices.map(function (v, i) {
-        var above = i % 2 === 0;
-        var ly = above ? v.y - vLabelFont * 0.9 : v.y + vLabelFont * 1.5;
-        var right = v.x >= cx;
-        var lx = v.x + (right ? 1 : -1) * fontSize * 0.35;
-        var anchor = right ? 'start' : 'end';
-        return '<circle cx="' + v.x + '" cy="' + v.y + '" r="' + (fontSize * 0.12) + '" fill="#3f4d66" stroke="none"></circle>' +
-          '<text class="vertex-label" x="' + lx + '" y="' + ly + '" font-size="' + vLabelFont + '" style="text-anchor:' + anchor + '">#' + (i + 1) + ' (' + fmt(v.x, 2) + ', ' + fmt(v.y, 2) + ')</text>';
+      labels.map(function (L) {
+        return '<line class="dim-ext" x1="' + L.dotX + '" y1="' + L.dotY + '" x2="' + L.x + '" y2="' + L.y + '"></line>' +
+          '<circle cx="' + L.dotX + '" cy="' + L.dotY + '" r="' + (fontSize * 0.12) + '" fill="#3f4d66" stroke="none"></circle>' +
+          '<text class="vertex-label" x="' + L.x + '" y="' + L.y + '" font-size="' + vLabelFont + '" style="text-anchor:' + L.anchor + '">' + L.text + '</text>';
       }).join('') +
       '</g>';
   }
