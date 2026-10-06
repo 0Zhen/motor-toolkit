@@ -112,6 +112,11 @@
           <input type="text" class="param-input" id="f_Nslot" value="66"></div>
         <div class="param-row-2"><span class="param-label" data-i18n="coilsPerSlot">Coils / slot</span>
           <input type="text" class="param-input" id="f_coilsSlot" value="1"></div>
+        <div class="hint-text" data-i18n="coilsPerSlotHint">
+          1 = single-layer winding (the whole slot is one coil side). 2 = double-layer winding
+          (two independent coil sides share the slot). Just a multiplier on total copper area here —
+          doesn't model which physical half of the slot each one occupies.
+        </div>
         <div class="param-row-2"><span class="param-label" data-i18n="seriesCoils">Series coils / phase</span>
           <input type="text" class="param-input" id="f_seriesCoils" value="4"></div>
         <div class="param-row-2"><span class="param-label" data-i18n="strandsPerTurn">Strands / turn</span>

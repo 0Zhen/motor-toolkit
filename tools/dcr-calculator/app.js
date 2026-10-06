@@ -32,6 +32,10 @@ var MT_I18N = {
   parallelPaths:   { en: 'Parallel paths a',              zh: '並聯路數 a' },
   turnsPerSlot:    { en: 'Turns / slot',                 zh: '每槽匝數' },
   coilsPerSlot:    { en: 'Coils / slot',                 zh: '每槽線圈數' },
+  coilsPerSlotHint: {
+    en: '1 = single-layer winding (the whole slot is one coil side). 2 = double-layer winding (two independent coil sides share the slot). Just a multiplier on total copper area here — doesn’t model which physical half of the slot each one occupies.',
+    zh: '1＝單層繞（整個槽當一個線圈邊）。2＝雙層繞（兩個獨立線圈邊共用一個槽）。這裡只是銅材截面積的乘數，不處理槽內實際各佔哪一半的幾何。',
+  },
   seriesCoils:     { en: 'Series coils / phase',         zh: '每相串聯圈數' },
   strandsPerTurn:  { en: 'Strands / turn',               zh: '股數/匝' },
 
