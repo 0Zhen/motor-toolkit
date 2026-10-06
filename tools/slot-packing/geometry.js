@@ -176,184 +176,57 @@ function clipPolygonMinY(points, minY) {
 }
 
 /**
- * 跟 clipPolygonMinY 同一套 Sutherland-Hodgman 半平面裁切，只是裁的是
- * x 軸：maxX 版留下 x <= maxX（槽內左半），minX 版留下 x >= minX
- * （槽內右半）。雙層繞組時用這兩個函式把繞線窗切成左右兩束。
+ * 真正的交錯密排：固定六方最密堆積格點（triangular lattice），裁進
+ * 多邊形裡——不是逐排/逐欄湊數字，是業界畫線材截面示意圖常見的那種
+ * 真實交錯堆疊。
+ *
+ * 格點定義（以 x=0 為中心對稱、y 往下遞增）：
+ *   row pitch = diameter × √3/2（正三角形排列的標準直向間距）
+ *   偶數排：x = 0, ±d, ±2d, ...
+ *   奇數排：x = ±d/2, ±3d/2, ...（跟偶數排整整錯開半個直徑）
+ * 這個格點本身就是數學上證明過的最密圓形排列之一，相鄰格點之間的
+ * 距離「恆等於」diameter（不管同排還是跨排），所以不需要逐一碰撞
+ * 檢查——整個格點清單先生成好、只篩選落在多邊形內部的，彼此之間保
+ * 證不會重疊。
+ *
+ * 排序：由下往上（貼槽底）、同一排由中心往兩側——所以 count 不夠疊滿
+ * 整個槽時，會自然呈現「貼槽底、由中間往外擴散」的堆積形狀，跟現實
+ * 中線材被塞進槽裡自然settle的樣子一致。
+ * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮＋裁掉喉部後的繞線窗）
+ * @param {number} diameter 線材外徑（mm，含漆膜）
+ * @param {number} [count] 要擺的線材總數；省略或 Infinity 時回傳「這個槽能塞下的全部格點」
+ * @returns {{placed:Array<{x,y,d}>, placedCount:number, requestedCount:number, maxCapacity:number}}
  */
-function clipPolygonMaxX(points, maxX) {
-  const n = points.length;
-  if (n < 3) return [];
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    const cur = points[i], prev = points[(i - 1 + n) % n];
-    const curIn = cur.x <= maxX, prevIn = prev.x <= maxX;
-    if (curIn) {
-      if (!prevIn) {
-        const t = (maxX - prev.x) / (cur.x - prev.x);
-        out.push({ x: maxX, y: prev.y + t * (cur.y - prev.y) });
-      }
-      out.push({ x: cur.x, y: cur.y });
-    } else if (prevIn) {
-      const t = (maxX - prev.x) / (cur.x - prev.x);
-      out.push({ x: maxX, y: prev.y + t * (cur.y - prev.y) });
-    }
-  }
-  return out;
-}
+function hexLatticePack(points, diameter, count) {
+  const requestedCount = (count === undefined) ? Infinity : count;
+  const result = { placed: [], placedCount: 0, requestedCount, maxCapacity: 0 };
+  if (!(diameter > 0) || points.length < 3) return result;
 
-function clipPolygonMinX(points, minX) {
-  const n = points.length;
-  if (n < 3) return [];
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    const cur = points[i], prev = points[(i - 1 + n) % n];
-    const curIn = cur.x >= minX, prevIn = prev.x >= minX;
-    if (curIn) {
-      if (!prevIn) {
-        const t = (minX - prev.x) / (cur.x - prev.x);
-        out.push({ x: minX, y: prev.y + t * (cur.y - prev.y) });
-      }
-      out.push({ x: cur.x, y: cur.y });
-    } else if (prevIn) {
-      const t = (minX - prev.x) / (cur.x - prev.x);
-      out.push({ x: minX, y: prev.y + t * (cur.y - prev.y) });
-    }
-  }
-  return out;
-}
-
-/**
- * 把繞線窗沿槽寬方向切成 n 等份（由左到右），相鄰兩份中間各留一道
- * gap 間隙（最外側兩道槽壁不留）。「層數＝N」時呼叫端會傳 n=2N（左右
- * 對稱成對），每一份各自獨立疊線——這是左右幾束線圈邊排列的唯一分割
- * 依據，不再跟 Coils/slot 的數值綁在一起（Coils/slot 現在純粹只貢獻
- * 總線材數量 turns×coils×strands，不決定怎麼切）。
- * @returns {Array<Array<{x,y}>>} n 份子多邊形，由左到右排列
- */
-function splitIntoRegions(points, n, gap) {
-  const count = Math.max(1, Math.round(n));
-  if (count === 1) return [points];
-  const bbox = polygonBBox(points);
-  const w = bbox.maxX - bbox.minX;
-  const regions = [];
-  for (let i = 0; i < count; i++) {
-    const left = bbox.minX + (i / count) * w;
-    const right = bbox.minX + ((i + 1) / count) * w;
-    const innerLeft = i === 0 ? left : left + gap / 2;
-    const innerRight = i === count - 1 ? right : right - gap / 2;
-    let region = clipPolygonMinX(points, innerLeft);
-    region = clipPolygonMaxX(region, innerRight);
-    regions.push(region);
-  }
-  return regions;
-}
-
-/**
- * 純幾何算「這個槽深最多能疊幾層」：從槽底往槽口方向，只要那個高度的
- * 寬度還塞得下至少一顆線，就算一層，直到寬度小於線徑為止——跟總共有
- * 幾顆線材完全無關，只跟深度、寬度輪廓、線徑有關。
- */
-function maxLayersForDepth(points, diameter) {
   const r = diameter / 2;
+  const rowPitch = diameter * Math.sqrt(3) / 2;
   const bbox = polygonBBox(points);
-  let n = 0;
+
+  const slots = []; // 全部格點（不管 count，先找出整個槽的真實容量）
+  let rowIndex = 0;
   let y = bbox.maxY - r;
   while (y >= bbox.minY + r - 1e-9) {
+    const offset = (rowIndex % 2 === 1) ? r : 0;
     const spans = horizontalSpans(points, y).filter(([a, b]) => b - a >= diameter - 1e-9);
-    if (spans.length === 0) break;
-    n++;
-    y -= diameter;
-  }
-  return Math.max(1, n);
-}
-
-/**
- * 自動排線（切齊槽深）：不用使用者指定層數，先用 maxLayersForDepth()
- * 算出這個槽深、這個線徑最多能疊幾層，再把總匝數用 packLayersInPolygon
- * 同一套「平均分配」邏輯疊進去——保證層與層一路疊到槽口附近用滿整個
- * 槽深，不會因為匝數不夠就提早停在槽底附近（這是跟舊版「貪心塞滿就換
- * 層」最大的差別：舊版是匝數不夠就用較少層數塞好塞滿，新版是層數先用
- * 滿、每層按比例分攤匝數）。槽型如果上窄下寬，平均分攤到窄的那幾層仍
- * 然可能超過那裡塞得下的量，這種情況下 packLayersInPolygon 本來就有的
- * overfull 回報機制一樣適用，呼叫端可以直接重用同一套警告邏輯。
- * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮＋裁掉喉部後的繞線窗）
- * @param {number} diameter 線材外徑（mm，含漆膜）
- * @param {number} count 要擺的線材總數
- * @returns {{placed:Array<{x,y,d}>, placedCount:number, requestedCount:number,
- *   layers:Array<{index:number, requested:number, placed:number}>}}
- */
-function packAutoLayersInPolygon(points, diameter, count) {
-  if (!(diameter > 0) || !(count > 0) || points.length < 3) {
-    return { placed: [], placedCount: 0, requestedCount: count, layers: [] };
-  }
-  const layers = maxLayersForDepth(points, diameter);
-  return packLayersInPolygon(points, diameter, count, layers);
-}
-
-/**
- * 槽內線材堆疊——仿導針繞線機的繞法：總匝數先依「層數」平均分配到每
- * 一層（除不盡時前面幾層多分一顆），每一層是沿槽寬方向橫向排一整排
- * （置中），層與層沿槽深方向、從槽底往槽口方向疊上去，層數、每層匝
- * 數都是明確指定的結果，不是「塞到滿為止」的自動最佳化。
- * 如果某一層指定的匝數超過那個高度實際塞得下的數量，那一層就只放得
- * 下部分、其餘視為那一層放不下（不會自動搬去別層），`layers` 回傳
- * 陣列裡每層的 requested/placed 兩個數字可以看出是哪一層出問題。
- * 呼叫端應該先用 offsetPolygonInward() 把 liner 內縮、clipPolygonMinY()
- * 把開口喉裁掉，這裡只管單純在給定的多邊形裡按層疊圓。
- * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮＋裁掉喉部後的繞線窗）
- * @param {number} diameter 線材外徑（mm，含漆膜）
- * @param {number} count 要擺的線材總數（= 每槽匝數×股數/匝，單一線圈邊的量，
- *   coils/slot>=2 時呼叫端會各自對左右兩束各呼叫一次）
- * @param {number} layers 層數（沿槽深方向疊幾層）
- * @returns {{placed:Array<{x,y,d}>, placedCount:number, requestedCount:number,
- *   layers:Array<{index:number, requested:number, placed:number}>}}
- */
-function packLayersInPolygon(points, diameter, count, layers) {
-  const result = { placed: [], placedCount: 0, requestedCount: count, layers: [] };
-  const nLayers = Math.max(1, Math.round(layers || 1));
-  if (!(diameter > 0) || !(count > 0) || points.length < 3) return result;
-
-  const r = diameter / 2;
-  const bbox = polygonBBox(points);
-
-  // 總匝數平均分配到每一層，除不盡時前面幾層多分一顆
-  const base = Math.floor(count / nLayers);
-  const extra = count - base * nLayers;
-  const perLayerTarget = [];
-  for (let i = 0; i < nLayers; i++) perLayerTarget.push(base + (i < extra ? 1 : 0));
-
-  let y = bbox.maxY - r;
-  for (let li = 0; li < nLayers; li++) {
-    const target = perLayerTarget[li];
-    const layerInfo = { index: li, requested: target, placed: 0 };
-
-    if (y < bbox.minY + r - 1e-9 || target <= 0) {
-      result.layers.push(layerInfo);
-      y -= diameter;
-      continue;
-    }
-
-    // 理論上一排只有一段區間（簡單凸形狀），保留多段處理以防自訂凹形
-    const spans = horizontalSpans(points, y).filter(([a, b]) => b - a >= diameter - 1e-9);
-    let placedThisLayer = 0;
-    for (const [left, right] of spans) {
-      if (placedThisLayer >= target) break;
-      const spanWidth = right - left;
-      const maxFit = Math.floor((spanWidth - diameter) / diameter + 1e-9) + 1;
-      const n = Math.min(maxFit, target - placedThisLayer);
-      if (n <= 0) continue;
-      const totalWidth = (n - 1) * diameter;
-      const startX = left + (spanWidth - totalWidth) / 2;
-      for (let k = 0; k < n; k++) {
-        result.placed.push({ x: startX + k * diameter, y, d: diameter });
-        placedThisLayer++;
-      }
-    }
-    layerInfo.placed = placedThisLayer;
-    result.layers.push(layerInfo);
-    y -= diameter;
+    const rowXs = [];
+    spans.forEach(([left, right]) => {
+      const mMin = Math.ceil((left + r - offset) / diameter - 1e-9);
+      const mMax = Math.floor((right - r - offset) / diameter + 1e-9);
+      for (let m = mMin; m <= mMax; m++) rowXs.push(offset + m * diameter);
+    });
+    rowXs.sort((a, b) => Math.abs(a) - Math.abs(b)); // 同一排由中心往外
+    rowXs.forEach(x => slots.push({ x, y }));
+    y -= rowPitch;
+    rowIndex++;
   }
 
+  result.maxCapacity = slots.length;
+  const n = Math.min(requestedCount, slots.length);
+  result.placed = slots.slice(0, n).map(p => ({ x: p.x, y: p.y, d: diameter }));
   result.placedCount = result.placed.length;
   return result;
 }

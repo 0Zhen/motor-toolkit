@@ -37,17 +37,11 @@ var MT_I18N = {
   coilsPerSlot: { en: 'Coils / slot', zh: '每槽線圈數' },
   strandsPerTurn:{ en: 'Strands / turn', zh: '股數/匝' },
   coilsSplitHint:{
-    en: 'Just multiplies the total wire count (turns × coils × strands) — doesn’t affect how the winding window is divided. See Layers below for that.',
-    zh: '只是乘進線材總數（匝數×線圈數×股數），不影響繞線窗怎麼切——分割方式看下面的「層數」。',
+    en: 'Just multiplies the total wire count (turns × coils × strands).',
+    zh: '只是乘進線材總數（匝數×線圈數×股數）。',
   },
   linerThickness:{ en: 'Liner thickness [mm]', zh: 'Liner 厚度 [mm]' },
   windStartY:   { en: 'No-wind depth (opening) [mm]', zh: '不繞線深度（開口）[mm]' },
-  layersCount:  { en: 'Layers', zh: '層數' },
-  layersHint:   {
-    en: 'Splits the winding width into this many left-right pairs of columns (Layers=1 → 2 columns, Layers=2 → 4 columns, ...), symmetric about the centerline. Each column independently fills from the slot bottom toward the opening to whatever its own width allows — outer columns are narrower (and often shorter, since the slot tapers) than inner ones, so they naturally hold less.',
-    zh: '把繞線寬度切成這個數字的左右對稱欄數（層數=1 → 2欄，層數=2 → 4欄...），以中線對稱。每一欄各自獨立從槽底往槽口方向疊到那欄自己實際容得下的量——越外側的欄通常越窄（槽型若有taper，也可能越矮），容量自然比內側欄少。',
-  },
-  outColumns:   { en: 'Columns', zh: '欄數' },
   windStartHint:{
     en: 'The opening throat is too narrow for wire — auto-filled from Opening height when you Generate, but editable (e.g. for a custom shape with no formal throat).',
     zh: '開口喉太窄塞不了線——按 Generate 時會自動帶入「開口高」，也可以自己改（例如自訂頂點的槽型沒有正式的開口喉概念時）。',
@@ -57,8 +51,8 @@ var MT_I18N = {
     zh: 'Liner 是真的把槽型輪廓向內偏移出來的幾何（下方綠色區域），不是從槽滿率扣一個數字而已——線材是塞在這個內縮後的區域裡。',
   },
   toolHint:     {
-    en: '💡 This is a simple row-by-row visual, not an optimal circle-packing solver — a real winding may fit tighter than shown. The area-based fill % is the reliable number; the packed count is indicative only.',
-    zh: '💡 這只是簡單的逐排視覺化，不是最佳圓形填充演算法——實際繞線可能比畫面上塞得更緊。「面積槽滿率」才是可靠的數字，「堆疊顆數」只是示意。',
+    en: '💡 Wires are arranged on a true hexagonal close-packed lattice (the densest regular circle packing), settled against the slot bottom. It’s still a geometric idealization, not a physics simulation — no wire tension, insertion order, friction, or enamel deformation.',
+    zh: '💡 線材是照真正的六方最密堆積格點排列（圓形排列理論上最密的規則排法），貼著槽底堆疊。這仍然是幾何上的理想化，不是力學模擬——沒有算線材張力、插入順序、摩擦力或漆膜受壓變形。',
   },
   statsTitle:   { en: 'Stats', zh: '統計' },
   legendLam:    { en: 'Lamination', zh: '鐵芯' },
@@ -70,9 +64,11 @@ var MT_I18N = {
   outWireOd:     { en: 'Wire OD', zh: '線材外徑（OD）' },
   outCount:      { en: 'Wire count', zh: '線材總數' },
   outFillArea:   { en: 'Fill % (area-based)', zh: '槽滿率 %（面積法）' },
-  outPacked:     { en: 'Packed (visual)', zh: '堆疊顆數（示意）' },
+  outPacked:     { en: 'Packed (hex lattice)', zh: '堆疊顆數（六方密排）' },
+  outMaxCapacity:{ en: 'Max capacity (this wire size)', zh: '最大容量（這個線徑）' },
+  outMaxFillArea:{ en: 'Fill % at max capacity', zh: '滿載時槽滿率 %' },
   packedAll:     { en: 'all placed', zh: '全部放得下' },
-  packedPartial: { en: 'did not all fit in this simple layout', zh: '這個簡易排法放不滿' },
+  packedPartial: { en: 'this slot can’t physically fit this many at this wire size', zh: '這個線徑下，這個槽塞不下這麼多' },
   errFewPoints:  { en: 'Need at least 3 points to form a shape.', zh: '至少需要3個頂點才能構成形狀。' },
   errBadArea:    { en: 'These points don’t enclose a usable area — check the vertex order/values.', zh: '這些頂點圍不出有效面積，請檢查頂點順序/數值。' },
   errBadWire:    { en: 'Wire diameter and count must be greater than 0.', zh: '線徑與數量都必須大於0。' },
@@ -98,8 +94,16 @@ var MT_I18N = {
     zh: '槽滿率 % = (線材總數 × 單根截面積) / 繞線窗面積（liner內縮後） × 100 — 跟下面的排列演算法擺不擺得下無關，純粹面積比。',
   },
   outPackedTip:  {
-    en: 'How many of the wires actually got placed across all columns. Each column fills from the slot bottom toward the opening to whatever it can hold; if this is less than the wire count, the evenly-split share for one or more columns (usually the narrower outer ones) exceeded that column’s own capacity — try fewer Layers (fewer, wider columns) or fewer turns.',
-    zh: '所有欄加起來實際擺進去幾根。每一欄都是從槽底往槽口方向疊到自己能疊的量；如果這個數字比線材總數少，代表平均分配到某一欄（通常是較窄的外側欄）的量超過那一欄自己的容量——試試看減少層數（欄變少變寬）或減少匝數。',
+    en: 'How many wires actually got placed on the hex lattice, settled against the slot bottom and spreading outward from the centerline. If this is less than the wire count, see Max capacity below — the slot genuinely can’t hold more at this wire diameter.',
+    zh: '實際擺進去幾根（按六方密排格點，貼著槽底、從中線往外擴散）。如果這個數字比線材總數少，看下面的「最大容量」——這個槽在這個線徑下真的塞不下更多了。',
+  },
+  tipMaxCapacity: {
+    en: 'The same hex-lattice packing run with no limit on count — how many wires of this exact diameter this slot (after liner, opening excluded) could physically hold at the theoretical densest packing.',
+    zh: '用同一套六方密排演算法、不限制數量跑出來的結果——這個槽（扣掉liner跟開口喉之後）在理論最密排列下，這個線徑最多能塞幾根。',
+  },
+  outMaxFillAreaTip: {
+    en: 'Fill % if the slot were packed to its max capacity (above) instead of your requested wire count — the practical ceiling for this wire size. Hexagonal packing on an infinite plane tops out around 90.7%, but a small or tapered slot loses more to boundary effects (circles near the wall can’t nest as tightly), so the real number here is usually well below that.',
+    zh: '如果照上面的「最大容量」塞滿（而不是你設定的線材總數）會是多少槽滿率——這個線徑的實際上限。六方密排在無限平面上的理論密度約90.7%，但槽越小、越有taper，邊界效應（貼壁的圓沒辦法跟內部排得一樣緊）損失就越多，這裡算出來的實際數字通常會明顯低於那個理論值。',
   },
 };
 
@@ -250,7 +254,6 @@ function computeAll() {
 
   var bareDia = num('w_bareDia', 0.7), enamel = num('w_enamel', 0.025);
   var turns = num('w_turns', 0), coils = num('w_coils', 1), strands = num('w_strands', 1);
-  var layerPairs = Math.max(1, Math.round(num('w_layers', 1)));
   var diameter = bareDia + 2 * enamel;
   var count = Math.max(0, Math.round(turns * coils * strands));
 
@@ -263,25 +266,14 @@ function computeAll() {
   var circleArea = Math.PI / 4 * diameter * diameter;
   var fillPctArea = count * circleArea / windingArea * 100;
 
-  // 「層數」是槽寬方向（X）左右對稱成對的欄數：層數=N → 繞線窗切成
-  // 2N 欄（由左到右等寬，中間留 liner 厚度一半當間隙），每一欄各自獨
-  // 立從槽底往槽口方向疊到那個欄自己實際容得下的最大顆數（欄越靠外側
-  // 越早被梯形收窄、容量越小，這是真實幾何限制不是bug）。Coils/slot
-  // 現在純粹只貢獻總線材數量（turns×coils×strands），不再決定怎麼切。
-  var nRegions = layerPairs * 2;
-  var regions = splitIntoRegions(packableArea, nRegions, linerThk / 2);
-  var base = Math.floor(count / nRegions);
-  var extra = count - base * nRegions;
-  var placedAll = [], placedTotal = 0;
-  for (var ri = 0; ri < nRegions; ri++) {
-    var shareCount = base + (ri < extra ? 1 : 0);
-    var packR = packAutoLayersInPolygon(regions[ri], diameter, shareCount);
-    placedAll = placedAll.concat(packR.placed);
-    placedTotal += packR.placedCount;
-  }
-  var pack = { placed: placedAll, placedCount: placedTotal, requestedCount: count };
+  // 真正的六方密排：固定格點、貼槽底、由中線往外擴散，只決定於線徑/
+  // 槽型本身，不用使用者設定層數/欄數——這就是整個重新設計要的「只設
+  // 定匝數，工具自動排出來」。pack.maxCapacity 是同一套格點跑「不限
+  // 數量」算出來的，直接回答「這個槽到底塞不塞得下」。
+  var pack = hexLatticePack(packableArea, diameter, count);
   renderSvg(innerPoly, pack);
 
+  var maxFillPct = pack.maxCapacity * circleArea / windingArea * 100;
   var fillClass = fillPctArea > 100 ? 'bad' : (fillPctArea > 85 ? 'warn' : '');
   var packedClass = pack.placedCount >= count ? '' : 'warn';
   var packedNote = pack.placedCount >= count ? mtT('packedAll') : mtT('packedPartial');
@@ -292,10 +284,11 @@ function computeAll() {
     tip(mtT('outWireOd'), 'outWireOdTip') + ' = <span class="rv">' + fmt(diameter, 4) + '</span><span class="ru">mm</span>' +
       ' <span class="sub-note">(' + fmt(bareDia, 3) + ' + 2×' + fmt(enamel, 3) + ')</span><br>' +
     mtT('outCount') + ' = <span class="rv">' + count + '</span><br>' +
-    mtT('outColumns') + ' = <span class="rv">' + nRegions + '</span><br>' +
     tip(mtT('outFillArea'), 'outFillAreaTip') + ' = <span class="rv ' + fillClass + '">' + fmt(fillPctArea, 1) + '</span><span class="ru">%</span><br>' +
     tip(mtT('outPacked'), 'outPackedTip') + ': <span class="rv ' + packedClass + '">' + pack.placedCount + ' / ' + count + '</span>' +
-      ' <span class="ru">(' + packedNote + ')</span>';
+      ' <span class="ru">(' + packedNote + ')</span><br>' +
+    tip(mtT('outMaxCapacity'), 'tipMaxCapacity') + ' = <span class="rv">' + pack.maxCapacity + '</span><br>' +
+    tip(mtT('outMaxFillArea'), 'outMaxFillAreaTip') + ' = <span class="rv">' + fmt(maxFillPct, 1) + '</span><span class="ru">%</span>';
 }
 
 /* ── 事件綁定 ── */
@@ -303,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function () {
   $('btnGenerate').addEventListener('click', generateFromParametric);
   $('btnAddPoint').addEventListener('click', addVertexPoint);
 
-  ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_layers', 'w_linerThickness', 'w_windStartY']
+  ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_linerThickness', 'w_windStartY']
     .forEach(function (id) { $(id).addEventListener('input', computeAll); });
 
   document.addEventListener('mt-lang-change', computeAll);

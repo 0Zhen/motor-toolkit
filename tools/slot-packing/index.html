@@ -90,20 +90,10 @@
       <div class="param-row-2"><span class="param-label" data-i18n="coilsPerSlot">Coils / slot</span>
         <input type="text" class="param-input" id="w_coils" value="2"></div>
       <div class="hint-text" data-i18n="coilsSplitHint">
-        Just multiplies the total wire count (turns × coils × strands) — doesn't affect how the
-        winding window is divided. See Layers below for that.
+        Just multiplies the total wire count (turns × coils × strands).
       </div>
       <div class="param-row-2"><span class="param-label" data-i18n="strandsPerTurn">Strands / turn</span>
         <input type="text" class="param-input" id="w_strands" value="1"></div>
-      <div class="param-row-2"><span class="param-label" data-i18n="layersCount">Layers</span>
-        <input type="text" class="param-input" id="w_layers" value="1"></div>
-      <div class="hint-text" data-i18n="layersHint">
-        Splits the winding width into this many left-right pairs of columns (Layers=1 → 2 columns,
-        Layers=2 → 4 columns, ...), symmetric about the centerline. Each column independently fills
-        from the slot bottom toward the opening to whatever its own width allows — outer columns
-        are narrower (and often shorter, since the slot tapers) than inner ones, so they naturally
-        hold less.
-      </div>
       <div class="param-row-2"><span class="param-label" data-i18n="linerThickness">Liner thickness [mm]</span>
         <input type="text" class="param-input" id="w_linerThickness" value="0.3"></div>
       <div class="param-row-2"><span class="param-label" data-i18n="windStartY">No-wind depth (opening) [mm]</span>
@@ -124,9 +114,9 @@
   <div class="results-col">
 
     <div class="hint-text" data-i18n="toolHint" style="margin:0 0 2px">
-      💡 This is a simple row-by-row visual, not an optimal circle-packing solver — a real winding
-      may fit tighter than shown. The area-based fill % is the reliable number; the packed count is
-      indicative only.
+      💡 Wires are arranged on a true hexagonal close-packed lattice (the densest regular circle
+      packing), settled against the slot bottom. It's still a geometric idealization, not a physics
+      simulation — no wire tension, insertion order, friction, or enamel deformation.
     </div>
 
     <div class="result-card">
