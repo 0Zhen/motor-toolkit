@@ -317,10 +317,10 @@ function renderSvg(innerPoly, pack, needleRect) {
   // 參數化模式會在圖外圍標尺寸，需要比自訂頂點模式更大的留白空間才放
   // 得下尺寸線跟文字——上方堆兩條（開口寬、上寬）、下方一條（下寬）、
   // 左右各一條（開口高、槽深）。
-  var padTop = maxDim * (shapeMode === 'param' ? 0.34 : 0.14);
-  var padBottom = maxDim * (shapeMode === 'param' ? 0.18 : 0.14);
-  var padLeft = maxDim * (shapeMode === 'param' ? 0.22 : 0.22);
-  var padRight = maxDim * (shapeMode === 'param' ? 0.22 : 0.22);
+  var padTop = maxDim * (shapeMode === 'param' ? 0.40 : 0.18);
+  var padBottom = maxDim * (shapeMode === 'param' ? 0.22 : 0.18);
+  var padLeft = maxDim * (shapeMode === 'param' ? 0.26 : 0.26);
+  var padRight = maxDim * (shapeMode === 'param' ? 0.26 : 0.26);
   var vx = bbox.minX - padLeft, vy = bbox.minY - padTop, vw = w + padLeft + padRight, vh = h + padTop + padBottom;
   svg.setAttribute('viewBox', vx + ' ' + vy + ' ' + vw + ' ' + vh);
 
@@ -344,7 +344,7 @@ function renderSvg(innerPoly, pack, needleRect) {
   // 上面、顏色也改深色加粗，確保看得清楚。只在0落在目前視野範圍內才
   // 畫，避免極端自訂形狀把原點甩到畫面外時畫出奇怪的線。
   if (shapeMode === 'custom') {
-    var axisFont = maxDim * 0.04, axisArrowSize = axisFont * 0.6;
+    var axisFont = maxDim * 0.06, axisArrowSize = axisFont * 0.6;
     html += '<g style="stroke-width:' + (strokeW * 1.1) + '">';
     if (0 >= vx && 0 <= vx + vw) html += axisArrow(0, vy, 0, vy + vh, 'Y', axisArrowSize, axisFont);
     if (0 >= vy && 0 <= vy + vh) html += axisArrow(vx, 0, vx + vw, 0, 'X', axisArrowSize, axisFont);
@@ -358,7 +358,7 @@ function renderSvg(innerPoly, pack, needleRect) {
     html += '<rect class="slot-needle-channel" x="' + needleRect.x + '" y="' + needleRect.y + '" width="' + needleRect.width + '" height="' + needleRect.height + '" style="stroke-width:' + (strokeW * 0.6) + '"></rect>';
   }
 
-  var dimStrokeW = strokeW * 0.5, fontSize = maxDim * 0.045, tick = fontSize * 0.4;
+  var dimStrokeW = strokeW * 0.5, fontSize = maxDim * 0.062, tick = fontSize * 0.4;
   if (shapeMode === 'param') {
     var openW = num('p_openWidth', 3), openH = num('p_openHeight', 1.5);
     var topW = num('p_topWidth', 4), bottomW = num('p_bottomWidth', 7), depthV = num('p_depth', 12);
@@ -375,7 +375,7 @@ function renderSvg(innerPoly, pack, needleRect) {
     // 交錯上/下方，分開相鄰頂點；②依頂點在重心的左/右側往外推一點水
     // 平距離，同時把文字對齊方式改成「靠左/靠右」而不是置中，讓文字整
     // 段都偏到線的外側，不會橫跨過去。不用真的做碰撞偵測。
-    var vLabelFont = fontSize * 0.7;
+    var vLabelFont = fontSize * 0.85;
     var cx = vertices.reduce(function (s, v) { return s + v.x; }, 0) / vertices.length;
     html += '<g style="stroke-width:' + dimStrokeW + '">' +
       vertices.map(function (v, i) {

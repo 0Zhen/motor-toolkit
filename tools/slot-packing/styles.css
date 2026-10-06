@@ -322,7 +322,6 @@ body > * { min-width: 0; }
 }
 .axis-line {
   stroke: #1f2a44;
-  stroke-dasharray: 1.8,1.2;
   fill: none;
 }
 .axis-arrow { fill: #1f2a44; }
