@@ -78,6 +78,10 @@ var MT_I18N = {
   errFewPoints:  { en: 'Need at least 3 points to form a shape.', zh: '至少需要3個頂點才能構成形狀。' },
   errBadArea:    { en: 'These points don’t enclose a usable area — check the vertex order/values.', zh: '這些頂點圍不出有效面積，請檢查頂點順序/數值。' },
   errBadWire:    { en: 'Wire diameter and count must be greater than 0.', zh: '線徑與數量都必須大於0。' },
+  errNeedleTooWide: {
+    en: 'Needle channel width is wider than the slot opening itself — the needle couldn’t fit through. Reduce the needle channel width or widen the opening.',
+    zh: '導針通道寬度比槽開口本身還寬，導針根本穿不進去。請縮小導針通道寬度，或把開口放寬。',
+  },
   errLinerTooThick: {
     en: 'Liner thickness is too large for this slot shape (it would cross itself, e.g. at the opening throat). Reduce the liner thickness or widen the shape there.',
     zh: 'Liner 厚度對這個槽型來說太厚了（內縮後會在某處自我交叉，例如開口喉部太窄）。請縮小 liner 厚度，或把該處的槽型放寬。',
@@ -214,6 +218,21 @@ function openingAwarePoints(poly) {
   return poly;
 }
 
+/* 跟 openingAwarePoints 用同一條「y 最小＝開口邊」規則，量出那段開口邊
+ * 的實際寬度——導針要先穿過這個開口才進得了槽，通道寬度不該比這個還
+ * 寬。找不到明顯的水平頂緣就回傳 0（視為沒有可比較的寬度，不擋）。 */
+function openingWidthOf(poly) {
+  var n = poly.length;
+  if (n < 2) return 0;
+  var minY = Math.min.apply(null, poly.map(function (p) { return p.y; }));
+  var eps = 1e-6;
+  for (var i = 0; i < n; i++) {
+    var a = poly[i], b = poly[(i + 1) % n];
+    if (Math.abs(a.y - minY) < eps && Math.abs(b.y - minY) < eps) return Math.abs(b.x - a.x);
+  }
+  return 0;
+}
+
 /* ── SVG 繪製：紅=鐵芯、綠=liner內縮後的繞線窗、黃=導線（仿 Motor-CAD 配色） ── */
 function renderSvg(innerPoly, pack, needleRect) {
   var svg = $('packingSvg');
@@ -297,6 +316,14 @@ function computeAll() {
     return;
   }
 
+  var needleWidth = Math.max(0, num('w_needleWidth', 0));
+  var openingWidth = openingWidthOf(vertices);
+  if (coils >= 2 && needleWidth > 0 && openingWidth > 0 && needleWidth > openingWidth) {
+    $('statsOut').innerHTML = '<span class="bad">' + mtT('errNeedleTooWide') + '</span>';
+    renderSvg(innerPoly, null);
+    return;
+  }
+
   var circleArea = Math.PI / 4 * diameter * diameter;
   var fillPctArea = count * circleArea / windingArea * 100;
 
@@ -311,7 +338,6 @@ function computeAll() {
   // 佔其中一邊，不是整個繞線窗混在一起看起來像單層。單層（Coils/slot
   // <= 1）：沒有單一偏向的槽壁可貼，整個繞線窗當一池子往槽底沉降，維
   // 持原樣，也沒有中間通道這個概念。
-  var needleWidth = Math.max(0, num('w_needleWidth', 0));
   var pack, needleRect = null;
   if (coils >= 2) {
     var packBbox = polygonBBox(packableArea);
