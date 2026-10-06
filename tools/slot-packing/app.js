@@ -40,6 +40,11 @@ var MT_I18N = {
     en: '2 or more: the winding window splits into a left and a right coil side, each independently packed (double-layer winding). 1: the whole window is packed as one — doesn’t decide anything about the total wire count, which is still turns × coils × strands.',
     zh: '2 以上：繞線窗分成左右兩個線圈邊，各自獨立密排（雙層繞組）。1：整個繞線窗當一池子密排——這個欄位不影響線材總數，總數還是匝數×線圈數×股數。',
   },
+  needleWidth:  { en: 'Needle channel width [mm]', zh: '導針通道寬度 [mm]' },
+  needleWidthHint:{
+    en: 'Gap reserved between the two coil sides (Coils/slot ≥ 2 only) — separate from liner thickness, since this is the phase-separator / needle-insertion clearance in the middle of the slot, not insulation against the slot wall. Shown below as a dashed rectangle.',
+    zh: '雙層繞組（每槽線圈數≥2）兩個線圈邊之間保留的間隙——跟liner厚度是分開的，因為這是繞線窗正中間的相間絕緣/導針通道空間，不是貼槽壁的絕緣。下方畫面用藍色虛線矩形標示。',
+  },
   linerThickness:{ en: 'Liner thickness [mm]', zh: 'Liner 厚度 [mm]' },
   windStartY:   { en: 'No-wind depth (opening) [mm]', zh: '不繞線深度（開口）[mm]' },
   windStartHint:{
@@ -58,13 +63,14 @@ var MT_I18N = {
   legendLam:    { en: 'Lamination', zh: '鐵芯' },
   legendLiner:  { en: 'Liner (winding window)', zh: 'Liner（繞線窗）' },
   legendWire:   { en: 'Conductor', zh: '導線' },
+  legendNeedle: { en: 'Needle channel', zh: '導針通道' },
 
   outSlotArea:   { en: 'Slot area (outer)', zh: '槽面積（外緣）' },
   outWindingArea:{ en: 'Winding area (after liner)', zh: '繞線窗面積（liner內縮後）' },
   outWireOd:     { en: 'Wire OD', zh: '線材外徑（OD）' },
   outCount:      { en: 'Wire count', zh: '線材總數' },
   outFillArea:   { en: 'Fill % (area-based)', zh: '槽滿率 %（面積法）' },
-  outPacked:     { en: 'Packed (hex lattice)', zh: '堆疊顆數（六方密排）' },
+  outPacked:     { en: 'Packed (settled)', zh: '堆疊顆數（沉降排列）' },
   outMaxCapacity:{ en: 'Max capacity (this wire size)', zh: '最大容量（這個線徑）' },
   outMaxFillArea:{ en: 'Fill % at max capacity', zh: '滿載時槽滿率 %' },
   packedAll:     { en: 'all placed', zh: '全部放得下' },
@@ -209,7 +215,7 @@ function openingAwarePoints(poly) {
 }
 
 /* ── SVG 繪製：紅=鐵芯、綠=liner內縮後的繞線窗、黃=導線（仿 Motor-CAD 配色） ── */
-function renderSvg(innerPoly, pack) {
+function renderSvg(innerPoly, pack, needleRect) {
   var svg = $('packingSvg');
   if (vertices.length < 3) { svg.innerHTML = ''; return; }
 
@@ -221,7 +227,10 @@ function renderSvg(innerPoly, pack) {
 
   var strokeW = Math.max(w, h, 1) * 0.01;
   var outerPts = openingAwarePoints(vertices).map(function (p) { return p.x + ',' + p.y; }).join(' ');
-  var html = '<rect class="slot-lamination" x="' + vx + '" y="' + vy + '" width="' + vw + '" height="' + vh + '"></rect>' +
+  // 鐵芯（紅）只畫到槽口那條線（bbox.minY，氣隙側）為止，不要往上延伸到
+  // 墊白區域——那裡是氣隙/轉子那側，不是鐵芯，照真實矽鋼片圖只有鐵芯
+  // 本體是紅色，氣隙上方留白。
+  var html = '<rect class="slot-lamination" x="' + vx + '" y="' + bbox.minY + '" width="' + vw + '" height="' + (vy + vh - bbox.minY) + '"></rect>' +
     '<polyline class="slot-outline" points="' + outerPts + '" style="stroke-width:' + strokeW + '"></polyline>';
 
   if (innerPoly) {
@@ -231,6 +240,9 @@ function renderSvg(innerPoly, pack) {
   (pack ? pack.placed : []).forEach(function (c) {
     html += '<circle class="slot-circle" cx="' + c.x + '" cy="' + c.y + '" r="' + (c.d / 2) + '" style="stroke-width:' + (strokeW * 0.4) + '"></circle>';
   });
+  if (needleRect) {
+    html += '<rect class="slot-needle-channel" x="' + needleRect.x + '" y="' + needleRect.y + '" width="' + needleRect.width + '" height="' + needleRect.height + '" style="stroke-width:' + (strokeW * 0.6) + '"></rect>';
+  }
   svg.innerHTML = html;
 }
 
@@ -293,15 +305,18 @@ function computeAll() {
   // 計要的「只設定匝數，工具自動排出來」。pack.maxCapacity 是同一套
   // 流程跑「不限數量」算出來的，直接回答「這個槽到底塞不塞得下」。
   // 雙層繞組（Coils/slot >= 2）：繞線窗先切成左右兩個獨立線圈邊（中間
-  // 留一道 liner 厚度一半當間隙），各自往自己真正的外側槽壁沉降
-  // （settlePackTowardWall）、各自算自己的容量——理論上只會佔其中一
-  // 邊，不是整個繞線窗混在一起看起來像單層。單層（Coils/slot <= 1）：
-  // 沒有單一偏向的槽壁可貼，整個繞線窗當一池子往槽底沉降，維持原樣。
-  var pack;
+  // 留一道「導針通道寬度」當間隙——這是相間絕緣/導針空間，跟貼槽壁的
+  // liner厚度是不同的東西，不能共用同一個數字），各自往自己真正的外
+  // 側槽壁沉降（settlePackTowardWall）、各自算自己的容量——理論上只會
+  // 佔其中一邊，不是整個繞線窗混在一起看起來像單層。單層（Coils/slot
+  // <= 1）：沒有單一偏向的槽壁可貼，整個繞線窗當一池子往槽底沉降，維
+  // 持原樣，也沒有中間通道這個概念。
+  var needleWidth = Math.max(0, num('w_needleWidth', 0));
+  var pack, needleRect = null;
   if (coils >= 2) {
     var packBbox = polygonBBox(packableArea);
     var splitX = (packBbox.minX + packBbox.maxX) / 2;
-    var gap = linerThk / 2;
+    var gap = needleWidth / 2;
     var leftArea = clipPolygonMaxX(packableArea, splitX - gap);
     var rightArea = clipPolygonMinX(packableArea, splitX + gap);
     var perSide = Math.round(count / 2);
@@ -313,10 +328,13 @@ function computeAll() {
       requestedCount: count,
       maxCapacity: packL.maxCapacity + packR.maxCapacity,
     };
+    if (needleWidth > 0) {
+      needleRect = { x: splitX - gap, y: packBbox.minY, width: needleWidth, height: packBbox.maxY - packBbox.minY };
+    }
   } else {
     pack = settlePack(packableArea, diameter, count);
   }
-  renderSvg(innerPoly, pack);
+  renderSvg(innerPoly, pack, needleRect);
 
   var maxFillPct = pack.maxCapacity * circleArea / windingArea * 100;
   var fillClass = fillPctArea > 100 ? 'bad' : (fillPctArea > 85 ? 'warn' : '');
@@ -341,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function () {
   $('btnGenerate').addEventListener('click', generateFromParametric);
   $('btnAddPoint').addEventListener('click', addVertexPoint);
 
-  ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_linerThickness', 'w_windStartY']
+  ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_linerThickness', 'w_needleWidth', 'w_windStartY']
     .forEach(function (id) { $(id).addEventListener('input', computeAll); });
 
   document.addEventListener('mt-lang-change', computeAll);

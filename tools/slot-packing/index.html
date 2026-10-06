@@ -94,6 +94,13 @@
         packed (double-layer winding). 1: the whole window is packed as one — doesn't decide
         anything about the total wire count, which is still turns × coils × strands.
       </div>
+      <div class="param-row-2"><span class="param-label" data-i18n="needleWidth">Needle channel width [mm]</span>
+        <input type="text" class="param-input" id="w_needleWidth" value="1.5"></div>
+      <div class="hint-text" data-i18n="needleWidthHint">
+        Gap reserved between the two coil sides (Coils/slot ≥ 2 only) — separate from liner
+        thickness, since this is the phase-separator / needle-insertion clearance in the middle of
+        the slot, not insulation against the slot wall. Shown below as a dashed rectangle.
+      </div>
       <div class="param-row-2"><span class="param-label" data-i18n="strandsPerTurn">Strands / turn</span>
         <input type="text" class="param-input" id="w_strands" value="1"></div>
       <div class="param-row-2"><span class="param-label" data-i18n="linerThickness">Liner thickness [mm]</span>
@@ -116,11 +123,12 @@
   <div class="results-col">
 
     <div class="hint-text" data-i18n="toolHint" style="margin:0 0 2px">
-      💡 Wires are arranged on a true hexagonal close-packed lattice (the densest regular circle
-      packing). For double-layer slots, the lattice is rotated to follow each coil side's own
-      slanted wall, so the whole wall-hugging column stays flush along its entire length (not just
-      at one point) and tapers with the slot shape. Still a geometric idealization, not a physics
-      simulation — no wire tension, insertion order, friction, or enamel deformation.
+      💡 Each wire is simulated settling into place, coming to rest against the slot wall (or the
+      floor, for single-layer slots) and whichever wires are already placed — so it naturally hugs
+      any wall angle and nests into the gaps between neighbors, without a fixed lattice pattern. For
+      double-layer slots, each coil side settles independently toward its own outer wall. Still a
+      geometric idealization, not a physics simulation — no wire tension, insertion order, friction,
+      or enamel deformation.
     </div>
 
     <div class="result-card">
@@ -131,6 +139,7 @@
         <span><i class="legend-swatch" style="background:#b5392f"></i><span data-i18n="legendLam">Lamination</span></span>
         <span><i class="legend-swatch" style="background:#5fae7c"></i><span data-i18n="legendLiner">Liner (winding window)</span></span>
         <span><i class="legend-swatch" style="background:#f2d14c"></i><span data-i18n="legendWire">Conductor</span></span>
+        <span><i class="legend-swatch legend-swatch-outline"></i><span data-i18n="legendNeedle">Needle channel</span></span>
       </div>
     </div>
 
