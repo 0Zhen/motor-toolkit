@@ -72,7 +72,7 @@ var MT_I18N = {
   outCount:      { en: 'Wire count', zh: '線材總數' },
   outFillArea:   { en: 'Fill % (area-based)', zh: '槽滿率 %（面積法）' },
   outPacked:     { en: 'Wires actually fit', zh: '實際容納線材數' },
-  outMaxCapacity:{ en: 'Max capacity (this wire size, regardless of your turns setting)', zh: '最大容量（這個線徑的上限，跟你設定的匝數無關）' },
+  outMaxCapacity:{ en: 'Max capacity (this wire size)', zh: '最大容量（該線徑上限）' },
   outMaxFillArea:{ en: 'Fill % at max capacity', zh: '滿載時槽滿率 %' },
   packedAll:     { en: 'all placed', zh: '全部放得下' },
   packedPartial: { en: 'this slot can’t physically fit this many at this wire size', zh: '這個線徑下，這個槽塞不下這麼多' },
