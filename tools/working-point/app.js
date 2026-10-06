@@ -1523,6 +1523,7 @@ document.addEventListener('mt-theme-change', function(e) {
    ══════════════════════════════════════════════════════════ */
 document.addEventListener('mt-lang-change', function() {
   updateParamDescs();
+  renderOilDbEditor(); // 油品卡片是 createElement 動態產生，密度/刪除按鈕提示文字要跟著重繪
   onOilChange(); // 重新計算/顯示油品結果文字（含未進入 updateAll 分支的早退情況）
   updateAll();   // 重繪 info-box、警告、Fixed Speed 面板
   if (lastSweepXKey !== null && document.getElementById('sweepChartWrap').style.display !== 'none') {
