@@ -19,8 +19,8 @@ var MT_I18N = {
     zh: '對稱：y=0 是槽口（靠氣隙那端），y=depth 是槽底（靠軛部那端）。從y=0開始先是一段窄直的開口喉（開口寬/開口高），之後展開成本體上寬，再taper到下寬。把開口寬設成等於本體上寬（或開口高設0）就會退化成單純梯形。會產生下方8個頂點，之後可以再手動加點微調形狀。',
   },
   customHint:   {
-    en: 'Start from scratch, or switch to Parametric, generate a trapezoid, then come back here — every point is editable either way.',
-    zh: '可以從空白開始，或先切到參數化產生梯形再回來這裡繼續編輯——不管哪種方式，每個頂點都可以修改。',
+    en: 'Start from scratch, or switch to Parametric, generate a trapezoid, then come back here — every point is editable either way. You only edit the left half; the right half mirrors it automatically (slots are symmetric left-right).',
+    zh: '可以從空白開始，或先切到參數化產生梯形再回來這裡繼續編輯——不管哪種方式，每個頂點都可以修改。只需要編輯左半邊，右半邊會自動依Y軸鏡射產生（槽型左右對稱）。',
   },
   verticesTitle:{ en: 'Vertices', zh: '頂點' },
   colX:         { en: 'X [mm]', zh: 'X [mm]' },
@@ -28,8 +28,8 @@ var MT_I18N = {
   addPointBtn:  { en: '+ Add point', zh: '+ 新增頂點' },
   undoBtn:      { en: '↶ Undo', zh: '↶ 復原' },
   vertexHint:   {
-    en: 'Points connect in order and close back to the first one. No self-intersection check — keep them tracing a simple outline.',
-    zh: '頂點依序連接，最後一個會連回第一個。沒有自我相交檢查，請確保連起來是一個單純的輪廓，不要交叉。',
+    en: 'This lists the left half only, traced from the opening (top) down to the bottom — the right half is generated automatically by mirroring across the Y axis, and isn’t listed separately. Drag the labeled points on the drawing, or edit the numbers here. No self-intersection check — keep the half-outline simple (no crossing).',
+    zh: '這裡只列左半邊的頂點，從槽口（上）往槽底（下）依序排列——右半邊會自動依Y軸鏡射產生，不會另外列出來。可以直接在圖上拖曳編號的點，或在這裡改數字。沒有自我相交檢查，請確保左半邊這條線本身不要交叉。',
   },
   wireTitle:    { en: 'Wire / Turns', zh: '線材 / 匝數' },
   bareDia:      { en: 'Bare copper dia. [mm]', zh: '裸銅徑 [mm]' },
@@ -126,23 +126,43 @@ var $ = function (id) { return document.getElementById(id); };
 var mtT = window.mtT || function (k) { return (MT_I18N[k] && MT_I18N[k].en) || k; };
 
 var shapeMode = 'param';
+// 使用者只編輯左半邊（由槽口y=0往槽底方向排列），右半邊永遠是左半邊依
+// Y軸（x=0）鏡射自動產生——槽型本來就是左右對稱的，編輯一半、另一半跟
+// 著動，不用使用者自己維護兩份對稱的數字。vertices 是從 halfVertices
+// 算出來的完整多邊形（左半+鏡射後倒序接回去的右半，形成封閉輪廓），
+// 所有幾何計算（面積、liner、堆疊……）都只讀 vertices，不直接碰
+// halfVertices；UI編輯（表格/新增/刪除/拖曳）只碰 halfVertices，改完
+// 一定呼叫 syncVerticesFromHalf() 才讓 vertices 跟著更新。
+var halfVertices = [];
 var vertices = [];
 var lastMaxCapacity = 0, lastCoils = 1, lastStrands = 1; // 給「自動填滿到最大容量」按鈕用
 
+/** 左半邊（依序從槽口排到槽底）鏡射回去接成完整封閉多邊形：左半原封
+ *  不動，右半＝左半倒序＋x取負——這樣鏡射後的右半會從槽底往槽口接回
+ *  去，整圈連起來才會是正確方向的簡單多邊形（不是兩段各自獨立的開放
+ *  折線）。左半的頭尾兩點不需要剛好落在x=0上：如果不是，鏡射後頭尾會
+ *  各自形成一條連接左右兩側的邊（分別對應槽口開口線、槽底線），效果
+ *  是對的，不用特判。 */
+function syncVerticesFromHalf() {
+  var mirroredBack = halfVertices.slice().reverse().map(function (p) { return { x: -p.x, y: p.y }; });
+  vertices = halfVertices.concat(mirroredBack);
+}
+
 /* ── 頂點清單復原（Undo）──
- * 只管頂點清單本身（編輯座標／新增／刪除／按Generate整個覆蓋掉），不
- * 管線材/槽型參數等其他欄位——這是使用者最容易「不小心弄丟工作」的地
- * 方（尤其是切回參數化按Generate，會直接覆蓋掉所有自訂編輯）。 */
+ * 只管左半邊頂點清單本身（編輯座標／新增／刪除／按Generate整個覆蓋
+ * 掉），不管線材/槽型參數等其他欄位——這是使用者最容易「不小心弄丟工
+ * 作」的地方（尤其是切回參數化按Generate，會直接覆蓋掉所有自訂編輯）。*/
 var vertexHistory = [];
 var MAX_VERTEX_HISTORY = 50;
 function pushVertexHistory() {
-  vertexHistory.push(vertices.map(function (v) { return { x: v.x, y: v.y }; }));
+  vertexHistory.push(halfVertices.map(function (v) { return { x: v.x, y: v.y }; }));
   if (vertexHistory.length > MAX_VERTEX_HISTORY) vertexHistory.shift();
   $('btnUndoVertex').disabled = false;
 }
 function undoVertices() {
   if (!vertexHistory.length) return;
-  vertices = vertexHistory.pop();
+  halfVertices = vertexHistory.pop();
+  syncVerticesFromHalf();
   $('btnUndoVertex').disabled = vertexHistory.length === 0;
   renderVertexTable();
   computeAll();
@@ -183,11 +203,11 @@ window.switchShapeMode = function (mode) {
   if (typeof gaTrack === 'function') gaTrack('slotpack_mode', mode);
 };
 
-/* ── 頂點表格 ── */
+/* ── 頂點表格（只列左半邊，右半邊自動鏡射）── */
 function renderVertexTable() {
   var body = $('vertexTableBody');
   var html = '';
-  vertices.forEach(function (v, i) {
+  halfVertices.forEach(function (v, i) {
     html += '<tr>' +
       '<td>' + (i + 1) + '</td>' +
       '<td><input type="text" data-i="' + i + '" data-axis="x" value="' + fmt(v.x, 3) + '"></td>' +
@@ -204,14 +224,15 @@ function renderVertexTable() {
     inp.addEventListener('input', function () {
       var i = parseInt(this.dataset.i, 10), axis = this.dataset.axis;
       var v = parseFloat(this.value);
-      if (isFinite(v)) { vertices[i][axis] = v; computeAll(); }
+      if (isFinite(v)) { halfVertices[i][axis] = v; syncVerticesFromHalf(); computeAll(); }
     });
   });
   body.querySelectorAll('.vertex-del-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      if (vertices.length <= 3) return; // 至少留3點才能成形
+      if (halfVertices.length <= 2) return; // 左半邊至少留2點，鏡射後才能成形（至少4邊）
       pushVertexHistory();
-      vertices.splice(parseInt(this.dataset.i, 10), 1);
+      halfVertices.splice(parseInt(this.dataset.i, 10), 1);
+      syncVerticesFromHalf();
       renderVertexTable();
       computeAll();
     });
@@ -219,13 +240,23 @@ function renderVertexTable() {
 }
 
 function generateFromParametric() {
-  // Generate 會整個覆蓋掉目前的頂點清單，包含使用者切到自訂頂點手動改
-  // 過的內容——這是最容易「不小心弄丟工作」的操作，按之前先存一次快照
-  // （頁面剛載入、vertices 還是空的那次不用存，沒有東西好復原）。
-  if (vertices.length >= 3) pushVertexHistory();
+  // Generate 會整個覆蓋掉目前的左半邊頂點清單，包含使用者切到自訂頂點
+  // 手動改過的內容——這是最容易「不小心弄丟工作」的操作，按之前先存一
+  // 次快照（頁面剛載入、halfVertices 還是空的那次不用存，沒有東西好
+  // 復原）。
+  if (halfVertices.length >= 2) pushVertexHistory();
   var openW = num('p_openWidth', 3), openH = num('p_openHeight', 1.5);
   var top = num('p_topWidth', 4), bottom = num('p_bottomWidth', 7), depth = num('p_depth', 12);
-  vertices = generateSlotShape(openW, openH, top, bottom, depth);
+  // 跟 generateSlotShape() 產生的8點是同一個形狀，但這裡直接寫出「左半
+  // 邊、從槽口排到槽底」的4點，不是反過來從8點裡篩選——對稱軸切出來的
+  // 左半邊本來就該長這樣，不需要用篩選+排序去猜。
+  halfVertices = [
+    { x: -openW / 2, y: 0 },
+    { x: -openW / 2, y: openH },
+    { x: -top / 2, y: openH },
+    { x: -bottom / 2, y: depth },
+  ];
+  syncVerticesFromHalf();
   renderVertexTable();
   $('w_windStartY').value = fmt(openH, 3); // 開口喉不繞線，跟著參數化的開口高自動帶
   computeAll();
@@ -234,8 +265,9 @@ function generateFromParametric() {
 
 function addVertexPoint() {
   pushVertexHistory();
-  var last = vertices[vertices.length - 1] || { x: 0, y: 0 };
-  vertices.push({ x: last.x + 2, y: last.y });
+  var last = halfVertices[halfVertices.length - 1] || { x: -1, y: 0 };
+  halfVertices.push({ x: last.x, y: last.y + 2 });
+  syncVerticesFromHalf();
   renderVertexTable();
   computeAll();
 }
@@ -320,6 +352,66 @@ function axisArrow(x1, y1, x2, y2, label, arrowSize, fontSize) {
     '<text class="axis-label" x="' + labelX + '" y="' + labelY + '" font-size="' + fontSize + '">' + label + '</text>';
 }
 
+/** 把滑鼠/觸控事件的螢幕座標轉成 SVG viewBox 的使用者座標（mm）——優先
+ *  用 getScreenCTM()（正確處理 preserveAspectRatio 置中縮放），拿不到
+ *  時退回用 viewBox 手動按比例換算。 */
+function svgPointToUser(svg, clientX, clientY) {
+  var ctm = svg.getScreenCTM && svg.getScreenCTM();
+  if (ctm && svg.createSVGPoint) {
+    var pt = svg.createSVGPoint();
+    pt.x = clientX; pt.y = clientY;
+    var up = pt.matrixTransform(ctm.inverse());
+    return { x: up.x, y: up.y };
+  }
+  var rect = svg.getBoundingClientRect();
+  var vb = svg.viewBox.baseVal;
+  return {
+    x: vb.x + (clientX - rect.left) / rect.width * vb.width,
+    y: vb.y + (clientY - rect.top) / rect.height * vb.height,
+  };
+}
+
+/** 自訂頂點模式：讓圖上每個標了編號的點可以直接拖曳——拖的是
+ *  halfVertices[i]（左半邊），右半邊由 syncVerticesFromHalf() 自動鏡
+ *  射更新，所以只要處理左半邊這一側的拖曳邏輯，不用另外判斷「拖到的
+ *  是左點還是右點」（圖上本來就只有左半邊的點有控點）。用
+ *  requestAnimationFrame 節流（pointermove 可能比畫面更新頻繁），拖曳
+ *  開始時存一次 undo 快照（不是每個影格都存）。 */
+function attachVertexDragHandlers(svg) {
+  svg.querySelectorAll('.vertex-handle').forEach(function (handle) {
+    handle.style.cursor = 'grab';
+    handle.addEventListener('pointerdown', function (downEv) {
+      downEv.preventDefault();
+      var i = parseInt(handle.dataset.i, 10);
+      pushVertexHistory();
+      handle.style.cursor = 'grabbing';
+      var rafPending = false, latest = null;
+      function applyMove() {
+        rafPending = false;
+        if (!latest) return;
+        var p = svgPointToUser(svg, latest.clientX, latest.clientY);
+        halfVertices[i].x = p.x;
+        halfVertices[i].y = p.y;
+        syncVerticesFromHalf();
+        renderVertexTable();
+        computeAll(); // 會重新呼叫 renderSvg()，含重新綁定這些拖曳控點
+      }
+      function onMove(mv) {
+        latest = mv;
+        if (!rafPending) { rafPending = true; requestAnimationFrame(applyMove); }
+      }
+      function onUp() {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        document.removeEventListener('pointercancel', onUp);
+      }
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);
+    });
+  });
+}
+
 /* ── SVG 繪製：紅=鐵芯、綠=liner內縮後的繞線窗、黃=導線（仿 Motor-CAD 配色） ── */
 function renderSvg(innerPoly, pack, needleRect) {
   var svg = $('packingSvg');
@@ -393,13 +485,14 @@ function renderSvg(innerPoly, pack, needleRect) {
     // 不會看起來錯位。碰撞收斂邏輯本身維持（相鄰點還是可能靠得夠近，
     // 短文字還是可能疊在一起），每個標籤畫一條細引線連回對應的頂點。
     var vLabelFont = fontSize * 0.85;
-    var cx = vertices.reduce(function (s, v) { return s + v.x; }, 0) / vertices.length;
+    var cx = halfVertices.reduce(function (s, v) { return s + v.x; }, 0) / halfVertices.length;
     var charW = vLabelFont * 0.56, lineH = vLabelFont * 1.3;
-    var labels = vertices.map(function (v, i) {
+    var labels = halfVertices.map(function (v, i) {
       var above = i % 2 === 0;
       var right = v.x >= cx;
       var text = '#' + (i + 1);
       return {
+        i: i,
         x: v.x + (right ? 1 : -1) * fontSize * 0.35,
         y: above ? v.y - vLabelFont * 0.9 : v.y + vLabelFont * 1.5,
         width: text.length * charW, height: lineH,
@@ -442,13 +535,14 @@ function renderSvg(innerPoly, pack, needleRect) {
     html += '<g style="stroke-width:' + dimStrokeW + '">' +
       labels.map(function (L) {
         return '<line class="dim-ext" x1="' + L.dotX + '" y1="' + L.dotY + '" x2="' + L.x + '" y2="' + L.y + '"></line>' +
-          '<circle cx="' + L.dotX + '" cy="' + L.dotY + '" r="' + (fontSize * 0.12) + '" fill="#3f4d66" stroke="none"></circle>' +
+          '<circle class="vertex-handle" data-i="' + L.i + '" cx="' + L.dotX + '" cy="' + L.dotY + '" r="' + (fontSize * 0.32) + '" fill="#3f4d66" stroke="none"></circle>' +
           '<text class="vertex-label" x="' + L.x + '" y="' + L.y + '" font-size="' + vLabelFont + '" style="text-anchor:' + L.anchor + '">' + L.text + '</text>';
       }).join('') +
       '</g>';
   }
 
   svg.innerHTML = html;
+  if (shapeMode === 'custom') attachVertexDragHandlers(svg);
 }
 
 /* ── 主重算 ── */

@@ -337,6 +337,8 @@ body > * { min-width: 0; }
   dominant-baseline: middle;
   font-family: inherit;
 }
+.vertex-handle { touch-action: none; }
+.vertex-handle:hover { fill: #6b8ecf; }
 .axis-line {
   stroke: #1f2a44;
   fill: none;
