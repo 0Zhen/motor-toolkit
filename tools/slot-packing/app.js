@@ -51,8 +51,8 @@ var MT_I18N = {
     zh: 'Liner 是真的把槽型輪廓向內偏移出來的幾何（下方綠色區域），不是從槽滿率扣一個數字而已——線材是塞在這個內縮後的區域裡。',
   },
   toolHint:     {
-    en: '💡 Wires are arranged on a true hexagonal close-packed lattice (the densest regular circle packing), settled against the slot bottom. It’s still a geometric idealization, not a physics simulation — no wire tension, insertion order, friction, or enamel deformation.',
-    zh: '💡 線材是照真正的六方最密堆積格點排列（圓形排列理論上最密的規則排法），貼著槽底堆疊。這仍然是幾何上的理想化，不是力學模擬——沒有算線材張力、插入順序、摩擦力或漆膜受壓變形。',
+    en: '💡 Wires are arranged on a true hexagonal close-packed lattice (the densest regular circle packing), flush against the wall. Fill order is column by column — the wall-hugging column fills to its own full height before the next column starts, so it follows the slot’s taper instead of forming a flat-topped block. Still a geometric idealization, not a physics simulation — no wire tension, insertion order, friction, or enamel deformation.',
+    zh: '💡 線材是照真正的六方最密堆積格點排列（圓形排列理論上最密的規則排法），貼著槽壁對齊。填充順序是一欄一欄來——貼牆那欄會先疊到它自己能到的最高處，才開始疊下一欄，所以會跟著槽型的taper走，不會疊成一塊平頂的矩形。這仍然是幾何上的理想化，不是力學模擬——沒有算線材張力、插入順序、摩擦力或漆膜受壓變形。',
   },
   statsTitle:   { en: 'Stats', zh: '統計' },
   legendLam:    { en: 'Lamination', zh: '鐵芯' },

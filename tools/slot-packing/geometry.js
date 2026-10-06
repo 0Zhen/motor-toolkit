@@ -253,10 +253,12 @@ function mirrorPolygonX(points) {
  * 真正的槽壁在大 x 那側），呼叫端自己用 mirrorPolygonX() 把多邊形鏡
  * 射過來跑、結果的 x 再鏡射回去即可，不在這裡加左右選項。
  *
- * 排序：由下往上（貼槽底）、同一排貼左側槽壁開始往右排過去——所以
- * count 不夠疊滿整個槽時，會自然呈現「貼槽底、貼左側槽壁，缺口留在
- * 右側」的堆積形狀，貼合使用者要求的「由槽壁開始往外繞」的填充順
- * 序，而不是從每排中間對稱往兩側擴散。
+ * 排序：依「欄」分組（固定 x 一欄，六方格點裡一欄只會出現在同一種奇
+ * /偶排相位，彼此垂直間距是 2×rowPitch），欄的順序由貼牆那欄（colKey
+ * =0）往另一側走，每一欄內部由下往上（貼槽底的 y 先）——所以 count
+ * 不夠疊滿整個槽時，會先把貼牆那一欄一路疊到那一欄實際能到的最高
+ * 處（跟著槽型的高度輪廓走），才開始疊下一欄，而不是每排都疊一點、
+ * 停在某個高度留下一大截跟槽型taper脫節的矩形缺口。
  * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮＋裁掉喉部後的繞線窗）
  * @param {number} diameter 線材外徑（mm，含漆膜）
  * @param {number} [count] 要擺的線材總數；省略或 Infinity 時回傳「這個槽能塞下的全部格點」
@@ -280,23 +282,39 @@ function hexLatticePack(points, diameter, count) {
   const bottomSpans = horizontalSpans(points, bbox.maxY - r).filter(([a, b]) => b - a >= diameter - 1e-9);
   const originX = bottomSpans.length ? bottomSpans[0][0] + r : (bbox.minX + bbox.maxX) / 2;
 
-  const slots = []; // 全部格點（不管 count，先找出整個槽的真實容量）
+  // 先把全部格點依「欄」分組（不管 count，先找出整個槽的真實容量，也
+  // 才知道每一欄實際能到多高）。colKey 用整數算（相對 originX 差幾個
+  // 半徑），同一欄的點一定是同一種奇/偶排相位，不會混到別欄的點。
+  const columns = new Map(); // colKey -> { x, ys: number[] }
   let rowIndex = 0;
   let y = bbox.maxY - r;
   while (y >= bbox.minY + r - 1e-9) {
     const offset = (rowIndex % 2 === 1) ? r : 0;
     const spans = horizontalSpans(points, y).filter(([a, b]) => b - a >= diameter - 1e-9);
-    const rowXs = [];
     spans.forEach(([left, right]) => {
       const mMin = Math.ceil((left + r - originX - offset) / diameter - 1e-9);
       const mMax = Math.floor((right - r - originX - offset) / diameter + 1e-9);
-      for (let m = mMin; m <= mMax; m++) rowXs.push(originX + offset + m * diameter);
+      for (let m = mMin; m <= mMax; m++) {
+        const x = originX + offset + m * diameter;
+        const colKey = Math.round((x - originX) / r); // 貼牆那欄 = 0，往外每隔半徑遞增
+        let col = columns.get(colKey);
+        if (!col) { col = { x, ys: [] }; columns.set(colKey, col); }
+        col.ys.push(y);
+      }
     });
-    rowXs.sort((a, b) => a - b); // 同一排貼其中一側槽壁（x小的那側）開始，往另一側排過去
-    rowXs.forEach(x => slots.push({ x, y }));
     y -= rowPitch;
     rowIndex++;
   }
+
+  // 欄的順序：colKey 由小到大＝從貼牆那欄往另一側走；欄內由下往上（y
+  // 較大、離槽底較近的先）——這樣疊到一半被 count 截斷時，缺口會出現
+  // 在「還沒輪到的欄」，而不是每欄都疊一點、整齊切齊在同一個高度。
+  const slots = [];
+  Array.from(columns.keys()).sort((a, b) => a - b).forEach(key => {
+    const col = columns.get(key);
+    col.ys.sort((a, b) => b - a);
+    col.ys.forEach(cy => slots.push({ x: col.x, y: cy }));
+  });
 
   result.maxCapacity = slots.length;
   const n = Math.min(requestedCount, slots.length);
