@@ -370,22 +370,21 @@ function renderSvg(innerPoly, pack, needleRect) {
       dimV(0, depthV, openW / 2, bottomW / 2, bbox.maxX + maxDim * 0.10, fmt(depthV, 2), tick, fontSize) +
       '</g>';
   } else if (shapeMode === 'custom') {
-    // 固定的「依索引奇偶交錯上/下」規則踩過兩次坑：相鄰頂點如果剛好離
-    // 得很近（不管是垂直方向近，如開口喉兩側的上下轉角；還是水平方向
-    // 近，如喉部肩膀的左右轉角），交錯规则算出來的偏移量級跟頂點間距
-    // 同一個數量級，常常又疊在一起。改成真的做碰撞收斂：每個標籤先給
-    // 一個初始位置（左右半邊決定推哪個方向、靠左右對齊），估計文字框
-    // 大小，逐對檢查重疊，沿重疊量較小的那個軸把兩個框推開，疊代到不
-    // 再重疊為止（原理跟這個工具本身的線材沉降演算法一樣，都是「先給
-    // 初始位置、迭代消除碰撞」）。每個標籤額外畫一條細引線連回對應的
-    // 頂點，推得比較遠時還能看得出標籤對應哪個點。
+    // 完整座標字串太長，即使做碰撞收斂也容易把兩個離得近的點的標籤推到
+    // 視覺順序對調（例如#2比#3高，但收斂後#2的標籤反而畫在#3下面，看
+    // 起來像編號錯位）——座標本來就能直接在左邊頂點表格看到，圖上只需
+    // 要「這個點是編號幾」就夠對照，改成只顯示編號，文字框小很多，也
+    // 把推開方向的判斷從「比較目前暫定位置」改成「比較頂點本身實際的
+    // y座標」，確保推開後標籤的上下順序一定跟頂點本身的上下順序一致，
+    // 不會看起來錯位。碰撞收斂邏輯本身維持（相鄰點還是可能靠得夠近，
+    // 短文字還是可能疊在一起），每個標籤畫一條細引線連回對應的頂點。
     var vLabelFont = fontSize * 0.85;
     var cx = vertices.reduce(function (s, v) { return s + v.x; }, 0) / vertices.length;
     var charW = vLabelFont * 0.56, lineH = vLabelFont * 1.3;
     var labels = vertices.map(function (v, i) {
       var above = i % 2 === 0;
       var right = v.x >= cx;
-      var text = '#' + (i + 1) + ' (' + fmt(v.x, 2) + ', ' + fmt(v.y, 2) + ')';
+      var text = '#' + (i + 1);
       return {
         x: v.x + (right ? 1 : -1) * fontSize * 0.35,
         y: above ? v.y - vLabelFont * 0.9 : v.y + vLabelFont * 1.5,
@@ -407,12 +406,18 @@ function renderSvg(innerPoly, pack, needleRect) {
           var overlapY = Math.min(A.y2, B.y2) - Math.max(A.y1, B.y1);
           if (overlapX > 0 && overlapY > 0) {
             moved = true;
-            if (overlapY <= overlapX) {
+            // 推開的軸選「兩個頂點本身差距較大的那一軸」，不是選文字框重
+            // 疊量較小的那一軸——後者（最小位移）雖然收斂快，但常常選到
+            // 跟頂點實際關係不一致的軸，例如兩點垂直差很多、水平差很少
+            // 時卻選擇水平推開，畫出來兩個標籤會變成並排，視覺上跟頂點
+            // 實際的上下關係對不起來，看起來像編號錯位。
+            var useY = Math.abs(A.dotY - B.dotY) >= Math.abs(A.dotX - B.dotX);
+            if (useY) {
               var pushY = overlapY / 2 + fontSize * 0.02;
-              if (A.y < B.y) { A.y -= pushY; B.y += pushY; } else { A.y += pushY; B.y -= pushY; }
+              if (A.dotY < B.dotY) { A.y -= pushY; B.y += pushY; } else { A.y += pushY; B.y -= pushY; }
             } else {
               var pushX = overlapX / 2 + fontSize * 0.02;
-              if (A.x < B.x) { A.x -= pushX; B.x += pushX; } else { A.x += pushX; B.x -= pushX; }
+              if (A.dotX < B.dotX) { A.x -= pushX; B.x += pushX; } else { A.x += pushX; B.x -= pushX; }
             }
             updateBox(A); updateBox(B);
           }
