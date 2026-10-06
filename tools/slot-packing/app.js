@@ -283,7 +283,14 @@ function computeAll() {
     var rightArea = clipPolygonMinX(packableArea, splitX + gap);
     var perSide = Math.round(count / 2);
     var packL = hexLatticePack(leftArea, diameter, perSide);
-    var packR = hexLatticePack(rightArea, diameter, count - perSide);
+    // hexLatticePack 永遠貼「x較小」那側——右半邊真正的槽壁在大x那側
+    // （x較小那側是中間的間隙，不是槽壁），所以鏡射過去跑、結果再鏡射回來
+    var packRRaw = hexLatticePack(mirrorPolygonX(rightArea), diameter, count - perSide);
+    var packR = {
+      placed: packRRaw.placed.map(function (c) { return { x: -c.x, y: c.y, d: c.d }; }),
+      placedCount: packRRaw.placedCount,
+      maxCapacity: packRRaw.maxCapacity,
+    };
     pack = {
       placed: packL.placed.concat(packR.placed),
       placedCount: packL.placedCount + packR.placedCount,
