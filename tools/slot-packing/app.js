@@ -76,6 +76,7 @@ var MT_I18N = {
   outMaxFillArea:{ en: 'Fill % at max capacity', zh: '滿載時槽滿率 %' },
   packedAll:     { en: 'all placed', zh: '全部放得下' },
   packedPartial: { en: 'this slot can’t physically fit this many at this wire size', zh: '這個線徑下，這個槽塞不下這麼多' },
+  applyMaxBtn:   { en: 'Fill to max', zh: '填滿到最大容量' },
   errFewPoints:  { en: 'Need at least 3 points to form a shape.', zh: '至少需要3個頂點才能構成形狀。' },
   errBadArea:    { en: 'These points don’t enclose a usable area — check the vertex order/values.', zh: '這些頂點圍不出有效面積，請檢查頂點順序/數值。' },
   errBadWire:    { en: 'Wire diameter and count must be greater than 0.', zh: '線徑與數量都必須大於0。' },
@@ -126,6 +127,7 @@ var mtT = window.mtT || function (k) { return (MT_I18N[k] && MT_I18N[k].en) || k
 
 var shapeMode = 'param';
 var vertices = [];
+var lastMaxCapacity = 0, lastCoils = 1, lastStrands = 1; // 給「自動填滿到最大容量」按鈕用
 
 /* ── 頂點清單復原（Undo）──
  * 只管頂點清單本身（編輯座標／新增／刪除／按Generate整個覆蓋掉），不
@@ -145,6 +147,18 @@ function undoVertices() {
   renderVertexTable();
   computeAll();
 }
+
+/* 統計欄「填滿到最大容量」：反推 Turns/slot = maxCapacity / (coils×strands)
+ * 無條件捨去（寧可少塞，不要讓算出來的數字又超過容量），直接改掉輸入
+ * 欄再重算一次——不是另外存一個「建議值」，使用者看到的就是實際套用
+ * 後的結果。 */
+window.applyMaxTurns = function () {
+  if (!(lastMaxCapacity > 0) || !(lastCoils > 0) || !(lastStrands > 0)) return;
+  var newTurns = Math.floor(lastMaxCapacity / (lastCoils * lastStrands));
+  if (newTurns < 1) return;
+  $('w_turns').value = newTurns;
+  computeAll();
+};
 
 function num(id, fallback) {
   var v = parseFloat($(id).value);
@@ -538,6 +552,11 @@ function computeAll() {
   var fillClass = fillPctArea > 100 ? 'bad' : (fillPctArea > 85 ? 'warn' : '');
   var packedClass = pack.placedCount >= count ? '' : 'warn';
   var packedNote = pack.placedCount >= count ? mtT('packedAll') : mtT('packedPartial');
+  lastMaxCapacity = pack.maxCapacity; lastCoils = coils; lastStrands = strands;
+  // 「填滿到最大容量」按鈕只在塞不下、而且反推回去的匝數至少有1匝時才
+  // 顯示——全部放得下就沒有「填滿」這個動作好做。
+  var applyMaxBtn = (pack.placedCount < count && Math.floor(pack.maxCapacity / (coils * strands)) >= 1)
+    ? ' <button class="mini-btn" onclick="applyMaxTurns()">' + mtT('applyMaxBtn') + '</button>' : '';
 
   $('statsOut').innerHTML =
     tip(mtT('outSlotArea'), 'tipSlotArea') + ': <span class="rv">' + fmt(slotArea, 2) + '</span><span class="ru">mm²</span><br>' +
@@ -547,7 +566,7 @@ function computeAll() {
     mtT('outCount') + ' = <span class="rv">' + count + '</span><br>' +
     tip(mtT('outFillArea'), 'outFillAreaTip') + ' = <span class="rv ' + fillClass + '">' + fmt(fillPctArea, 1) + '</span><span class="ru">%</span><br>' +
     tip(mtT('outPacked'), 'outPackedTip') + ': <span class="rv ' + packedClass + '">' + pack.placedCount + ' / ' + count + '</span>' +
-      ' <span class="ru">(' + packedNote + ')</span><br>' +
+      ' <span class="ru">(' + packedNote + ')</span>' + applyMaxBtn + '<br>' +
     tip(mtT('outMaxCapacity'), 'tipMaxCapacity') + ' = <span class="rv">' + pack.maxCapacity + '</span><br>' +
     tip(mtT('outMaxFillArea'), 'outMaxFillAreaTip') + ' = <span class="rv">' + fmt(maxFillPct, 1) + '</span><span class="ru">%</span>';
 }
