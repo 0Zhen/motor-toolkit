@@ -145,6 +145,7 @@ window.switchShapeMode = function (mode) {
   $('tabCustom').classList.toggle('active', mode === 'custom');
   $('paramPanel').style.display = mode === 'param' ? '' : 'none';
   $('customPanel').style.display = mode === 'custom' ? '' : 'none';
+  computeAll(); // 圖上的標註（尺寸線 vs 座標文字）跟著模式切換，不等下次輸入才重畫
   if (typeof gaTrack === 'function') gaTrack('slotpack_mode', mode);
 };
 
@@ -312,10 +313,16 @@ function renderSvg(innerPoly, pack, needleRect) {
       dimV(0, depthV, openW / 2, bottomW / 2, bbox.maxX + maxDim * 0.10, fmt(depthV, 2), tick, fontSize) +
       '</g>';
   } else if (shapeMode === 'custom') {
+    // 相鄰頂點常常離得很近（例如開口喉兩側的轉角），標籤固定畫在正上方
+    // 會疊字——改成依索引奇偶交錯畫在上/下方，相鄰頂點的標籤自然分開，
+    // 不用真的做碰撞偵測。
+    var vLabelFont = fontSize * 0.7;
     html += '<g style="stroke-width:' + dimStrokeW + '">' +
-      vertices.map(function (v) {
+      vertices.map(function (v, i) {
+        var above = i % 2 === 0;
+        var ly = above ? v.y - vLabelFont * 0.9 : v.y + vLabelFont * 1.5;
         return '<circle cx="' + v.x + '" cy="' + v.y + '" r="' + (fontSize * 0.12) + '" fill="#3f4d66" stroke="none"></circle>' +
-          '<text class="vertex-label" x="' + v.x + '" y="' + (v.y - fontSize * 0.7) + '" font-size="' + (fontSize * 0.8) + '">(' + fmt(v.x, 2) + ', ' + fmt(v.y, 2) + ')</text>';
+          '<text class="vertex-label" x="' + v.x + '" y="' + ly + '" font-size="' + vLabelFont + '">(' + fmt(v.x, 2) + ', ' + fmt(v.y, 2) + ')</text>';
       }).join('') +
       '</g>';
   }
