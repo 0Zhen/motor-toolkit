@@ -322,3 +322,71 @@ function hexLatticePack(points, diameter, count) {
   result.placedCount = result.placed.length;
   return result;
 }
+
+/**
+ * hexLatticePack 的「沿牆版」：hexLatticePack 本身只會貼「x 較小」那一
+ * 條垂直線——槽壁是斜的時候，垂直線只在格點原點那一排真正碰到牆，離
+ * 那排越遠，垂直線跟斜牆的實際距離就越大，貼牆只是局部現象。這個函
+ * 式改成先把整個多邊形轉進一個「跟著牆的方向走」的局部座標系（s=沿
+ * 牆方向、從槽底角開始；t=離牆的垂直距離，貼牆=0），t 對應
+ * hexLatticePack 原本的 x（欄＝固定 t＝跟牆平行的一整條，不是垂直牆
+ * 的一條）、s 對應 hexLatticePack 原本的 y（同一欄內沿牆方向由槽底角
+ * 往槽口排過去），直接重用同一套密排／分欄／排序邏輯，算完再把結果
+ * 轉換回原本的座標——這樣每一欄都是跟牆平行、整條貼齊，不是只有一點。
+ *
+ * 牆的方向：取「多邊形最底那條邊的最小x端點」當槽底角 A、「最頂那條邊
+ * 的最小x端點」當槽口端點 B，A→B 的方向視為牆的方向——適用於這個工具
+ * 產生的梯形／自訂頂點槽型（上下緣接近水平、左右兩側是直線斜邊的情
+ * 況）。如果最頂/最底緣找不到明確端點（退化形狀），直接退回原本
+ * hexLatticePack 的垂直版本。
+ * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮＋裁掉喉部後的繞線窗）
+ * @param {number} diameter 線材外徑（mm，含漆膜）
+ * @param {number} [count] 要擺的線材總數；省略或 Infinity 時回傳「這個槽能塞下的全部格點」
+ * @returns {{placed:Array<{x,y,d}>, placedCount:number, requestedCount:number, maxCapacity:number}}
+ */
+function hexLatticePackAlongWall(points, diameter, count) {
+  const bbox = polygonBBox(points);
+  const bottomPts = points.filter(p => Math.abs(p.y - bbox.maxY) < 1e-6);
+  const topPts = points.filter(p => Math.abs(p.y - bbox.minY) < 1e-6);
+  if (!bottomPts.length || !topPts.length) return hexLatticePack(points, diameter, count);
+
+  const A = bottomPts.reduce((m, p) => (p.x < m.x ? p : m), bottomPts[0]);
+  const B = topPts.reduce((m, p) => (p.x < m.x ? p : m), topPts[0]);
+  let ux = B.x - A.x, uy = B.y - A.y;
+  const wallLen = Math.hypot(ux, uy);
+  if (wallLen < 1e-9) return hexLatticePack(points, diameter, count); // 退化（上下緣端點重合），退回垂直版
+
+  ux /= wallLen; uy /= wallLen;
+  let nx = -uy, ny = ux; // 牆方向的法向量，兩個候選，用重心判斷哪個朝內
+  const n = points.length;
+  const centroid = points.reduce((acc, p) => ({ x: acc.x + p.x / n, y: acc.y + p.y / n }), { x: 0, y: 0 });
+  if (nx * (centroid.x - A.x) + ny * (centroid.y - A.y) < 0) { nx = -nx; ny = -ny; }
+
+  // 轉到局部座標：local.x = t（離牆的垂直距離，貼牆=0，往內遞增——
+  // hexLatticePack 的「欄」是固定x分組，這樣欄才會是「固定離牆距離」
+  // ＝跟牆平行的一整條，不是垂直牆的一條）；local.y = -s（s=沿牆方向、
+  // A為0，取負號讓 s=0（槽底角A）對應 local.y=0=hexLatticePack 原本
+  // 「從 bbox.maxY 開始掃」的起點，往 B（槽口方向）掃是 local.y 遞減，
+  // 對應 s 遞增，這樣每一欄內部才會是「從槽底角A開始、往槽口方向疊」。
+  const localPts = points.map(p => {
+    const dx = p.x - A.x, dy = p.y - A.y;
+    const s = dx * ux + dy * uy;
+    const t = dx * nx + dy * ny;
+    return { x: t, y: -s };
+  });
+
+  const localResult = hexLatticePack(localPts, diameter, count);
+
+  // 轉回原本座標：local.x=t、local.y=-s → s=-local.y
+  const placed = localResult.placed.map(p => {
+    const t = p.x, s = -p.y;
+    return { x: A.x + s * ux + t * nx, y: A.y + s * uy + t * ny, d: p.d };
+  });
+
+  return {
+    placed,
+    placedCount: localResult.placedCount,
+    requestedCount: localResult.requestedCount,
+    maxCapacity: localResult.maxCapacity,
+  };
+}

@@ -51,8 +51,8 @@ var MT_I18N = {
     zh: 'Liner 是真的把槽型輪廓向內偏移出來的幾何（下方綠色區域），不是從槽滿率扣一個數字而已——線材是塞在這個內縮後的區域裡。',
   },
   toolHint:     {
-    en: '💡 Wires are arranged on a true hexagonal close-packed lattice (the densest regular circle packing), flush against the wall. Fill order is column by column — the wall-hugging column fills to its own full height before the next column starts, so it follows the slot’s taper instead of forming a flat-topped block. Still a geometric idealization, not a physics simulation — no wire tension, insertion order, friction, or enamel deformation.',
-    zh: '💡 線材是照真正的六方最密堆積格點排列（圓形排列理論上最密的規則排法），貼著槽壁對齊。填充順序是一欄一欄來——貼牆那欄會先疊到它自己能到的最高處，才開始疊下一欄，所以會跟著槽型的taper走，不會疊成一塊平頂的矩形。這仍然是幾何上的理想化，不是力學模擬——沒有算線材張力、插入順序、摩擦力或漆膜受壓變形。',
+    en: '💡 Wires are arranged on a true hexagonal close-packed lattice (the densest regular circle packing). For double-layer slots, the lattice is rotated to follow each coil side’s own slanted wall, so the whole wall-hugging column stays flush along its entire length (not just at one point) and tapers with the slot shape. Still a geometric idealization, not a physics simulation — no wire tension, insertion order, friction, or enamel deformation.',
+    zh: '💡 線材是照真正的六方最密堆積格點排列（圓形排列理論上最密的規則排法）。雙層繞組時，格點會跟著每個線圈邊自己的斜槽壁旋轉，讓貼牆那一整欄都沿著槽壁貼齊（不只貼到一點），並跟著槽型收窄。這仍然是幾何上的理想化，不是力學模擬——沒有算線材張力、插入順序、摩擦力或漆膜受壓變形。',
   },
   statsTitle:   { en: 'Stats', zh: '統計' },
   legendLam:    { en: 'Lamination', zh: '鐵芯' },
@@ -282,10 +282,11 @@ function computeAll() {
     var leftArea = clipPolygonMaxX(packableArea, splitX - gap);
     var rightArea = clipPolygonMinX(packableArea, splitX + gap);
     var perSide = Math.round(count / 2);
-    var packL = hexLatticePack(leftArea, diameter, perSide);
-    // hexLatticePack 永遠貼「x較小」那側——右半邊真正的槽壁在大x那側
-    // （x較小那側是中間的間隙，不是槽壁），所以鏡射過去跑、結果再鏡射回來
-    var packRRaw = hexLatticePack(mirrorPolygonX(rightArea), diameter, count - perSide);
+    var packL = hexLatticePackAlongWall(leftArea, diameter, perSide);
+    // hexLatticePackAlongWall 永遠貼「槽底角x較小那端」算出來的槽壁——
+    // 右半邊真正的槽壁在大x那側（x較小那側是中間的間隙，不是槽壁），
+    // 所以鏡射過去跑、結果再鏡射回來
+    var packRRaw = hexLatticePackAlongWall(mirrorPolygonX(rightArea), diameter, count - perSide);
     var packR = {
       placed: packRRaw.placed.map(function (c) { return { x: -c.x, y: c.y, d: c.d }; }),
       placedCount: packRRaw.placedCount,

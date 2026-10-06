@@ -86,7 +86,7 @@
       <div class="param-row-2"><span class="param-label" data-i18n="enamelThk">Enamel thk., one side [mm]</span>
         <input type="text" class="param-input" id="w_enamel" value="0.025"></div>
       <div class="param-row-2"><span class="param-label" data-i18n="turnsPerSlot">Turns / slot</span>
-        <input type="text" class="param-input" id="w_turns" value="28"></div>
+        <input type="text" class="param-input" id="w_turns" value="32"></div>
       <div class="param-row-2"><span class="param-label" data-i18n="coilsPerSlot">Coils / slot</span>
         <input type="text" class="param-input" id="w_coils" value="2"></div>
       <div class="hint-text" data-i18n="coilsSplitHint">
@@ -117,9 +117,9 @@
 
     <div class="hint-text" data-i18n="toolHint" style="margin:0 0 2px">
       💡 Wires are arranged on a true hexagonal close-packed lattice (the densest regular circle
-      packing), flush against the wall. Fill order is column by column — the wall-hugging column
-      fills to its own full height before the next column starts, so it follows the slot's taper
-      instead of forming a flat-topped block. Still a geometric idealization, not a physics
+      packing). For double-layer slots, the lattice is rotated to follow each coil side's own
+      slanted wall, so the whole wall-hugging column stays flush along its entire length (not just
+      at one point) and tapers with the slot shape. Still a geometric idealization, not a physics
       simulation — no wire tension, insertion order, friction, or enamel deformation.
     </div>
 
