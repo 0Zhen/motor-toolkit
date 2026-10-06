@@ -238,20 +238,45 @@ function distanceToPolygonBoundary(p, points) {
 }
 
 /**
+ * 跟 horizontalSpans 方向相反：固定 x，掃描跟多邊形邊界的交點，回傳由
+ * 小到大排序的 [yTop,yBottom] 區間（even-odd 規則）。settlePack 用這個
+ * 直接算出「這個 x 在槽型裡的真實有效範圍」，不用去猜「哪一側通常比
+ * 較寬、可以當基準做二分搜尋」——猜錯基準side是之前版本踩過的bug（開
+ * 口喉頸縮讓『槽口端』不是可靠基準；槽壁側貼牆方向的沉降又讓『槽壁
+ * 端』不是可靠基準），直接掃描交點就不用賭哪一側安全。
+ */
+function verticalSpans(points, x) {
+  const n = points.length;
+  const ys = [];
+  for (let i = 0; i < n; i++) {
+    const a = points[i], b = points[(i + 1) % n];
+    const x1 = a.x, x2 = b.x;
+    if ((x1 <= x && x2 > x) || (x2 <= x && x1 > x)) {
+      const t = (x - x1) / (x2 - x1);
+      ys.push(a.y + t * (b.y - a.y));
+    }
+  }
+  ys.sort((p, q) => p - q);
+  const spans = [];
+  for (let i = 0; i + 1 < ys.length; i += 2) spans.push([ys[i], ys[i + 1]]);
+  return spans;
+}
+
+/**
  * 逐顆「沉降」模擬：每一條新線材從槽口端開始往槽底方向落下，貼著槽壁
  * /槽底、或已經放好的線材停住——不是套固定格點公式，是真的模擬「線
- * 一條條塞進去、滾到最深處」的物理直覺，貼牆/貼鄰線是自然結果，不需
- * 要另外偵測槽壁方向或做座標旋轉（跟之前的六方格點版本最大的差異，
- * 也因此同一套函式不管槽壁是什麼角度、雙層分割後兩側的「牆」在哪一
- * 邊，都不用特殊處理）。
+ * 一條條塞進去、滾到最深處」的物理直覺，貼牆/貼鄰線是自然結果。沉降
+ * 方向固定是「y 遞增」；如果要改成貼某一側槽壁沉降，呼叫端把多邊形
+ * 轉90度（見下面 settlePackTowardWall）再呼叫這個函式即可，不用在這
+ * 裡另外加方向參數。
  *
  * 作法（每次只放一顆，放的時候全槽寬都掃過一輪）：
  *   1. 對一組取樣 x（橫跨整個可用寬度），各自獨立算「這個 x 能落到多
- *      深」：先找槽型本身（不管其他線材）在這個 x 能到的最大 y
- *      （polyMaxValidY，用二分搜尋貼齊槽底/槽壁，不是只看槽口那一點
- *      ——槽口附近的喉部殘留頸縮不該卡住整條 x 柱，頸縮只是局部現象，
- *      底下變寬之後一樣能用），再檢查附近已放置線材會不會把這個 x 卡
- *      在更淺的位置（跟某顆鄰線相切的高度）。
+ *      深」：先用 verticalSpans 找出槽型本身（不管其他線材）在這個 x
+ *      的真實有效 y 區間（取最靠近槽底、即 y 最大的那一段），再從區
+ *      間內部（保證合法的中點）二分搜尋出貼著邊界、容許半徑誤差的最
+ *      大 y，最後檢查附近已放置線材會不會把這個 x 卡在更淺的位置
+ *      （跟某顆鄰線相切的高度，且那個高度本身仍要在槽型合法範圍內）。
  *   2. 取所有取樣 x 裡「能落最深（y 最大）」的那一個，當作這顆新線材
  *      實際落地的位置——這就是「滾到最深處」的貼合判斷，不用真的做
  *      逐步迭代的物理模擬。
@@ -274,8 +299,6 @@ function settlePack(points, diameter, count) {
   if (!(diameter > 0) || points.length < 3) return result;
 
   const bbox = polygonBBox(points);
-  const safeY = bbox.maxY - r;   // 靠近槽底的參考高度，用來起算槽型本身的可用範圍（不受槽口喉部頸縮影響）
-  const floorY = bbox.maxY + r;  // 二分搜尋的保底上界（通常已經在多邊形外）
   const xMin = bbox.minX + r, xMax = bbox.maxX - r;
   if (!(xMax > xMin)) return result;
 
@@ -286,10 +309,14 @@ function settlePack(points, diameter, count) {
     return pointInPolygon(p, points) && distanceToPolygonBoundary(p, points) >= r - 1e-9;
   }
   function polyMaxValidY(x) {
-    if (!validAt(x, safeY)) return null;
-    if (validAt(x, floorY)) return floorY;
-    let lo = safeY, hi = floorY;
-    for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (validAt(x, mid)) lo = mid; else hi = mid; }
+    const spans = verticalSpans(points, x);
+    let best = null;
+    for (let i = 0; i < spans.length; i++) { const s = spans[i]; if (!best || s[1] > best[1]) best = s; }
+    if (!best) return null;
+    const mid = (best[0] + best[1]) / 2; // 區間內部，保證合法
+    if (!validAt(x, mid)) return null;
+    let lo = mid, hi = best[1] + r; // 保底超出邊界
+    for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (validAt(x, m)) lo = m; else hi = m; }
     return lo;
   }
 
@@ -355,4 +382,49 @@ function settlePack(points, diameter, count) {
   result.placed = placed.map(p => ({ x: p.x, y: p.y, d: diameter }));
   result.placedCount = result.placed.length;
   return result;
+}
+
+/**
+ * settlePack 本身固定沉降方向是「y 遞增」。這兩組旋轉/還原函式把「貼左
+ * 牆（x 較小）沉降」「貼右牆（x 較大）沉降」轉成 settlePack 聽得懂的
+ * 座標系（90 度旋轉或對角線鏡射，都是保距變換，不影響半徑/重疊判斷），
+ * 算完再把結果轉換回真正的槽型座標——不用為了「往哪個方向沉降」另外
+ * 重寫一份 settlePack。
+ *   左牆：(x,y) → (y,−x)，還原 (a,b) → (−b,a)。
+ *   右牆：(x,y) → (y, x)，自己就是自己的還原（對角線鏡射）。
+ */
+function rotateForLeftWallSettle(points) {
+  return points.map(p => ({ x: p.y, y: -p.x }));
+}
+function unrotateFromLeftWallSettle(p) {
+  return { x: -p.y, y: p.x };
+}
+function rotateForRightWallSettle(points) {
+  return points.map(p => ({ x: p.y, y: p.x }));
+}
+function unrotateFromRightWallSettle(p) {
+  return { x: p.y, y: p.x };
+}
+
+/**
+ * 貼槽壁沉降：跟 settlePack 的差別只在沉降方向（往某一側槽壁而不是往
+ * 槽底），用來給雙層繞組的左右線圈邊各自貼自己真正的外側槽壁——不管
+ * 牆是什麼角度都適用，因為旋轉之後核心演算法完全沒變。
+ * @param {Array<{x,y}>} points 單一線圈邊的槽型頂點（已切半）
+ * @param {number} diameter 線材外徑（mm，含漆膜）
+ * @param {number} [count] 要擺的線材總數；省略時回傳這一側的全部容量
+ * @param {'left'|'right'} side 'left'＝貼 x 較小那側槽壁，'right'＝貼 x 較大那側
+ * @returns {{placed:Array<{x,y,d}>, placedCount:number, requestedCount:number, maxCapacity:number}}
+ */
+function settlePackTowardWall(points, diameter, count, side) {
+  const rotate = side === 'right' ? rotateForRightWallSettle : rotateForLeftWallSettle;
+  const unrotate = side === 'right' ? unrotateFromRightWallSettle : unrotateFromLeftWallSettle;
+  const localPts = rotate(points);
+  const res = settlePack(localPts, diameter, count);
+  return {
+    placed: res.placed.map(p => { const u = unrotate(p); return { x: u.x, y: u.y, d: p.d }; }),
+    placedCount: res.placedCount,
+    requestedCount: res.requestedCount,
+    maxCapacity: res.maxCapacity,
+  };
 }

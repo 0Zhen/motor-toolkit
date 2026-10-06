@@ -51,8 +51,8 @@ var MT_I18N = {
     zh: 'Liner 是真的把槽型輪廓向內偏移出來的幾何（下方綠色區域），不是從槽滿率扣一個數字而已——線材是塞在這個內縮後的區域裡。',
   },
   toolHint:     {
-    en: '💡 Each wire is simulated settling from the slot opening toward the bottom, coming to rest against the slot wall, the floor, or whichever wires are already placed — so it naturally hugs any wall angle and nests into the gaps between neighbors, without a fixed lattice pattern. For double-layer slots, each coil side settles independently. Still a geometric idealization, not a physics simulation — no wire tension, insertion order, friction, or enamel deformation.',
-    zh: '💡 每條線材是用沉降模擬排列：從槽口往槽底方向落下，貼著槽壁、槽底、或已經放好的線材停住——不管槽壁是什麼角度都會自然貼合，也會自然嵌進鄰線間的縫隙，不是套固定格點樣式。雙層繞組時，左右兩個線圈邊各自獨立沉降。這仍然是幾何上的理想化，不是力學模擬——沒有算線材張力、插入順序、摩擦力或漆膜受壓變形。',
+    en: '💡 Each wire is simulated settling into place, coming to rest against the slot wall (or the floor, for single-layer slots) and whichever wires are already placed — so it naturally hugs any wall angle and nests into the gaps between neighbors, without a fixed lattice pattern. For double-layer slots, each coil side settles independently toward its own outer wall. Still a geometric idealization, not a physics simulation — no wire tension, insertion order, friction, or enamel deformation.',
+    zh: '💡 每條線材是用沉降模擬排列：貼著槽壁（單層時則貼槽底）、或已經放好的線材停住——不管槽壁是什麼角度都會自然貼合，也會自然嵌進鄰線間的縫隙，不是套固定格點樣式。雙層繞組時，左右兩個線圈邊各自獨立往自己的外側槽壁沉降。這仍然是幾何上的理想化，不是力學模擬——沒有算線材張力、插入順序、摩擦力或漆膜受壓變形。',
   },
   statsTitle:   { en: 'Stats', zh: '統計' },
   legendLam:    { en: 'Lamination', zh: '鐵芯' },
@@ -266,16 +266,15 @@ function computeAll() {
   var circleArea = Math.PI / 4 * diameter * diameter;
   var fillPctArea = count * circleArea / windingArea * 100;
 
-  // 逐顆沉降模擬：每條線材從槽口端往槽底方向落下，貼著槽壁/槽底或已
-  // 放置的線材停住，只決定於線徑/槽型本身，不用使用者設定層數/欄數
-  // ——這就是整個重新設計要的「只設定匝數，工具自動排出來」。沉降演
-  // 算法本身就會自動貼合任何角度的槽壁，不用另外偵測牆的方向。
-  // pack.maxCapacity 是同一套流程跑「不限數量」算出來的，直接回答
-  // 「這個槽到底塞不塞得下」。
+  // 逐顆沉降模擬：每條線材落下，貼著槽壁/槽底或已放置的線材停住，只
+  // 決定於線徑/槽型本身，不用使用者設定層數/欄數——這就是整個重新設
+  // 計要的「只設定匝數，工具自動排出來」。pack.maxCapacity 是同一套
+  // 流程跑「不限數量」算出來的，直接回答「這個槽到底塞不塞得下」。
   // 雙層繞組（Coils/slot >= 2）：繞線窗先切成左右兩個獨立線圈邊（中間
-  // 留一道 liner 厚度一半當間隙），各自沉降、各自算自己的容量——理論
-  // 上只會佔其中一邊，不是整個繞線窗混在一起看起來像單層。單層
-  // （Coils/slot <= 1）：整個繞線窗當一池子沉降，維持原樣。
+  // 留一道 liner 厚度一半當間隙），各自往自己真正的外側槽壁沉降
+  // （settlePackTowardWall）、各自算自己的容量——理論上只會佔其中一
+  // 邊，不是整個繞線窗混在一起看起來像單層。單層（Coils/slot <= 1）：
+  // 沒有單一偏向的槽壁可貼，整個繞線窗當一池子往槽底沉降，維持原樣。
   var pack;
   if (coils >= 2) {
     var packBbox = polygonBBox(packableArea);
@@ -284,8 +283,8 @@ function computeAll() {
     var leftArea = clipPolygonMaxX(packableArea, splitX - gap);
     var rightArea = clipPolygonMinX(packableArea, splitX + gap);
     var perSide = Math.round(count / 2);
-    var packL = settlePack(leftArea, diameter, perSide);
-    var packR = settlePack(rightArea, diameter, count - perSide);
+    var packL = settlePackTowardWall(leftArea, diameter, perSide, 'left');
+    var packR = settlePackTowardWall(rightArea, diameter, count - perSide, 'right');
     pack = {
       placed: packL.placed.concat(packR.placed),
       placedCount: packL.placedCount + packR.placedCount,
