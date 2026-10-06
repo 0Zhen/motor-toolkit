@@ -306,14 +306,28 @@ function hexLatticePack(points, diameter, count) {
     rowIndex++;
   }
 
-  // 欄的順序：colKey 由小到大＝從貼牆那欄往另一側走；欄內由下往上（y
-  // 較大、離槽底較近的先）——這樣疊到一半被 count 截斷時，缺口會出現
-  // 在「還沒輪到的欄」，而不是每欄都疊一點、整齊切齊在同一個高度。
+  // colKey 每隔半徑(r)一欄，相鄰兩欄（0&1、2&3...）其實是六方格點裡
+  // 真正交錯的一對排（彼此距離恰好=diameter），合在一起才是人眼看到的
+  //「貼牆那一層」——如果照 colKey 一欄一欄分開填滿（先填完 0 才碰 1），
+  // 畫面上會先出現一排看起來稀疏、充滿大縫隙的點（因為只填了交錯排的
+  // 其中一半），容易誤以為「這層還沒填滿就跳到下一層」。所以用
+  // pairKey=floor(colKey/2) 把相鄰兩欄併成一組，組內照 y 由大到小（離
+  // 槽底近的先）混合排序，兩欄的點會自然按實際高度交錯疊出，視覺上才
+  // 是真正貼牆的密排鋸齒；組與組之間仍保留「貼牆那組先疊滿才換下一組」
+  // 的順序，維持原本「疊到一半被 count 截斷，缺口留在還沒輪到的區域」
+  // 的設計目的。
+  const pairGroups = new Map(); // pairKey -> {x,y}[]
+  columns.forEach((col, key) => {
+    const pairKey = Math.floor(key / 2);
+    if (!pairGroups.has(pairKey)) pairGroups.set(pairKey, []);
+    const group = pairGroups.get(pairKey);
+    col.ys.forEach(cy => group.push({ x: col.x, y: cy }));
+  });
   const slots = [];
-  Array.from(columns.keys()).sort((a, b) => a - b).forEach(key => {
-    const col = columns.get(key);
-    col.ys.sort((a, b) => b - a);
-    col.ys.forEach(cy => slots.push({ x: col.x, y: cy }));
+  Array.from(pairGroups.keys()).sort((a, b) => a - b).forEach(pairKey => {
+    const group = pairGroups.get(pairKey);
+    group.sort((a, b) => b.y - a.y);
+    group.forEach(p => slots.push(p));
   });
 
   result.maxCapacity = slots.length;
