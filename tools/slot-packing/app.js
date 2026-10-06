@@ -233,6 +233,36 @@ function openingWidthOf(poly) {
   return 0;
 }
 
+/* 畫一條水平尺寸標註：兩端垂直延伸線（從特徵本身的 yFeature 連到尺寸線
+ * 所在的 yDim）＋主尺寸線＋兩端短撇＋置中數字。延伸線跨過其他幾何（例
+ *如內縮梯形較窄處的延伸線會跨過下方較寬的本體）是常見、可接受的畫
+ * 法，不特別避開。 */
+function dimH(x1, x2, yFeature, yDim, label, tick, fontSize) {
+  var midX = (x1 + x2) / 2;
+  return (
+    '<line class="dim-ext" x1="' + x1 + '" y1="' + yFeature + '" x2="' + x1 + '" y2="' + yDim + '"></line>' +
+    '<line class="dim-ext" x1="' + x2 + '" y1="' + yFeature + '" x2="' + x2 + '" y2="' + yDim + '"></line>' +
+    '<line class="dim-line" x1="' + x1 + '" y1="' + yDim + '" x2="' + x2 + '" y2="' + yDim + '"></line>' +
+    '<line class="dim-line" x1="' + x1 + '" y1="' + (yDim - tick) + '" x2="' + x1 + '" y2="' + (yDim + tick) + '"></line>' +
+    '<line class="dim-line" x1="' + x2 + '" y1="' + (yDim - tick) + '" x2="' + x2 + '" y2="' + (yDim + tick) + '"></line>' +
+    '<text class="dim-text" x="' + midX + '" y="' + yDim + '" font-size="' + fontSize + '">' + label + '</text>'
+  );
+}
+/** 跟 dimH 同一套畫法，軸互換；文字旋轉-90度直式顯示（由下往上讀，標準工程圖慣例）。
+ *  xFeature1/xFeature2 分開給，因為量垂直距離時兩端對應的槽型寬度通常不同
+ *（例如開口高：上端在本體上寬處、下端在開口寬處，不是同一個x）。 */
+function dimV(y1, y2, xFeature1, xFeature2, xDim, label, tick, fontSize) {
+  var midY = (y1 + y2) / 2;
+  return (
+    '<line class="dim-ext" x1="' + xFeature1 + '" y1="' + y1 + '" x2="' + xDim + '" y2="' + y1 + '"></line>' +
+    '<line class="dim-ext" x1="' + xFeature2 + '" y1="' + y2 + '" x2="' + xDim + '" y2="' + y2 + '"></line>' +
+    '<line class="dim-line" x1="' + xDim + '" y1="' + y1 + '" x2="' + xDim + '" y2="' + y2 + '"></line>' +
+    '<line class="dim-line" x1="' + (xDim - tick) + '" y1="' + y1 + '" x2="' + (xDim + tick) + '" y2="' + y1 + '"></line>' +
+    '<line class="dim-line" x1="' + (xDim - tick) + '" y1="' + y2 + '" x2="' + (xDim + tick) + '" y2="' + y2 + '"></line>' +
+    '<text class="dim-text" x="' + xDim + '" y="' + midY + '" font-size="' + fontSize + '" transform="rotate(-90 ' + xDim + ' ' + midY + ')">' + label + '</text>'
+  );
+}
+
 /* ── SVG 繪製：紅=鐵芯、綠=liner內縮後的繞線窗、黃=導線（仿 Motor-CAD 配色） ── */
 function renderSvg(innerPoly, pack, needleRect) {
   var svg = $('packingSvg');
@@ -240,8 +270,15 @@ function renderSvg(innerPoly, pack, needleRect) {
 
   var bbox = polygonBBox(vertices);
   var w = bbox.maxX - bbox.minX, h = bbox.maxY - bbox.minY;
-  var pad = Math.max(w, h, 1) * 0.12;
-  var vx = bbox.minX - pad, vy = bbox.minY - pad, vw = w + 2 * pad, vh = h + 2 * pad;
+  var maxDim = Math.max(w, h, 1);
+  // 參數化模式會在圖外圍標尺寸，需要比自訂頂點模式更大的留白空間才放
+  // 得下尺寸線跟文字——上方堆兩條（開口寬、上寬）、下方一條（下寬）、
+  // 左右各一條（開口高、槽深）。
+  var padTop = maxDim * (shapeMode === 'param' ? 0.34 : 0.12);
+  var padBottom = maxDim * (shapeMode === 'param' ? 0.18 : 0.12);
+  var padLeft = maxDim * (shapeMode === 'param' ? 0.22 : 0.16);
+  var padRight = maxDim * (shapeMode === 'param' ? 0.22 : 0.12);
+  var vx = bbox.minX - padLeft, vy = bbox.minY - padTop, vw = w + padLeft + padRight, vh = h + padTop + padBottom;
   svg.setAttribute('viewBox', vx + ' ' + vy + ' ' + vw + ' ' + vh);
 
   var strokeW = Math.max(w, h, 1) * 0.01;
@@ -262,6 +299,27 @@ function renderSvg(innerPoly, pack, needleRect) {
   if (needleRect) {
     html += '<rect class="slot-needle-channel" x="' + needleRect.x + '" y="' + needleRect.y + '" width="' + needleRect.width + '" height="' + needleRect.height + '" style="stroke-width:' + (strokeW * 0.6) + '"></rect>';
   }
+
+  var dimStrokeW = strokeW * 0.5, fontSize = maxDim * 0.045, tick = fontSize * 0.4;
+  if (shapeMode === 'param') {
+    var openW = num('p_openWidth', 3), openH = num('p_openHeight', 1.5);
+    var topW = num('p_topWidth', 4), bottomW = num('p_bottomWidth', 7), depthV = num('p_depth', 12);
+    html += '<g style="stroke-width:' + dimStrokeW + '">' +
+      dimH(-openW / 2, openW / 2, 0, -maxDim * 0.10, fmt(openW, 2), tick, fontSize) +
+      dimH(-topW / 2, topW / 2, openH, -maxDim * 0.24, fmt(topW, 2), tick, fontSize) +
+      dimH(-bottomW / 2, bottomW / 2, depthV, depthV + maxDim * 0.09, fmt(bottomW, 2), tick, fontSize) +
+      dimV(0, openH, -openW / 2, -topW / 2, bbox.minX - maxDim * 0.10, fmt(openH, 2), tick, fontSize) +
+      dimV(0, depthV, openW / 2, bottomW / 2, bbox.maxX + maxDim * 0.10, fmt(depthV, 2), tick, fontSize) +
+      '</g>';
+  } else if (shapeMode === 'custom') {
+    html += '<g style="stroke-width:' + dimStrokeW + '">' +
+      vertices.map(function (v) {
+        return '<circle cx="' + v.x + '" cy="' + v.y + '" r="' + (fontSize * 0.12) + '" fill="#3f4d66" stroke="none"></circle>' +
+          '<text class="vertex-label" x="' + v.x + '" y="' + (v.y - fontSize * 0.7) + '" font-size="' + (fontSize * 0.8) + '">(' + fmt(v.x, 2) + ', ' + fmt(v.y, 2) + ')</text>';
+      }).join('') +
+      '</g>';
+  }
+
   svg.innerHTML = html;
 }
 

@@ -300,6 +300,18 @@ body > * { min-width: 0; }
   fill: #6f9bd1;
   stroke: #3b6fa8;
 }
+/* 參數化模式的尺寸標註／自訂頂點模式的座標標籤——固定淺灰藍色，跟材料
+   配色（紅/綠/黃/藍）區分開，兩種模式不會同時出現。 */
+.dim-line, .dim-ext {
+  stroke: #5a6b8c;
+  fill: none;
+}
+.dim-text, .vertex-label {
+  fill: #3f4d66;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: inherit;
+}
 
 /* ══════════════════════════════════════════════════════════
    Dark theme overrides
