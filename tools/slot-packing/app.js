@@ -56,6 +56,7 @@ var MT_I18N = {
     en: 'The liner is modeled as a real inward offset of the slot outline (shown in green below), not just a number subtracted from the fill % — turns are packed inside that offset shape.',
     zh: 'Liner 是真的把槽型輪廓向內偏移出來的幾何（下方綠色區域），不是從槽滿率扣一個數字而已——線材是塞在這個內縮後的區域裡。',
   },
+  checkDcrBtn:  { en: 'Check DCR with these turns →', zh: '用這組匝數去DCR計算機確認電阻 →' },
   toolHint:     {
     en: '💡 Each wire is simulated settling into place, coming to rest against the slot wall (or the floor, for single-layer slots) and whichever wires are already placed — so it naturally hugs any wall angle and nests into the gaps between neighbors, without a fixed lattice pattern. For double-layer slots, each coil side settles independently toward its own outer wall. Still a geometric idealization, not a physics simulation — no wire tension, insertion order, friction, or enamel deformation.',
     zh: '💡 每條線材是用沉降模擬排列：貼著槽壁（單層時則貼槽底）、或已經放好的線材停住——不管槽壁是什麼角度都會自然貼合，也會自然嵌進鄰線間的縫隙，不是套固定格點樣式。雙層繞組時，左右兩個線圈邊各自獨立往自己的外側槽壁沉降。這仍然是幾何上的理想化，不是力學模擬——沒有算線材張力、插入順序、摩擦力或漆膜受壓變形。',
@@ -673,6 +674,30 @@ function computeAll() {
 }
 
 /* ── 事件綁定 ── */
+/* ── 跟 DCR Calculator 的雙向連結 ──
+ * 兩個工具都要輸入同一組線材參數（匝數/線圈數/股數/裸銅徑/漆膜厚
+ * 度），用URL query string帶一次性的「現在這組數字」過去確認，不做成
+ * 持久共用的localStorage——不是要兩個工具隨時同步狀態。 */
+window.openInDcrCalculator = function () {
+  var params = new URLSearchParams();
+  params.set('turns', num('w_turns', 0));
+  params.set('coils', num('w_coils', 1));
+  params.set('strands', num('w_strands', 1));
+  params.set('bareDia', num('w_bareDia', 0.7));
+  params.set('enamel', num('w_enamel', 0.025));
+  window.open('../dcr-calculator/index.html?' + params.toString(), '_blank');
+};
+/** 從 DCR Calculator 帶過來的參數：有帶到的欄位覆蓋掉預設值，其餘（槽
+ *  型本身、liner、導針通道……）維持不變，在 generateFromParametric()
+ *  跑第一次 computeAll() 之前先套用，不然畫面會先閃一次預設值。 */
+function applyIncomingParams() {
+  var p = new URLSearchParams(window.location.search);
+  var keys = { turns: 'w_turns', coils: 'w_coils', strands: 'w_strands', bareDia: 'w_bareDia', enamel: 'w_enamel' };
+  Object.keys(keys).forEach(function (k) {
+    if (p.has(k)) { var v = parseFloat(p.get(k)); if (isFinite(v)) $(keys[k]).value = v; }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
   $('btnGenerate').addEventListener('click', generateFromParametric);
   $('btnAddPoint').addEventListener('click', addVertexPoint);
@@ -684,6 +709,7 @@ document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('mt-lang-change', computeAll);
   document.addEventListener('mt-theme-change', function () { computeAll(); });
 
+  applyIncomingParams();
   generateFromParametric(); // 進頁面先用預設梯形參數產生一組起始外形，不留空白畫面
 });
 

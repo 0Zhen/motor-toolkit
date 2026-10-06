@@ -39,6 +39,7 @@ var MT_I18N = {
   bareDia:         { en: 'Bare copper dia. [mm]',        zh: '裸銅徑 [mm]' },
   enamelThk:       { en: 'Enamel thk., one side [mm]',   zh: '漆膜厚度（單邊）[mm]' },
   material:        { en: 'Material',                      zh: '材質' },
+  checkSlotFitBtn: { en: 'Check slot fit →',               zh: '去槽內排列工具確認塞不塞得下 →' },
 
   geomTitle:       { en: 'Geometry',                      zh: '幾何尺寸' },
   stackLength:     { en: 'Stack length [mm]',             zh: '疊長 [mm]' },
@@ -197,6 +198,33 @@ function switchMode(mode) {
   $('fullResults').style.display = mode === 'full' ? '' : 'none';
   computeAll();
   if (typeof gaTrack === 'function') gaTrack('dcr_mode', mode);
+}
+
+/* ── 跟 Slot Packing Viewer 的雙向連結 ──
+ * 兩個工具都要輸入同一組線材參數（匝數/線圈數/股數/裸銅徑/漆膜厚
+ * 度），用URL query string帶過去，不做成持久共用的localStorage——帶
+ * 一次性的「現在這組數字」過去確認，不是要兩個工具隨時同步,使用者改
+ * 其中一個也不會悄悄動到另一個分頁或下次造訪的狀態。 */
+function openInSlotPacking() {
+  var params = new URLSearchParams();
+  params.set('turns', num('f_Nslot', 0));
+  params.set('coils', num('f_coilsSlot', 1));
+  params.set('strands', num('f_strands', 1));
+  params.set('bareDia', num('f_dbare', 0.7));
+  params.set('enamel', num('f_enamel', 0.025));
+  window.open('../slot-packing/index.html?' + params.toString(), '_blank');
+}
+/** 從 Slot Packing Viewer 帶過來的參數：只要網址帶了任何一個就切到
+ *  Full 模式（Quick 模式是單一目標值的校準介面，塞不下匝數/線圈數/股
+ *  數這一整組），其餘沒帶到的欄位維持原本預設值不動。 */
+function applyIncomingParams() {
+  var p = new URLSearchParams(window.location.search);
+  var keys = { turns: 'f_Nslot', coils: 'f_coilsSlot', strands: 'f_strands', bareDia: 'f_dbare', enamel: 'f_enamel' };
+  var any = false;
+  Object.keys(keys).forEach(function (k) {
+    if (p.has(k)) { var v = parseFloat(p.get(k)); if (isFinite(v)) { $(keys[k]).value = v; any = true; } }
+  });
+  if (any) switchMode('full');
 }
 
 /* ── 摺疊區塊 ── */
@@ -447,5 +475,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
   document.addEventListener('mt-lang-change', computeAll);
 
+  applyIncomingParams();
   computeAll();
 });
