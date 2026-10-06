@@ -229,6 +229,16 @@ body > * { min-width: 0; }
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent) inset;
 }
+.results-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.result-card-svg { flex: 1 1 60%; min-width: 0; }
+.result-card-stats { flex: 1 1 40%; min-width: 230px; }
+@media (max-width: 860px) {
+  .results-row { flex-direction: column; }
+}
 .result-card-label {
   font-size: 12.5px;
   font-weight: 600;
