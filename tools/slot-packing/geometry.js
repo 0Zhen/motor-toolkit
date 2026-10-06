@@ -229,14 +229,17 @@ function clipPolygonMinX(points, minX) {
  * 多邊形裡——不是逐排/逐欄湊數字，是業界畫線材截面示意圖常見的那種
  * 真實交錯堆疊。
  *
- * 格點定義（以 x=0 為中心對稱、y 往下遞增）：
+ * 格點定義（以傳入多邊形自己的 bbox 中心為原點對稱、y 往下遞增）：
  *   row pitch = diameter × √3/2（正三角形排列的標準直向間距）
- *   偶數排：x = 0, ±d, ±2d, ...
- *   奇數排：x = ±d/2, ±3d/2, ...（跟偶數排整整錯開半個直徑）
- * 這個格點本身就是數學上證明過的最密圓形排列之一，相鄰格點之間的
- * 距離「恆等於」diameter（不管同排還是跨排），所以不需要逐一碰撞
- * 檢查——整個格點清單先生成好、只篩選落在多邊形內部的，彼此之間保
- * 證不會重疊。
+ *   偶數排：x = originX, originX±d, originX±2d, ...
+ *   奇數排：x = originX±d/2, originX±3d/2, ...（跟偶數排整整錯開半個直徑）
+ * 原點用「這個多邊形自己」的 bbox 中心，不是寫死全域 x=0——雙層繞組
+ * 左右分裂後各自呼叫一次，若原點不跟著重新置中，格點相位是從整個
+ * 繞線窗繼承來的，會讓某一半的堆疊明顯偏向某一側、兩側槽壁貼合不
+ * 均勻（曾經就是這樣踩到的坑）。這個格點本身就是數學上證明過的最密
+ * 圓形排列之一，相鄰格點之間的距離「恆等於」diameter（不管同排還是
+ * 跨排），所以不需要逐一碰撞檢查——整個格點清單先生成好、只篩選落在
+ * 多邊形內部的，彼此之間保證不會重疊。
  *
  * 排序：由下往上（貼槽底）、同一排貼其中一側槽壁（x 較小那側）開始
  * 往另一側排過去——所以 count 不夠疊滿整個槽時，會自然呈現「貼槽底、
@@ -255,6 +258,7 @@ function hexLatticePack(points, diameter, count) {
   const r = diameter / 2;
   const rowPitch = diameter * Math.sqrt(3) / 2;
   const bbox = polygonBBox(points);
+  const originX = (bbox.minX + bbox.maxX) / 2; // 格點相位以這個多邊形自己的中心為準
 
   const slots = []; // 全部格點（不管 count，先找出整個槽的真實容量）
   let rowIndex = 0;
@@ -264,9 +268,9 @@ function hexLatticePack(points, diameter, count) {
     const spans = horizontalSpans(points, y).filter(([a, b]) => b - a >= diameter - 1e-9);
     const rowXs = [];
     spans.forEach(([left, right]) => {
-      const mMin = Math.ceil((left + r - offset) / diameter - 1e-9);
-      const mMax = Math.floor((right - r - offset) / diameter + 1e-9);
-      for (let m = mMin; m <= mMax; m++) rowXs.push(offset + m * diameter);
+      const mMin = Math.ceil((left + r - originX - offset) / diameter - 1e-9);
+      const mMax = Math.floor((right - r - originX - offset) / diameter + 1e-9);
+      for (let m = mMin; m <= mMax; m++) rowXs.push(originX + offset + m * diameter);
     });
     rowXs.sort((a, b) => a - b); // 同一排貼其中一側槽壁（x小的那側）開始，往另一側排過去
     rowXs.forEach(x => slots.push({ x, y }));
