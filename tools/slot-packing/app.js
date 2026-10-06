@@ -26,6 +26,7 @@ var MT_I18N = {
   colX:         { en: 'X [mm]', zh: 'X [mm]' },
   colY:         { en: 'Y [mm]', zh: 'Y [mm]' },
   addPointBtn:  { en: '+ Add point', zh: '+ 新增頂點' },
+  undoBtn:      { en: '↶ Undo', zh: '↶ 復原' },
   vertexHint:   {
     en: 'Points connect in order and close back to the first one. No self-intersection check — keep them tracing a simple outline.',
     zh: '頂點依序連接，最後一個會連回第一個。沒有自我相交檢查，請確保連起來是一個單純的輪廓，不要交叉。',
@@ -126,6 +127,25 @@ var mtT = window.mtT || function (k) { return (MT_I18N[k] && MT_I18N[k].en) || k
 var shapeMode = 'param';
 var vertices = [];
 
+/* ── 頂點清單復原（Undo）──
+ * 只管頂點清單本身（編輯座標／新增／刪除／按Generate整個覆蓋掉），不
+ * 管線材/槽型參數等其他欄位——這是使用者最容易「不小心弄丟工作」的地
+ * 方（尤其是切回參數化按Generate，會直接覆蓋掉所有自訂編輯）。 */
+var vertexHistory = [];
+var MAX_VERTEX_HISTORY = 50;
+function pushVertexHistory() {
+  vertexHistory.push(vertices.map(function (v) { return { x: v.x, y: v.y }; }));
+  if (vertexHistory.length > MAX_VERTEX_HISTORY) vertexHistory.shift();
+  $('btnUndoVertex').disabled = false;
+}
+function undoVertices() {
+  if (!vertexHistory.length) return;
+  vertices = vertexHistory.pop();
+  $('btnUndoVertex').disabled = vertexHistory.length === 0;
+  renderVertexTable();
+  computeAll();
+}
+
 function num(id, fallback) {
   var v = parseFloat($(id).value);
   return isFinite(v) ? v : fallback;
@@ -164,6 +184,9 @@ function renderVertexTable() {
   body.innerHTML = html;
 
   body.querySelectorAll('input').forEach(function (inp) {
+    // 在開始編輯那一刻（focus）存一次快照，不是每個按鍵都存——這樣一次
+    // 「復原」會退回到那格開始編輯之前的狀態，不是只退回最後一個字元。
+    inp.addEventListener('focus', function () { pushVertexHistory(); });
     inp.addEventListener('input', function () {
       var i = parseInt(this.dataset.i, 10), axis = this.dataset.axis;
       var v = parseFloat(this.value);
@@ -173,6 +196,7 @@ function renderVertexTable() {
   body.querySelectorAll('.vertex-del-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       if (vertices.length <= 3) return; // 至少留3點才能成形
+      pushVertexHistory();
       vertices.splice(parseInt(this.dataset.i, 10), 1);
       renderVertexTable();
       computeAll();
@@ -181,6 +205,10 @@ function renderVertexTable() {
 }
 
 function generateFromParametric() {
+  // Generate 會整個覆蓋掉目前的頂點清單，包含使用者切到自訂頂點手動改
+  // 過的內容——這是最容易「不小心弄丟工作」的操作，按之前先存一次快照
+  // （頁面剛載入、vertices 還是空的那次不用存，沒有東西好復原）。
+  if (vertices.length >= 3) pushVertexHistory();
   var openW = num('p_openWidth', 3), openH = num('p_openHeight', 1.5);
   var top = num('p_topWidth', 4), bottom = num('p_bottomWidth', 7), depth = num('p_depth', 12);
   vertices = generateSlotShape(openW, openH, top, bottom, depth);
@@ -191,6 +219,7 @@ function generateFromParametric() {
 }
 
 function addVertexPoint() {
+  pushVertexHistory();
   var last = vertices[vertices.length - 1] || { x: 0, y: 0 };
   vertices.push({ x: last.x + 2, y: last.y });
   renderVertexTable();
@@ -298,28 +327,30 @@ function renderSvg(innerPoly, pack, needleRect) {
   var strokeW = Math.max(w, h, 1) * 0.01;
   var outerPts = openingAwarePoints(vertices).map(function (p) { return p.x + ',' + p.y; }).join(' ');
 
-  // 自訂頂點模式：先畫座標軸當最底層參考（原點(0,0)、X向右、Y往下＝
-  // 整個工具固定的「y=0開口、y遞增往槽底」慣例），只在0落在目前視野範
-  // 圍內才畫，避免極端自訂形狀把原點甩到畫面外時畫出奇怪的線。
-  var html = '';
-  if (shapeMode === 'custom') {
-    var axisFont = maxDim * 0.04, axisArrowSize = axisFont * 0.6;
-    html += '<g style="stroke-width:' + (strokeW * 0.4) + '">';
-    if (0 >= vx && 0 <= vx + vw) html += axisArrow(0, vy, 0, vy + vh, 'Y', axisArrowSize, axisFont);
-    if (0 >= vy && 0 <= vy + vh) html += axisArrow(vx, 0, vx + vw, 0, 'X', axisArrowSize, axisFont);
-    html += '</g>';
-  }
-
   // 鐵芯（紅）只畫到槽口那條線（bbox.minY，氣隙側）為止，不要往上延伸到
   // 墊白區域——那裡是氣隙/轉子那側，不是鐵芯，照真實矽鋼片圖只有鐵芯
   // 本體是紅色，氣隙上方留白。
-  html += '<rect class="slot-lamination" x="' + vx + '" y="' + bbox.minY + '" width="' + vw + '" height="' + (vy + vh - bbox.minY) + '"></rect>' +
+  var html = '<rect class="slot-lamination" x="' + vx + '" y="' + bbox.minY + '" width="' + vw + '" height="' + (vy + vh - bbox.minY) + '"></rect>' +
     '<polyline class="slot-outline" points="' + outerPts + '" style="stroke-width:' + strokeW + '"></polyline>';
 
   if (innerPoly) {
     var innerPts = openingAwarePoints(innerPoly).map(function (p) { return p.x + ',' + p.y; }).join(' ');
     html += '<polyline class="slot-liner" points="' + innerPts + '" style="stroke-width:' + strokeW + '"></polyline>';
   }
+
+  // 自訂頂點模式：座標軸畫在liner之上、線材之下——畫在最底層（鐵芯/
+  // liner之前）的話，大部分線段會被鐵芯/liner的實心填色蓋住，只剩墊
+  // 白區域那一小段看得到，不夠明顯；畫在這裡才會整條線都蓋在材料色塊
+  // 上面、顏色也改深色加粗，確保看得清楚。只在0落在目前視野範圍內才
+  // 畫，避免極端自訂形狀把原點甩到畫面外時畫出奇怪的線。
+  if (shapeMode === 'custom') {
+    var axisFont = maxDim * 0.04, axisArrowSize = axisFont * 0.6;
+    html += '<g style="stroke-width:' + (strokeW * 1.1) + '">';
+    if (0 >= vx && 0 <= vx + vw) html += axisArrow(0, vy, 0, vy + vh, 'Y', axisArrowSize, axisFont);
+    if (0 >= vy && 0 <= vy + vh) html += axisArrow(vx, 0, vx + vw, 0, 'X', axisArrowSize, axisFont);
+    html += '</g>';
+  }
+
   (pack ? pack.placed : []).forEach(function (c) {
     html += '<circle class="slot-circle" cx="' + c.x + '" cy="' + c.y + '" r="' + (c.d / 2) + '" style="stroke-width:' + (strokeW * 0.4) + '"></circle>';
   });
@@ -354,7 +385,7 @@ function renderSvg(innerPoly, pack, needleRect) {
         var lx = v.x + (right ? 1 : -1) * fontSize * 0.35;
         var anchor = right ? 'start' : 'end';
         return '<circle cx="' + v.x + '" cy="' + v.y + '" r="' + (fontSize * 0.12) + '" fill="#3f4d66" stroke="none"></circle>' +
-          '<text class="vertex-label" x="' + lx + '" y="' + ly + '" font-size="' + vLabelFont + '" style="text-anchor:' + anchor + '">(' + fmt(v.x, 2) + ', ' + fmt(v.y, 2) + ')</text>';
+          '<text class="vertex-label" x="' + lx + '" y="' + ly + '" font-size="' + vLabelFont + '" style="text-anchor:' + anchor + '">#' + (i + 1) + ' (' + fmt(v.x, 2) + ', ' + fmt(v.y, 2) + ')</text>';
       }).join('') +
       '</g>';
   }
@@ -481,6 +512,7 @@ function computeAll() {
 document.addEventListener('DOMContentLoaded', function () {
   $('btnGenerate').addEventListener('click', generateFromParametric);
   $('btnAddPoint').addEventListener('click', addVertexPoint);
+  $('btnUndoVertex').addEventListener('click', undoVertices);
 
   ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_linerThickness', 'w_needleWidth', 'w_windStartY']
     .forEach(function (id) { $(id).addEventListener('input', computeAll); });

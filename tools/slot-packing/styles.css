@@ -111,6 +111,14 @@ body > * { min-width: 0; }
 
 .full-btn { width: 100%; margin-top: 8px; }
 
+.btn-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.btn-row button { flex: 1; }
+.btn-row button:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .check-row {
   display: flex;
   align-items: center;
@@ -313,16 +321,17 @@ body > * { min-width: 0; }
   font-family: inherit;
 }
 .axis-line {
-  stroke: #9aa6bd;
-  stroke-dasharray: 1.5,1.5;
+  stroke: #1f2a44;
+  stroke-dasharray: 1.8,1.2;
   fill: none;
 }
-.axis-arrow { fill: #9aa6bd; }
+.axis-arrow { fill: #1f2a44; }
 .axis-label {
-  fill: #7986a3;
+  fill: #1f2a44;
   text-anchor: middle;
   dominant-baseline: middle;
   font-family: inherit;
+  font-weight: 700;
   font-style: italic;
 }
 

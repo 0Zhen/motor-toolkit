@@ -71,7 +71,10 @@
           <tbody id="vertexTableBody"></tbody>
         </table>
       </div>
-      <button class="mt-btn-ghost full-btn" id="btnAddPoint" data-i18n="addPointBtn">+ Add point</button>
+      <div class="btn-row">
+        <button class="mt-btn-ghost" id="btnAddPoint" data-i18n="addPointBtn">+ Add point</button>
+        <button class="mt-btn-ghost" id="btnUndoVertex" data-i18n="undoBtn" disabled>↶ Undo</button>
+      </div>
       <div class="hint-text" data-i18n="vertexHint">
         Points connect in order and close back to the first one. No self-intersection check — keep
         them tracing a simple outline.
