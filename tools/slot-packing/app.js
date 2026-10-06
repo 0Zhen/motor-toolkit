@@ -51,8 +51,8 @@ var MT_I18N = {
     zh: 'Liner 是真的把槽型輪廓向內偏移出來的幾何（下方綠色區域），不是從槽滿率扣一個數字而已——線材是塞在這個內縮後的區域裡。',
   },
   toolHint:     {
-    en: '💡 Wires are arranged on a true hexagonal close-packed lattice (the densest regular circle packing). For double-layer slots, the lattice is rotated to follow each coil side’s own slanted wall, so the whole wall-hugging column stays flush along its entire length (not just at one point) and tapers with the slot shape. Still a geometric idealization, not a physics simulation — no wire tension, insertion order, friction, or enamel deformation.',
-    zh: '💡 線材是照真正的六方最密堆積格點排列（圓形排列理論上最密的規則排法）。雙層繞組時，格點會跟著每個線圈邊自己的斜槽壁旋轉，讓貼牆那一整欄都沿著槽壁貼齊（不只貼到一點），並跟著槽型收窄。這仍然是幾何上的理想化，不是力學模擬——沒有算線材張力、插入順序、摩擦力或漆膜受壓變形。',
+    en: '💡 Each wire is simulated settling from the slot opening toward the bottom, coming to rest against the slot wall, the floor, or whichever wires are already placed — so it naturally hugs any wall angle and nests into the gaps between neighbors, without a fixed lattice pattern. For double-layer slots, each coil side settles independently. Still a geometric idealization, not a physics simulation — no wire tension, insertion order, friction, or enamel deformation.',
+    zh: '💡 每條線材是用沉降模擬排列：從槽口往槽底方向落下，貼著槽壁、槽底、或已經放好的線材停住——不管槽壁是什麼角度都會自然貼合，也會自然嵌進鄰線間的縫隙，不是套固定格點樣式。雙層繞組時，左右兩個線圈邊各自獨立沉降。這仍然是幾何上的理想化，不是力學模擬——沒有算線材張力、插入順序、摩擦力或漆膜受壓變形。',
   },
   statsTitle:   { en: 'Stats', zh: '統計' },
   legendLam:    { en: 'Lamination', zh: '鐵芯' },
@@ -266,14 +266,16 @@ function computeAll() {
   var circleArea = Math.PI / 4 * diameter * diameter;
   var fillPctArea = count * circleArea / windingArea * 100;
 
-  // 真正的六方密排：固定格點、貼槽底、貼其中一側槽壁，只決定於線徑/
-  // 槽型本身，不用使用者設定層數/欄數——這就是整個重新設計要的「只設
-  // 定匝數，工具自動排出來」。pack.maxCapacity 是同一套格點跑「不限
-  // 數量」算出來的，直接回答「這個槽到底塞不塞得下」。
+  // 逐顆沉降模擬：每條線材從槽口端往槽底方向落下，貼著槽壁/槽底或已
+  // 放置的線材停住，只決定於線徑/槽型本身，不用使用者設定層數/欄數
+  // ——這就是整個重新設計要的「只設定匝數，工具自動排出來」。沉降演
+  // 算法本身就會自動貼合任何角度的槽壁，不用另外偵測牆的方向。
+  // pack.maxCapacity 是同一套流程跑「不限數量」算出來的，直接回答
+  // 「這個槽到底塞不塞得下」。
   // 雙層繞組（Coils/slot >= 2）：繞線窗先切成左右兩個獨立線圈邊（中間
-  // 留一道 liner 厚度一半當間隙），各自密排、各自算自己的容量——理論
+  // 留一道 liner 厚度一半當間隙），各自沉降、各自算自己的容量——理論
   // 上只會佔其中一邊，不是整個繞線窗混在一起看起來像單層。單層
-  // （Coils/slot <= 1）：整個繞線窗當一池子密排，維持原樣。
+  // （Coils/slot <= 1）：整個繞線窗當一池子沉降，維持原樣。
   var pack;
   if (coils >= 2) {
     var packBbox = polygonBBox(packableArea);
@@ -282,16 +284,8 @@ function computeAll() {
     var leftArea = clipPolygonMaxX(packableArea, splitX - gap);
     var rightArea = clipPolygonMinX(packableArea, splitX + gap);
     var perSide = Math.round(count / 2);
-    var packL = hexLatticePackAlongWall(leftArea, diameter, perSide);
-    // hexLatticePackAlongWall 永遠貼「槽底角x較小那端」算出來的槽壁——
-    // 右半邊真正的槽壁在大x那側（x較小那側是中間的間隙，不是槽壁），
-    // 所以鏡射過去跑、結果再鏡射回來
-    var packRRaw = hexLatticePackAlongWall(mirrorPolygonX(rightArea), diameter, count - perSide);
-    var packR = {
-      placed: packRRaw.placed.map(function (c) { return { x: -c.x, y: c.y, d: c.d }; }),
-      placedCount: packRRaw.placedCount,
-      maxCapacity: packRRaw.maxCapacity,
-    };
+    var packL = settlePack(leftArea, diameter, perSide);
+    var packR = settlePack(rightArea, diameter, count - perSide);
     pack = {
       placed: packL.placed.concat(packR.placed),
       placedCount: packL.placedCount + packR.placedCount,
@@ -299,7 +293,7 @@ function computeAll() {
       maxCapacity: packL.maxCapacity + packR.maxCapacity,
     };
   } else {
-    pack = hexLatticePack(packableArea, diameter, count);
+    pack = settlePack(packableArea, diameter, count);
   }
   renderSvg(innerPoly, pack);
 

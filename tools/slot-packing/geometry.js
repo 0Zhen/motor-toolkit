@@ -49,27 +49,19 @@ function polygonBBox(points) {
 }
 
 /**
- * 掃描線切片：水平線 y 與多邊形邊界的交點，成對回傳「在多邊形內部」的
- * x 區間（even-odd 規則）。不要求頂點順時針/逆時針，凹多邊形（例如
- * 自訂頂點弄出畸形槽）也能正確處理，可能回傳多段區間。
- * @returns {Array<[number,number]>} 由左到右排序的 [xLeft,xRight] 區間
+ * 點是否在多邊形內部（even-odd 規則，ray casting）。不要求頂點順時針/
+ * 逆時針，凹多邊形也能正確處理。
  */
-function horizontalSpans(points, y) {
-  const n = points.length;
-  const xs = [];
-  for (let i = 0; i < n; i++) {
-    const a = points[i], b = points[(i + 1) % n];
-    const y1 = a.y, y2 = b.y;
-    // 半開區間 [min,max) 避免頂點剛好落在掃描線上時重複計算
-    if ((y1 <= y && y2 > y) || (y2 <= y && y1 > y)) {
-      const t = (y - y1) / (y2 - y1);
-      xs.push(a.x + t * (b.x - a.x));
-    }
+function pointInPolygon(p, poly) {
+  let inside = false;
+  const n = poly.length;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+    const intersect = ((yi > p.y) !== (yj > p.y)) &&
+      (p.x < (xj - xi) * (p.y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
   }
-  xs.sort((p, q) => p - q);
-  const spans = [];
-  for (let i = 0; i + 1 < xs.length; i += 2) spans.push([xs[i], xs[i + 1]]);
-  return spans;
+  return inside;
 }
 
 /**
@@ -179,8 +171,8 @@ function clipPolygonMinY(points, minY) {
  * 跟 clipPolygonMinY 同一套 Sutherland-Hodgman 半平面裁切，只是裁的是
  * x 軸：maxX 版留下 x <= maxX（槽內左半），minX 版留下 x >= minX
  * （槽內右半）。雙層繞組（Coils/slot >= 2）時用這兩個函式把繞線窗切
- * 成左右兩個獨立線圈邊，各自密排——不這樣切的話，六方格點會把雙層跟
- * 單層畫成同一種「整個繞線窗一池子」的樣子，看不出線圈邊的分別。
+ * 成左右兩個獨立線圈邊，各自密排——不這樣切的話，密排會把雙層跟單層
+ * 畫成同一種「整個繞線窗一池子」的樣子，看不出線圈邊的分別。
  */
 function clipPolygonMaxX(points, maxX) {
   const n = points.length;
@@ -224,124 +216,11 @@ function clipPolygonMinX(points, minX) {
   return out;
 }
 
-/** 左右鏡射（x 取負），搭配 hexLatticePack 貼左牆的習慣，用來讓右半邊
- *  的線圈邊改貼「真正的右側槽壁」——不是分裂後那半邊自己座標系的左側
- *  （那其實是中間的間隙，不是槽壁）。呼叫端鏡射多邊形、跑完密排、再把
- *  結果的 x 鏡射回來即可，不用在 hexLatticePack 本身加左右選項。 */
-function mirrorPolygonX(points) {
-  return points.map(p => ({ x: -p.x, y: p.y }));
-}
-
-/**
- * 真正的交錯密排：固定六方最密堆積格點（triangular lattice），裁進
- * 多邊形裡——不是逐排/逐欄湊數字，是業界畫線材截面示意圖常見的那種
- * 真實交錯堆疊。
- *
- * 格點定義（y 往下遞增）：
- *   row pitch = diameter × √3/2（正三角形排列的標準直向間距）
- *   偶數排：x = originX, originX±d, originX±2d, ...
- *   奇數排：x = originX±d/2, originX±3d/2, ...（跟偶數排整整錯開半個直徑）
- * 原點 originX 用「最底排（最寬、最沒有限制的那排）左緣＋半徑」校正，
- * 不是多邊形中心、也不是寫死全域 x=0——這樣最底排的第一顆線材會直接
- * 貼齊左側槽壁（真正的 0 間隙，不是剛好接近而已），畫面上最明顯的那
- * 排才會像參考圖一樣整排切齊槽壁。這個格點本身就是數學上證明過的最
- * 密圓形排列之一，不管 originX 怎麼選，相鄰格點之間的距離恆等於
- * diameter（不管同排還是跨排），所以相位選擇只影響「貼哪裡好看」，
- * 不影響「會不會重疊」這個安全性——整個格點清單先生成好、只篩選落在
- * 多邊形內部的，彼此之間保證不會重疊。
- * 只會貼「x 較小」那一側的槽壁；如果要貼另一側（例如雙層繞組右半邊
- * 真正的槽壁在大 x 那側），呼叫端自己用 mirrorPolygonX() 把多邊形鏡
- * 射過來跑、結果的 x 再鏡射回去即可，不在這裡加左右選項。
- *
- * 排序：依「欄」分組（固定 x 一欄，六方格點裡一欄只會出現在同一種奇
- * /偶排相位，彼此垂直間距是 2×rowPitch），欄的順序由貼牆那欄（colKey
- * =0）往另一側走，每一欄內部由下往上（貼槽底的 y 先）——所以 count
- * 不夠疊滿整個槽時，會先把貼牆那一欄一路疊到那一欄實際能到的最高
- * 處（跟著槽型的高度輪廓走），才開始疊下一欄，而不是每排都疊一點、
- * 停在某個高度留下一大截跟槽型taper脫節的矩形缺口。
- * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮＋裁掉喉部後的繞線窗）
- * @param {number} diameter 線材外徑（mm，含漆膜）
- * @param {number} [count] 要擺的線材總數；省略或 Infinity 時回傳「這個槽能塞下的全部格點」
- * @returns {{placed:Array<{x,y,d}>, placedCount:number, requestedCount:number, maxCapacity:number}}
- */
-function hexLatticePack(points, diameter, count) {
-  const requestedCount = (count === undefined) ? Infinity : count;
-  const result = { placed: [], placedCount: 0, requestedCount, maxCapacity: 0 };
-  if (!(diameter > 0) || points.length < 3) return result;
-
-  const r = diameter / 2;
-  const rowPitch = diameter * Math.sqrt(3) / 2;
-  const bbox = polygonBBox(points);
-
-  // 格點相位用「最底排（最寬、最沒有限制的那排）」校正，讓格點直接從
-  // 貼著底排左牆的位置起算——整條格點是數學上無限延伸的六方網格，相位
-  // （從哪個 x 開始算）怎麼選都不影響「彼此距離≥diameter」這個安全性，
-  // 純粹是視覺上要跟哪個基準對齊的選擇。用底排對齊，會讓畫面上最明顯
-  // 的那排確實貼住槽壁，不是像用整體中心當基準那樣，貼壁只是巧合、實
-  // 際上每排都留了隨機大小的縫。
-  const bottomSpans = horizontalSpans(points, bbox.maxY - r).filter(([a, b]) => b - a >= diameter - 1e-9);
-  const originX = bottomSpans.length ? bottomSpans[0][0] + r : (bbox.minX + bbox.maxX) / 2;
-
-  // 先把全部格點依「欄」分組（不管 count，先找出整個槽的真實容量，也
-  // 才知道每一欄實際能到多高）。colKey 用整數算（相對 originX 差幾個
-  // 半徑），同一欄的點一定是同一種奇/偶排相位，不會混到別欄的點。
-  const columns = new Map(); // colKey -> { x, ys: number[] }
-  let rowIndex = 0;
-  let y = bbox.maxY - r;
-  while (y >= bbox.minY + r - 1e-9) {
-    const offset = (rowIndex % 2 === 1) ? r : 0;
-    const spans = horizontalSpans(points, y).filter(([a, b]) => b - a >= diameter - 1e-9);
-    spans.forEach(([left, right]) => {
-      const mMin = Math.ceil((left + r - originX - offset) / diameter - 1e-9);
-      const mMax = Math.floor((right - r - originX - offset) / diameter + 1e-9);
-      for (let m = mMin; m <= mMax; m++) {
-        const x = originX + offset + m * diameter;
-        const colKey = Math.round((x - originX) / r); // 貼牆那欄 = 0，往外每隔半徑遞增
-        let col = columns.get(colKey);
-        if (!col) { col = { x, ys: [] }; columns.set(colKey, col); }
-        col.ys.push(y);
-      }
-    });
-    y -= rowPitch;
-    rowIndex++;
-  }
-
-  // colKey 每隔半徑(r)一欄，相鄰兩欄（0&1、2&3...）其實是六方格點裡
-  // 真正交錯的一對排（彼此距離恰好=diameter），合在一起才是人眼看到的
-  //「貼牆那一層」——如果照 colKey 一欄一欄分開填滿（先填完 0 才碰 1），
-  // 畫面上會先出現一排看起來稀疏、充滿大縫隙的點（因為只填了交錯排的
-  // 其中一半），容易誤以為「這層還沒填滿就跳到下一層」。所以用
-  // pairKey=floor(colKey/2) 把相鄰兩欄併成一組，組內照 y 由大到小（離
-  // 槽底近的先）混合排序，兩欄的點會自然按實際高度交錯疊出，視覺上才
-  // 是真正貼牆的密排鋸齒；組與組之間仍保留「貼牆那組先疊滿才換下一組」
-  // 的順序，維持原本「疊到一半被 count 截斷，缺口留在還沒輪到的區域」
-  // 的設計目的。
-  const pairGroups = new Map(); // pairKey -> {x,y}[]
-  columns.forEach((col, key) => {
-    const pairKey = Math.floor(key / 2);
-    if (!pairGroups.has(pairKey)) pairGroups.set(pairKey, []);
-    const group = pairGroups.get(pairKey);
-    col.ys.forEach(cy => group.push({ x: col.x, y: cy }));
-  });
-  const slots = [];
-  Array.from(pairGroups.keys()).sort((a, b) => a - b).forEach(pairKey => {
-    const group = pairGroups.get(pairKey);
-    group.sort((a, b) => b.y - a.y);
-    group.forEach(p => slots.push(p));
-  });
-
-  result.maxCapacity = slots.length;
-  const n = Math.min(requestedCount, slots.length);
-  result.placed = slots.slice(0, n).map(p => ({ x: p.x, y: p.y, d: diameter }));
-  result.placedCount = result.placed.length;
-  return result;
-}
-
 /**
  * 點到多邊形邊界（線段集合，不是無限延伸的直線）的最短距離——逐邊算
- * point-to-segment distance 取最小值。用來在密排演算法算完之後做最後
- * 把關：確認每顆線材的圓心離「真實邊界」還有至少一個半徑的空間，不
- * 是只離某條邊的無限延伸直線夠遠（轉角附近這兩者會不一樣）。
+ * point-to-segment distance 取最小值。用來確認一顆線材的圓心離「真實
+ * 邊界」還有至少一個半徑的空間，不是只離某條邊的無限延伸直線夠遠
+ * （轉角附近這兩者會不一樣）。
  */
 function distanceToPolygonBoundary(p, points) {
   let minD = Infinity;
@@ -359,98 +238,121 @@ function distanceToPolygonBoundary(p, points) {
 }
 
 /**
- * hexLatticePack 的「沿牆版」：hexLatticePack 本身只會貼「x 較小」那一
- * 條垂直線——槽壁是斜的時候，垂直線只在格點原點那一排真正碰到牆，離
- * 那排越遠，垂直線跟斜牆的實際距離就越大，貼牆只是局部現象。這個函
- * 式改成先把整個多邊形轉進一個「跟著牆的方向走」的局部座標系（s=沿
- * 牆方向、從槽底角開始；t=離牆的垂直距離，貼牆=0），t 對應
- * hexLatticePack 原本的 x（欄＝固定 t＝跟牆平行的一整條，不是垂直牆
- * 的一條）、s 對應 hexLatticePack 原本的 y（同一欄內沿牆方向由槽底角
- * 往槽口排過去），直接重用同一套密排／分欄／排序邏輯，算完再把結果
- * 轉換回原本的座標——這樣每一欄都是跟牆平行、整條貼齊，不是只有一點。
+ * 逐顆「沉降」模擬：每一條新線材從槽口端開始往槽底方向落下，貼著槽壁
+ * /槽底、或已經放好的線材停住——不是套固定格點公式，是真的模擬「線
+ * 一條條塞進去、滾到最深處」的物理直覺，貼牆/貼鄰線是自然結果，不需
+ * 要另外偵測槽壁方向或做座標旋轉（跟之前的六方格點版本最大的差異，
+ * 也因此同一套函式不管槽壁是什麼角度、雙層分割後兩側的「牆」在哪一
+ * 邊，都不用特殊處理）。
  *
- * 牆的方向：取「多邊形最底那條邊的最小x端點」當槽底角 A、「最頂那條邊
- * 的最小x端點」當槽口端點 B，A→B 的方向視為牆的方向——適用於這個工具
- * 產生的梯形／自訂頂點槽型（上下緣接近水平、左右兩側是直線斜邊的情
- * 況）。如果最頂/最底緣找不到明確端點（退化形狀），直接退回原本
- * hexLatticePack 的垂直版本。
- * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮＋裁掉喉部後的繞線窗）
+ * 作法（每次只放一顆，放的時候全槽寬都掃過一輪）：
+ *   1. 對一組取樣 x（橫跨整個可用寬度），各自獨立算「這個 x 能落到多
+ *      深」：先找槽型本身（不管其他線材）在這個 x 能到的最大 y
+ *      （polyMaxValidY，用二分搜尋貼齊槽底/槽壁，不是只看槽口那一點
+ *      ——槽口附近的喉部殘留頸縮不該卡住整條 x 柱，頸縮只是局部現象，
+ *      底下變寬之後一樣能用），再檢查附近已放置線材會不會把這個 x 卡
+ *      在更淺的位置（跟某顆鄰線相切的高度）。
+ *   2. 取所有取樣 x 裡「能落最深（y 最大）」的那一個，當作這顆新線材
+ *      實際落地的位置——這就是「滾到最深處」的貼合判斷，不用真的做
+ *      逐步迭代的物理模擬。
+ *   3. 重複，直到要求的數量放完，或是已經沒有任何 x 能再放下一顆
+ *      （這時候算出的已放置總數就是這個槽的真實容量，不管有沒有限制
+ *      count 都是同一套流程，只是提早在 count 顆時停止）。
+ *
+ * 已知限制：取樣 x 是離散網格（不是連續求解），極端情況下可能漏掉某
+ * 個比取樣間距還窄的縫隙，但對這個工具的 mm 級槽型/線徑來說精度足夠；
+ * 另外這仍然是幾何上的沉降近似，不是真的剛體動力學模擬。
+ * @param {Array<{x,y}>} points 槽型頂點（mm，已經是內縮＋裁掉喉部後的繞線窗；雙層繞組時傳入切半後的單一線圈邊）
  * @param {number} diameter 線材外徑（mm，含漆膜）
- * @param {number} [count] 要擺的線材總數；省略或 Infinity 時回傳「這個槽能塞下的全部格點」
+ * @param {number} [count] 要擺的線材總數；省略或 Infinity 時回傳「這個槽能塞下的全部數量」
  * @returns {{placed:Array<{x,y,d}>, placedCount:number, requestedCount:number, maxCapacity:number}}
  */
-function hexLatticePackAlongWall(points, diameter, count) {
-  const n = points.length;
-  if (n < 3) return hexLatticePack(points, diameter, count);
-
-  // A＝槽底角：y最大（最底部），同分再取x最小（最左）那個頂點。注意
-  // 這裡一定要是「多邊形本身的一個頂點」，不能用 bbox 邊界上隨便一點
-  // ——開口喉裁切之後，裁切線本身也會貼齊 bbox 的上緣，如果直接拿
-  // 「bbox頂緣上x最小的點」當槽口端點，很容易抓到裁切線上的點，而不
-  // 是槽壁真正的端點（槽壁跟喉部肩膀之間還夾了一段短邊，是兩個不同
-  // 方向的邊，不能混用）。
-  let idxA = 0;
-  for (let i = 1; i < n; i++) {
-    const p = points[i], a = points[idxA];
-    if (p.y > a.y + 1e-9 || (Math.abs(p.y - a.y) <= 1e-9 && p.x < a.x)) idxA = i;
-  }
-  const A = points[idxA];
-  // B＝槽壁的另一端點：直接沿著多邊形邊走，取 A 的兩個相鄰頂點裡「垂直
-  // 落差比較大」的那一個——槽壁本身是斜邊、垂直落差大，另一側通常是
-  // 槽底或分裂間隙的水平邊、垂直落差接近 0，這樣選一定選到槽壁，不是
-  // 猜最高/最左這種跟多邊形實際邊界無關的全域屬性。
-  const prev = points[(idxA - 1 + n) % n];
-  const next = points[(idxA + 1) % n];
-  const B = Math.abs(prev.y - A.y) > Math.abs(next.y - A.y) ? prev : next;
-  let ux = B.x - A.x, uy = B.y - A.y;
-  const wallLen = Math.hypot(ux, uy);
-  if (wallLen < 1e-9) return hexLatticePack(points, diameter, count); // 退化（上下緣端點重合），退回垂直版
-
-  ux /= wallLen; uy /= wallLen;
-  let nx = -uy, ny = ux; // 牆方向的法向量，兩個候選，用重心判斷哪個朝內
-  const centroid = points.reduce((acc, p) => ({ x: acc.x + p.x / n, y: acc.y + p.y / n }), { x: 0, y: 0 });
-  if (nx * (centroid.x - A.x) + ny * (centroid.y - A.y) < 0) { nx = -nx; ny = -ny; }
-
-  // 轉到局部座標：local.x = t（離牆的垂直距離，貼牆=0，往內遞增——
-  // hexLatticePack 的「欄」是固定x分組，這樣欄才會是「固定離牆距離」
-  // ＝跟牆平行的一整條，不是垂直牆的一條）；local.y = -s（s=沿牆方向、
-  // A為0，取負號讓 s=0（槽底角A）對應 local.y=0=hexLatticePack 原本
-  // 「從 bbox.maxY 開始掃」的起點，往 B（槽口方向）掃是 local.y 遞減，
-  // 對應 s 遞增，這樣每一欄內部才會是「從槽底角A開始、往槽口方向疊」。
-  const localPts = points.map(p => {
-    const dx = p.x - A.x, dy = p.y - A.y;
-    const s = dx * ux + dy * uy;
-    const t = dx * nx + dy * ny;
-    return { x: t, y: -s };
-  });
-
-  // 先不限數量，拿「整條格點清單」（已經照欄、照s排好順序），轉回原本
-  // 座標之後再過濾、再截斷到 count——不能直接把 count 傳給下面這次
-  // hexLatticePack 呼叫，因為貼牆角落那幾顆有機率在離散抽樣下算出來
-  // 的位置其實還是略微超出「真實多邊形邊界」（见下方 containment
-  // 檢查），要先過濾掉才知道真正的 maxCapacity 跟排到第幾個。
-  const localAll = hexLatticePack(localPts, diameter).placed;
-
-  // 轉回原本座標：local.x=t、local.y=-s → s=-local.y
-  const r = diameter / 2;
-  const allGlobal = localAll
-    .map(p => {
-      const t = p.x, s = -p.y;
-      return { x: A.x + s * ux + t * nx, y: A.y + s * uy + t * ny, d: p.d };
-    })
-    // 貼牆欄最靠近槽底角 A 那幾顆，偶爾會落在「用無限延伸的牆線量距離
-    // 剛好等於r，但用真實多邊形邊界（含相鄰那條槽底/間隙邊）量距離卻
-    // 小於r」的位置——那是圓心太靠近轉角，實際上會微幅超出邊界。這裡
-    // 直接用「到真實多邊形邊界的最短距離」重新把關一次，不合格的丟掉
-    // （寧可少排一顆，不要讓線材畫到鐵芯/liner外面去）。
-    .filter(c => distanceToPolygonBoundary(c, points) >= r - 1e-6);
-
+function settlePack(points, diameter, count) {
   const requestedCount = (count === undefined) ? Infinity : count;
-  const n2 = Math.min(requestedCount, allGlobal.length);
-  return {
-    placed: allGlobal.slice(0, n2),
-    placedCount: n2,
-    requestedCount,
-    maxCapacity: allGlobal.length,
-  };
+  const result = { placed: [], placedCount: 0, requestedCount, maxCapacity: 0 };
+  const r = diameter / 2;
+  if (!(diameter > 0) || points.length < 3) return result;
+
+  const bbox = polygonBBox(points);
+  const safeY = bbox.maxY - r;   // 靠近槽底的參考高度，用來起算槽型本身的可用範圍（不受槽口喉部頸縮影響）
+  const floorY = bbox.maxY + r;  // 二分搜尋的保底上界（通常已經在多邊形外）
+  const xMin = bbox.minX + r, xMax = bbox.maxX - r;
+  if (!(xMax > xMin)) return result;
+
+  const nSamples = 220;
+
+  function validAt(x, y) {
+    const p = { x, y };
+    return pointInPolygon(p, points) && distanceToPolygonBoundary(p, points) >= r - 1e-9;
+  }
+  function polyMaxValidY(x) {
+    if (!validAt(x, safeY)) return null;
+    if (validAt(x, floorY)) return floorY;
+    let lo = safeY, hi = floorY;
+    for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (validAt(x, mid)) lo = mid; else hi = mid; }
+    return lo;
+  }
+
+  // 槽型本身（不管已放置哪些線材）在每個取樣 x 能到的最大 y，只跟槽型
+  // 有關，整個沉降過程只需要算一次，不用每放一顆就重算一次二分搜尋。
+  const xs = [], baseY = [];
+  for (let s = 0; s <= nSamples; s++) {
+    const x = xMin + (xMax - xMin) * s / nSamples;
+    xs.push(x); baseY.push(polyMaxValidY(x));
+  }
+
+  const placed = [];
+  // 用「每 diameter 寬一格」的空間雜湊分桶，查詢某個 x 附近可能構成阻擋
+  // 的線材時只需要看鄰近幾桶，不用每次都掃過全部已放置的線材。
+  const bins = new Map();
+  function binKey(x) { return Math.floor(x / diameter); }
+  function insertBin(p) { const k = binKey(p.x); let arr = bins.get(k); if (!arr) { arr = []; bins.set(k, arr); } arr.push(p); }
+  function nearbyCircles(x) {
+    const k = binKey(x), out = [];
+    for (let dk = -1; dk <= 1; dk++) { const arr = bins.get(k + dk); if (arr) for (let i = 0; i < arr.length; i++) out.push(arr[i]); }
+    return out;
+  }
+  function landingY(x, base) {
+    if (base === null) return null;
+    let y = base;
+    const near = nearbyCircles(x);
+    for (let k = 0; k < near.length; k++) {
+      const q = near[k]; const dx = x - q.x;
+      if (Math.abs(dx) < diameter) {
+        const dy2 = diameter * diameter - dx * dx;
+        const obstructY = q.y - Math.sqrt(Math.max(0, dy2));
+        if (obstructY < y) y = obstructY;
+      }
+    }
+    // 只有被鄰線往上頂、真的改到槽型本身的 base 值時才需要重新驗證邊界
+    // ——頂起來的那個高度可能剛好撞進槽壁往內收的區域（斜槽壁的常見情
+    // 況），這個 x 在那個高度其實放不下，整欄判定失敗，換別的 x 候選。
+    if (y !== base && !validAt(x, y)) return null;
+    return y;
+  }
+
+  const hardCap = 5000; // 安全上限，避免極端參數（例如線徑趨近於0）造成無窮迴圈
+  for (let i = 0; i < hardCap; i++) {
+    let bestX = null, bestY = -Infinity;
+    for (let s = 0; s <= nSamples; s++) {
+      const y = landingY(xs[s], baseY[s]);
+      if (y !== null && y > bestY) { bestY = y; bestX = xs[s]; }
+    }
+    if (bestX === null || !isFinite(bestY)) break;
+    const p = { x: bestX, y: bestY };
+    let ok = true;
+    const near = nearbyCircles(bestX);
+    for (let k = 0; k < near.length; k++) {
+      if (Math.hypot(p.x - near[k].x, p.y - near[k].y) < diameter - 1e-6) { ok = false; break; }
+    }
+    if (!ok) break;
+    placed.push(p);
+    insertBin(p);
+    if (placed.length >= requestedCount) break;
+  }
+
+  result.maxCapacity = placed.length;
+  result.placed = placed.map(p => ({ x: p.x, y: p.y, d: diameter }));
+  result.placedCount = result.placed.length;
+  return result;
 }
