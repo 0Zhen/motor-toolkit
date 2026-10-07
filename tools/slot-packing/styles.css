@@ -321,6 +321,13 @@ body > * { min-width: 0; }
   stroke: #b8860b;
   stroke-width: 0.15;
 }
+.wire-index {
+  fill: #6b4a00;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: var(--mono);
+  pointer-events: none;
+}
 .slot-needle-channel {
   fill: #6f9bd1;
   stroke: #3b6fa8;

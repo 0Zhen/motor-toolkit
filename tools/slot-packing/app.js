@@ -462,8 +462,14 @@ function renderSvg(innerPoly, pack, needleRect) {
     html += '</g>';
   }
 
-  (pack ? pack.placed : []).forEach(function (c) {
-    html += '<circle class="slot-circle" cx="' + c.x + '" cy="' + c.y + '" r="' + (c.d / 2) + '" style="stroke-width:' + (strokeW * 0.4) + '"></circle>';
+  // 編號照 pack.placed 陣列順序＝沉降模擬實際放入的順序（雙層繞組時左
+  // 半邊先、右半邊接著，兩側各自獨立沉降但畫面上編號是連續的，不是各
+  // 自從1開始，避免畫面同時出現兩個#1）。字體大小跟著線徑縮放，線材
+  // 很多很密時數字會很小——這是編號擠進每顆線材裡的必然取捨。
+  (pack ? pack.placed : []).forEach(function (c, idx) {
+    var r = c.d / 2;
+    html += '<circle class="slot-circle" cx="' + c.x + '" cy="' + c.y + '" r="' + r + '" style="stroke-width:' + (strokeW * 0.4) + '"></circle>' +
+      '<text class="wire-index" x="' + c.x + '" y="' + c.y + '" font-size="' + (r * 0.85) + '">' + (idx + 1) + '</text>';
   });
   if (needleRect) {
     html += '<rect class="slot-needle-channel" x="' + needleRect.x + '" y="' + needleRect.y + '" width="' + needleRect.width + '" height="' + needleRect.height + '" style="stroke-width:' + (strokeW * 0.6) + '"></rect>';
