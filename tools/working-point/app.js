@@ -116,21 +116,6 @@ let queryList      = [];  // 所有已儲存的 Query 項目陣列
 let queryIdCounter = 0;   // 自增 ID，確保每張圖卡 id 唯一
 
 
-/** 扭矩比例條（工作點資訊框與 Fixed Speed 面板共用） */
-function torqueBarHtml(pctA, pctF, ratio, labelA, labelF) {
-  return '<div class="wp-tbar">' +
-      '<div class="wp-tbar-legend">' +
-        '<span>&#9632; T_A&nbsp;' + pctA + '%</span>' +
-        '<span>&#9632; T_F&nbsp;' + pctF + '%</span>' +
-      '</div>' +
-      '<div class="wp-tbar-track">' +
-        '<div class="wp-tbar-a" style="width:' + pctA + '%">' + labelA + '</div>' +
-        '<div class="wp-tbar-f" style="width:' + pctF + '%">' + labelF + '</div>' +
-      '</div>' +
-      '<div class="wp-tbar-ratio">T_A/T_F = <b>' + ratio + '</b></div>' +
-    '</div>';
-}
-
 /* ══════════════════════════════════════════════════════════
    UI 建立：動態產生參數列（滑桿 + 輸入框）
    ══════════════════════════════════════════════════════════ */
@@ -139,7 +124,7 @@ PARAMS.forEach(p => {
   const row = document.createElement('div');
   row.className = 'param-row';
   row.innerHTML = `
-    <span class="param-label" id="lbl_${p.key}">${p.label}<br><span id="desc_${p.key}" class="wp-sub"></span></span>
+    <span class="param-label" id="lbl_${p.key}">${p.label}<br><span id="desc_${p.key}" style="font-size:7.5px;color:#9ca3af;font-weight:400"></span></span>
     <input type="range" id="sl_${p.key}"
            min="${p.min}" max="${p.max}" step="${p.step}" value="${p.init}"
            oninput="onSlider('${p.key}', this.value)">
@@ -300,12 +285,8 @@ function onMotorSelect(idx) {
     box.style.right = 'auto';
   }
 
-  // 窄螢幕時資訊框改排在圖下方（CSS position: static），不能拖
-  function floating() { return getComputedStyle(box).position === 'absolute'; }
-
   // 滑鼠拖曳
   handle.addEventListener('mousedown', e => {
-    if (!floating()) return;
     dragging = true;
     ox = e.clientX - box.offsetLeft;
     oy = e.clientY - box.offsetTop;
@@ -317,7 +298,6 @@ function onMotorSelect(idx) {
 
   // 觸控拖曳
   handle.addEventListener('touchstart', e => {
-    if (!floating()) return;
     const t = e.touches[0];
     dragging = true;
     ox = t.clientX - box.offsetLeft;
@@ -1002,8 +982,10 @@ function _updateAllImpl() {
   (function() {
     function row(sym, val, unit, note) {
       return '<tr>' +
-        '<td class="k">' + sym + '</td><td class="v">' + val + '</td>' +
-        '<td class="u">' + unit + '</td><td class="n">' + note + '</td>' +
+        '<td style="font-family:var(--mono);font-size:10px;padding:1px 6px 1px 0;white-space:nowrap">' + sym + '</td>' +
+        '<td style="font-family:var(--mono);font-size:10px;text-align:right;padding:1px 4px 1px 0;white-space:nowrap">' + val + '</td>' +
+        '<td style="font-family:var(--mono);font-size:10px;padding:1px 8px 1px 0;white-space:nowrap">' + unit + '</td>' +
+        '<td style="font-size:8px;color:#9ca3af;white-space:nowrap">' + note + '</td>' +
         '</tr>';
     }
 
@@ -1013,10 +995,29 @@ function _updateAllImpl() {
     const ratio = (r.T_A / r.T_F).toFixed(3);
     const labelA = parseFloat(pctA) > 20 ? pctA + '%' : '';
     const labelF = parseFloat(pctF) > 20 ? pctF + '%' : '';
-    const torqueBar = torqueBarHtml(pctA, pctF, ratio, labelA, labelF);
+    const torqueBar =
+      '<div style="margin:7px 0 2px;border-top:1px solid #e5e7eb;padding-top:6px">' +
+        '<div style="font-family:var(--mono);font-size:8px;color:#9ca3af;margin-bottom:3px;' +
+             'display:flex;justify-content:space-between">' +
+          '<span>&#9632; T_A&nbsp;' + pctA + '%</span>' +
+          '<span>&#9632; T_F&nbsp;' + pctF + '%</span>' +
+        '</div>' +
+        '<div style="height:12px;border-radius:6px;overflow:hidden;display:flex;' +
+             'background:#e5e7eb;border:1px solid #d1d5db">' +
+          '<div style="width:' + pctA + '%;background:#2563eb;display:flex;align-items:center;' +
+               'justify-content:center;font-family:var(--mono);font-size:7.5px;' +
+               'color:#fff;font-weight:600;overflow:hidden;white-space:nowrap">' + labelA + '</div>' +
+          '<div style="width:' + pctF + '%;background:#f59e0b;display:flex;align-items:center;' +
+               'justify-content:center;font-family:var(--mono);font-size:7.5px;' +
+               'color:#fff;font-weight:600;overflow:hidden;white-space:nowrap">' + labelF + '</div>' +
+        '</div>' +
+        '<div style="font-family:var(--mono);font-size:8.5px;color:#6b7280;margin-top:4px">' +
+          'T_A/T_F = <b style="color:#2563eb">' + ratio + '</b>' +
+        '</div>' +
+      '</div>';
 
     document.getElementById('infoBody').innerHTML =
-      '<table class="wp-kv">' +
+      '<table style="border-collapse:collapse">' +
         row('N',      N_wp.toFixed(1),              'RPM',  mtT('noteN')) +
         row('T_A',    r.T_A.toFixed(4),             'uN·m', mtT('noteTA')) +
         row('T_F',    r.T_F.toFixed(4),             'uN·m', mtT('noteTF')) +
@@ -1406,8 +1407,11 @@ function updateFixedSpeedMarker(d) {
 
   function panelRow(sym, val, unit, note) {
     return '<tr>' +
-      '<td class="k">' + sym + '</td><td class="v">' + val + '</td>' +
-      '<td class="u">' + unit + '</td><td class="n">' + note + '</td>' +
+      '<td style="font-family:var(--mono);font-size:9px;color:#6b7280;padding:1px 5px 1px 0;white-space:nowrap">' + sym + '</td>' +
+      '<td style="font-family:var(--mono);font-size:9.5px;font-weight:600;text-align:right;' +
+           'padding:1px 4px 1px 0;white-space:nowrap;color:' + (onBoundary ? '#10b981' : '#ef4444') + '">' + val + '</td>' +
+      '<td style="font-family:var(--mono);font-size:8.5px;color:#9ca3af;padding:1px 0;white-space:nowrap">' + unit + '</td>' +
+      '<td style="font-size:7.5px;color:#9ca3af;padding-left:4px;white-space:nowrap">' + note + '</td>' +
       '</tr>';
   }
 
@@ -1416,11 +1420,12 @@ function updateFixedSpeedMarker(d) {
   const res = document.getElementById('fixedSpeedResult');
   if (tbl && res) {
     res.style.display = 'block';
-    const statusBadge = '<span class="wp-badge ' + (onBoundary ? 'ok' : 'bad') + '">' + statusText + '</span>';
-    tbl.className = 'wp-kv ' + (onBoundary ? 'ok' : 'bad');
+    const statusBadge = '<span style="display:inline-block;padding:1px 6px;border-radius:3px;' +
+      'font-size:8px;font-weight:600;background:' + (onBoundary ? '#dcfce7' : '#fee2e2') + ';' +
+      'color:' + (onBoundary ? '#16a34a' : '#dc2626') + '">' + statusText + '</span>';
     tbl.innerHTML =
-      '<tr><td colspan="4" class="wp-kv-head">' +
-        'N = <b>' + N.toFixed(0) + ' RPM</b>&nbsp;&nbsp;' + statusBadge +
+      '<tr><td colspan="4" style="padding-bottom:4px;font-family:var(--mono);font-size:9px;color:#6b7280">' +
+        'N = <b style="color:#10b981">' + N.toFixed(0) + ' RPM</b>&nbsp;&nbsp;' + statusBadge +
       '</td></tr>' +
       panelRow('T_A',    T_A.toFixed(4),         'μN·m', mtT('noteTA')) +
       panelRow('T_F',    T_F.toFixed(4),         'μN·m', mtT('noteTF')) +
@@ -1438,15 +1443,35 @@ function updateFixedSpeedMarker(d) {
     const lA_fs = parseFloat(pctA_fs) > 20 ? pctA_fs + '%' : '';
     const lF_fs = parseFloat(pctF_fs) > 20 ? pctF_fs + '%' : '';
     tbl.innerHTML +=
-      '<tr><td colspan="4">' + torqueBarHtml(pctA_fs, pctF_fs, ratio_fs, lA_fs, lF_fs) +
+      '<tr><td colspan="4">' +
+        '<div style="margin:7px 0 2px;border-top:1px solid #e5e7eb;padding-top:6px">' +
+          '<div style="font-family:var(--mono);font-size:8px;color:#9ca3af;margin-bottom:3px;' +
+               'display:flex;justify-content:space-between">' +
+            '<span>&#9632; T_A&nbsp;' + pctA_fs + '%</span>' +
+            '<span>&#9632; T_F&nbsp;' + pctF_fs + '%</span>' +
+          '</div>' +
+          '<div style="height:12px;border-radius:6px;overflow:hidden;display:flex;' +
+               'background:#e5e7eb;border:1px solid #d1d5db">' +
+            '<div style="width:' + pctA_fs + '%;background:#2563eb;display:flex;align-items:center;' +
+                 'justify-content:center;font-family:var(--mono);font-size:7.5px;' +
+                 'color:#fff;font-weight:600;overflow:hidden;white-space:nowrap">' + lA_fs + '</div>' +
+            '<div style="width:' + pctF_fs + '%;background:#f59e0b;display:flex;align-items:center;' +
+                 'justify-content:center;font-family:var(--mono);font-size:7.5px;' +
+                 'color:#fff;font-weight:600;overflow:hidden;white-space:nowrap">' + lF_fs + '</div>' +
+          '</div>' +
+          '<div style="font-family:var(--mono);font-size:8.5px;color:#6b7280;margin-top:4px">' +
+            'T_A/T_F = <b style="color:#2563eb">' + ratio_fs + '</b>' +
+          '</div>' +
+        '</div>' +
       '</td></tr>';
   }
 
   // 更新浮動標記框（主圖上）
   markerBox.innerHTML =
-    '<div class="sm-head">' +
+    '<div style="font-family:var(--sans);font-size:8.5px;font-weight:600;' +
+         'color:#10b981;margin-bottom:4px;border-bottom:1px solid #e5e7eb;padding-bottom:3px">' +
       'N = ' + N.toFixed(0) + ' RPM' +
-      '<span class="sm-status" style="color:' + statusColor + '">' + statusText + '</span>' +
+      '<span style="float:right;color:' + statusColor + ';font-weight:400">' + statusText + '</span>' +
     '</div>' +
     '<table>' +
       row('T_A',    T_A.toFixed(4),           'μN·m') +
