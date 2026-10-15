@@ -343,6 +343,11 @@ body > * { min-width: 0; }
   fill: #6f9bd1;
   stroke: #3b6fa8;
 }
+/* 導針安全距離界線：同一個藍色系的虛線，表示線材不能越過 */
+.slot-needle-clearance {
+  stroke: #3b6fa8;
+  fill: none;
+}
 /* 參數化模式的尺寸標註／自訂頂點模式的座標標籤——固定淺灰藍色，跟材料
    配色（紅/綠/黃/藍）區分開，兩種模式不會同時出現。 */
 .dim-line, .dim-ext {

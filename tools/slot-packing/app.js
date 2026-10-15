@@ -46,6 +46,11 @@ var MT_I18N = {
     en: 'Gap reserved between the two coil sides (Coils/slot ≥ 2 only) — separate from liner thickness, since this is the phase-separator / needle-insertion clearance in the middle of the slot, not insulation against the slot wall. Shown below as a dashed rectangle.',
     zh: '雙層繞組（每槽線圈數≥2）兩個線圈邊之間保留的間隙——跟liner厚度是分開的，因為這是繞線窗正中間的相間絕緣/導針通道空間，不是貼槽壁的絕緣。下方畫面用藍色虛線矩形標示。',
   },
+  needleClearance: { en: 'Needle clearance [mm]', zh: '導針安全距離 [mm]' },
+  needleClearanceHint: {
+    en: 'Safety margin between the wires and each side edge of the needle channel (Coils/slot ≥ 2 only): the gap between the two coil sides becomes needle width + 2 × clearance. Shown as dashed lines when > 0.',
+    zh: '線材與導針通道兩側邊之間的安全裕度（每槽線圈數≥2 才有作用）：兩個線圈邊之間的實際間隙變成「導針寬度 + 2 × 安全距離」。大於 0 時畫面以虛線標示。',
+  },
   linerThickness:{ en: 'Liner thickness [mm]', zh: 'Liner 厚度 [mm]' },
   windStartY:   { en: 'No-wind depth (opening) [mm]', zh: '不繞線深度（開口）[mm]' },
   windStartHint:{
@@ -448,7 +453,7 @@ function attachVertexDragHandlers(svg) {
 }
 
 /* ── SVG 繪製：紅=鐵芯、綠=liner內縮後的繞線窗、黃=導線（仿 Motor-CAD 配色） ── */
-function renderSvg(innerPoly, pack, needleRect) {
+function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
   var svg = $('packingSvg');
   if (vertices.length < 3) { svg.innerHTML = ''; return; }
 
@@ -511,6 +516,14 @@ function renderSvg(innerPoly, pack, needleRect) {
   });
   if (needleRect) {
     html += '<rect class="slot-needle-channel" x="' + needleRect.x + '" y="' + needleRect.y + '" width="' + needleRect.width + '" height="' + needleRect.height + '" style="stroke-width:' + (strokeW * 0.6) + '"></rect>';
+  }
+  if (clearanceRect) {
+    // 導針安全距離：線材不能越過的兩條界線（只畫左右兩邊，虛線）
+    var cy1 = clearanceRect.y, cy2 = clearanceRect.y + clearanceRect.height;
+    var dash = 'stroke-width:' + (strokeW * 0.6) + ';stroke-dasharray:' + (strokeW * 3) + ' ' + (strokeW * 2);
+    [clearanceRect.x, clearanceRect.x + clearanceRect.width].forEach(function (x) {
+      html += '<line class="slot-needle-clearance" x1="' + x + '" y1="' + cy1 + '" x2="' + x + '" y2="' + cy2 + '" style="' + dash + '"></line>';
+    });
   }
 
   var dimStrokeW = strokeW * 0.5, fontSize = maxDim * 0.062, tick = fontSize * 0.4;
@@ -599,19 +612,25 @@ function renderSvg(innerPoly, pack, needleRect) {
  *  窗往槽底沉降。computeAll 與「依匝數回推線徑」共用這一套，確保兩邊
  *  判斷「放不放得下」的標準完全一致。pack.placedCount >= count 就代表
  *  全部放得下（雙層時等於兩側都各自放得下分到的根數）。 */
-function packWindow(packableArea, diameter, count, coils, needleWidth) {
-  var needleRect = null;
+function packWindow(packableArea, diameter, count, coils, needleWidth, needleClearance) {
+  var needleRect = null, clearanceRect = null;
+  var clearance = Math.max(0, needleClearance || 0);
   if (coils >= 2) {
     var packBbox = polygonBBox(packableArea);
     var splitX = (packBbox.minX + packBbox.maxX) / 2;
-    var gap = needleWidth / 2;
+    // 線材要離導針通道兩側邊至少 clearance：每個線圈邊從中線退開
+    // 「導針半寬 + 安全距離」
+    var gap = needleWidth / 2 + clearance;
     var leftArea = clipPolygonMaxX(packableArea, splitX - gap);
     var rightArea = clipPolygonMinX(packableArea, splitX + gap);
     var perSide = Math.round(count / 2);
     var packL = settlePackTowardWall(leftArea, diameter, perSide, 'left');
     var packR = settlePackTowardWall(rightArea, diameter, count - perSide, 'right');
     if (needleWidth > 0) {
-      needleRect = { x: splitX - gap, y: packBbox.minY, width: needleWidth, height: packBbox.maxY - packBbox.minY };
+      needleRect = { x: splitX - needleWidth / 2, y: packBbox.minY, width: needleWidth, height: packBbox.maxY - packBbox.minY };
+    }
+    if (clearance > 0) {
+      clearanceRect = { x: splitX - gap, y: packBbox.minY, width: 2 * gap, height: packBbox.maxY - packBbox.minY };
     }
     return {
       pack: {
@@ -621,9 +640,10 @@ function packWindow(packableArea, diameter, count, coils, needleWidth) {
         maxCapacity: packL.maxCapacity + packR.maxCapacity,
       },
       needleRect: needleRect,
+      clearanceRect: clearanceRect,
     };
   }
-  return { pack: settlePack(packableArea, diameter, count), needleRect: null };
+  return { pack: settlePack(packableArea, diameter, count), needleRect: null, clearanceRect: null };
 }
 
 /** 依匝數回推線徑：槽型與總線數（匝數 × 線圈數 × 股數）固定，從「面積
@@ -645,7 +665,7 @@ window.findMaxWireDia = function () {
   var found = null;
   for (var k = kStart; k >= 1; k--) {
     var bare = Math.round(k * STEP * 1000) / 1000;
-    var res = packWindow(L.packableArea, bare + 2 * enamel, L.count, L.coils, L.needleWidth);
+    var res = packWindow(L.packableArea, bare + 2 * enamel, L.count, L.coils, L.needleWidth, L.needleClearance);
     if (res.pack.placedCount >= L.count) { found = bare; break; }
   }
 
@@ -734,6 +754,7 @@ function computeAllInner() {
   }
 
   var needleWidth = Math.max(0, num('w_needleWidth', 0));
+  var needleClearance = Math.max(0, num('w_needleClearance', 0));
   var openingWidth = openingWidthOf(vertices);
   if (coils >= 2 && needleWidth > 0 && openingWidth > 0 && needleWidth > openingWidth) {
     $('statsOut').innerHTML = '<span class="bad">' + mtT('errNeedleTooWide') + '</span>';
@@ -755,13 +776,14 @@ function computeAllInner() {
   // 佔其中一邊，不是整個繞線窗混在一起看起來像單層。單層（Coils/slot
   // <= 1）：沒有單一偏向的槽壁可貼，整個繞線窗當一池子往槽底沉降，維
   // 持原樣，也沒有中間通道這個概念。
-  var packed = packWindow(packableArea, diameter, count, coils, needleWidth);
+  var packed = packWindow(packableArea, diameter, count, coils, needleWidth, needleClearance);
   var pack = packed.pack, needleRect = packed.needleRect;
-  renderSvg(innerPoly, pack, needleRect);
+  renderSvg(innerPoly, pack, needleRect, packed.clearanceRect);
 
   lastPackable = {
-    packableArea: packableArea, windingArea: windingArea, count: count, coils: coils, needleWidth: needleWidth,
-    sig: [JSON.stringify(packableArea), count, coils, needleWidth, enamel, bareDia].join('|'),
+    packableArea: packableArea, windingArea: windingArea, count: count, coils: coils,
+    needleWidth: needleWidth, needleClearance: needleClearance,
+    sig: [JSON.stringify(packableArea), count, coils, needleWidth, needleClearance, enamel, bareDia].join('|'),
   };
 
   var maxFillPct = pack.maxCapacity * circleArea / windingArea * 100;
@@ -824,7 +846,7 @@ document.addEventListener('DOMContentLoaded', function () {
   $('btnAddPoint').addEventListener('click', addVertexPoint);
   $('btnUndoVertex').addEventListener('click', undoVertices);
 
-  ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_linerThickness', 'w_needleWidth', 'w_windStartY']
+  ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_linerThickness', 'w_needleWidth', 'w_needleClearance', 'w_windStartY']
     .forEach(function (id) { $(id).addEventListener('input', computeAll); });
 
   document.addEventListener('mt-lang-change', computeAll);
