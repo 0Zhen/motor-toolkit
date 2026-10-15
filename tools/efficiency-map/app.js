@@ -339,7 +339,7 @@ function renderIeResult(r) {
 
   var achievedLabel = r.achieved || mtT('ieNone');
   badge.innerHTML =
-    '<div style="font-size:11.5px;color:var(--text3);margin-bottom:6px">' +
+    '<div style="font-size:12px;color:var(--text2);margin-bottom:6px">' +
       mtT('ieResultHead').replace('{p}', r.powerKw.toFixed(3)).replace('{b}', r.band) +
     '</div>' +
     '<span class="ie-badge' + (r.achieved ? '' : ' none') + '">' + achievedLabel + '</span>';
