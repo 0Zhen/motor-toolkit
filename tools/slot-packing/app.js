@@ -418,9 +418,10 @@ function attachVertexDragHandlers(svg) {
         var p = svgPointToUser(svg, latest.clientX, latest.clientY);
         // 卡住x<=0，不讓左半邊的點被拖過Y軸跑到右邊——拖過去的話鏡射出來
         // 的右半邊會變成跑到左邊，兩邊角色對調，畫面會很confusing，直
-        // 接限制住比較不會拖錯。
+        // 接限制住比較不會拖錯。同理卡住y>=0：y=0（X軸）是槽口，往上是
+        // 氣隙那一側，槽型不會長到那裡去。
         halfVertices[i].x = Math.min(p.x, 0);
-        halfVertices[i].y = p.y;
+        halfVertices[i].y = Math.max(p.y, 0);
         syncVerticesFromHalf();
         renderVertexTable();
         computeAll(); // 會重新呼叫 renderSvg()，含重新綁定這些拖曳控點
