@@ -20,50 +20,86 @@
 </script>
 <link rel="stylesheet" href="shared/theme.css">
 </head>
-<body data-title="Motor Toolkit" data-sub="Engineering tools for motor design"
-      data-title-zh="Motor Toolkit" data-sub-zh="馬達工程小工具集">
+<body>
 <script src="shared/tools.js"></script>
 <script src="shared/shell.js"></script>
 
 <main class="mt-home">
-  <h1 data-i18n="tools">Tools</h1>
-  <p class="mt-home-intro" data-i18n="intro">
-    Browser-based tools for motor design and testing. Everything runs locally in
-    your browser — no data is uploaded to any server.
-  </p>
-  <div class="mt-tool-grid" id="toolGrid"></div>
+  <section class="mt-hero">
+    <div class="mt-eyebrow" id="eyebrow"></div>
+    <h1 data-i18n="headline">Engineering tools for electric motor design and testing.</h1>
+    <p class="mt-home-intro" data-i18n="intro">
+      Winding layouts, slot fill, DCR, working points, spectra and efficiency maps — the
+      calculations motor engineers redo every week, without a spreadsheet. Everything runs
+      locally in your browser; no data is uploaded.
+    </p>
+    <div class="mt-chips">
+      <span class="mt-chip" data-i18n="chipSignup">No sign-up</span>
+      <span class="mt-chip" data-i18n="chipOffline">Works offline</span>
+      <span class="mt-chip">English / 中文</span>
+    </div>
+  </section>
+
+  <div id="toolGroups"></div>
 </main>
 
-<footer class="mt-footer" data-i18n="footer">Motor Toolkit · runs entirely in your browser</footer>
+<footer class="mt-footer">
+  <span data-i18n="footer">Motor Toolkit · runs entirely in your browser</span> ·
+  <a href="https://0zhen.github.io/" data-i18n="blog">Blog</a> ·
+  <a href="https://github.com/0Zhen/motor-toolkit">GitHub</a>
+</footer>
 
 <script>
 var MT_I18N = {
-  tools:  { en: 'Tools', zh: '工具' },
-  intro:  {
-    en: 'Browser-based tools for motor design and testing. Everything runs locally in your browser — no data is uploaded to any server.',
-    zh: '為馬達設計與測試打造的瀏覽器工具。所有計算都在你的瀏覽器本機完成，資料不會上傳到任何伺服器。',
+  eyebrow:  { en: '{n} tools · free · nothing leaves your browser', zh: '{n} 個工具 · 免費 · 資料不離開瀏覽器' },
+  headline: { en: 'Engineering tools for electric motor design and testing.', zh: '給馬達設計與測試用的工程小工具。' },
+  intro:    {
+    en: 'Winding layouts, slot fill, DCR, working points, spectra and efficiency maps — the calculations motor engineers redo every week, without a spreadsheet. Everything runs locally in your browser; no data is uploaded.',
+    zh: '繞組排列、槽滿率、DCR、工作點、頻譜與效率地圖——馬達工程師每週都在重算的東西，不用再開 Excel。所有計算都在你的瀏覽器本機完成，資料不會上傳。',
   },
+  chipSignup:  { en: 'No sign-up', zh: '免註冊' },
+  chipOffline: { en: 'Works offline', zh: '可離線使用' },
   footer: { en: 'Motor Toolkit · runs entirely in your browser', zh: 'Motor Toolkit · 完全在瀏覽器中執行' },
+  blog:   { en: 'Blog', zh: '部落格' },
 };
 
 (function () {
-  var grid = document.getElementById('toolGrid');
-  function renderCards() {
-    var zh = window.mtLang && mtLang() === 'zh';
-    grid.innerHTML = '';
-    MT_TOOLS.forEach(function (t) {
-      var a = document.createElement('a');
-      a.className = 'mt-tool-card';
-      a.href = t.path + 'index.html';
-      a.innerHTML =
-        '<span class="mt-tool-icon">' + t.icon + '</span>' +
-        '<h2>' + ((zh && t.name_zh) || t.name) + '</h2>' +
-        '<p>' + ((zh && t.desc_zh) || t.desc) + '</p>';
-      grid.appendChild(a);
+  var wrap = document.getElementById('toolGroups');
+  function text(tag, cls, str) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    e.textContent = str;
+    return e;
+  }
+  function render() {
+    var zh = mtLang() === 'zh';
+    document.getElementById('eyebrow').textContent = mtT('eyebrow').replace('{n}', MT_TOOLS.length);
+    wrap.innerHTML = '';
+    mtToolGroups().forEach(function (gr) {
+      var sec = document.createElement('section');
+      sec.className = 'mt-group';
+      var head = document.createElement('div');
+      head.className = 'mt-group-head';
+      head.appendChild(text('h2', '', (zh && gr.group.name_zh) || gr.group.name));
+      if (gr.group.sub) head.appendChild(text('span', '', (zh && gr.group.sub_zh) || gr.group.sub));
+      sec.appendChild(head);
+      var grid = document.createElement('div');
+      grid.className = 'mt-tool-grid';
+      gr.tools.forEach(function (t) {
+        var a = document.createElement('a');
+        a.className = 'mt-tool-card';
+        a.href = t.path + 'index.html';
+        a.innerHTML = '<span class="mt-tool-icon">' + mtIcon(t, 22) + '</span>';
+        a.appendChild(text('h3', '', (zh && t.name_zh) || t.name));
+        a.appendChild(text('p', '', (zh && t.desc_zh) || t.desc));
+        grid.appendChild(a);
+      });
+      sec.appendChild(grid);
+      wrap.appendChild(sec);
     });
   }
-  renderCards();
-  document.addEventListener('mt-lang-change', renderCards);
+  render();
+  document.addEventListener('mt-lang-change', render);
 })();
 </script>
 </body>
