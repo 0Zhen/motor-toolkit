@@ -118,6 +118,12 @@
         The liner is modeled as a real inward offset of the slot outline (shown in green below),
         not just a number subtracted from the fill % — turns are packed inside that offset shape.
       </div>
+      <button class="mt-btn-ghost" style="width:100%;margin-top:8px" onclick="findMaxWireDia()" data-i18n="findWireBtn">Max wire dia. for these turns</button>
+      <div class="hint-text" data-i18n="findWireHint">
+        Keeps the slot shape and turns × coils × strands fixed, tries standard bare diameters in
+        0.05 mm steps (enamel thickness held fixed) and applies the largest one where every wire fits.
+      </div>
+      <div class="hint-text" id="findWireOut" style="display:none"></div>
       <button class="mt-btn-ghost" style="width:100%;margin-top:8px" onclick="openInDcrCalculator()" data-i18n="checkDcrBtn">Check DCR with these turns →</button>
     </div>
 

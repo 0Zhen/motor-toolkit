@@ -78,6 +78,20 @@ var MT_I18N = {
   packedAll:     { en: 'all placed', zh: '全部放得下' },
   packedPartial: { en: 'this slot can’t physically fit this many at this wire size', zh: '這個線徑下，這個槽塞不下這麼多' },
   applyMaxBtn:   { en: 'Fill to max', zh: '填滿到最大容量' },
+  findWireBtn:   { en: 'Max wire dia. for these turns', zh: '依匝數回推最大線徑' },
+  findWireHint:  {
+    en: 'Keeps the slot shape and turns × coils × strands fixed, tries standard bare diameters in 0.05 mm steps (enamel thickness held fixed) and applies the largest one where every wire fits.',
+    zh: '槽型與匝數 × 線圈數 × 股數固定不變，以標準線徑 0.05 mm 為一格試裸銅徑（漆膜厚度維持不變），套用能把全部線材放進去的最大值。',
+  },
+  findWireResult: {
+    en: 'Largest bare dia. that fits {n} wires: {d} mm (OD {od} mm, fill {f}%). Applied — was {prev} mm.',
+    zh: '放得下 {n} 根的最大裸銅徑：{d} mm（外徑 {od} mm，槽滿率 {f}%）。已套用，原本 {prev} mm。',
+  },
+  findWireNone:  {
+    en: 'No standard bare diameter down to 0.05 mm fits {n} wires in this slot.',
+    zh: '裸銅徑降到 0.05 mm 也放不下 {n} 根線材。',
+  },
+  findWireNoSlot: { en: 'Fix the slot / wire inputs first (see Stats).', zh: '請先修正槽型或線材輸入（見右側統計）。' },
   errFewPoints:  { en: 'Need at least 3 points to form a shape.', zh: '至少需要3個頂點才能構成形狀。' },
   errBadArea:    { en: 'These points don’t enclose a usable area — check the vertex order/values.', zh: '這些頂點圍不出有效面積，請檢查頂點順序/數值。' },
   errBadWire:    { en: 'Wire diameter and count must be greater than 0.', zh: '線徑與數量都必須大於0。' },
@@ -137,6 +151,9 @@ var shapeMode = 'param';
 var halfVertices = [];
 var vertices = [];
 var lastMaxCapacity = 0, lastCoils = 1, lastStrands = 1; // 給「自動填滿到最大容量」按鈕用
+var lastPackable = null; // 給「依匝數回推線徑」用：目前有效的繞線窗與排列條件，computeAll 失敗時為 null
+var findWireSig = null;  // 回推結果對應的條件；條件一改就把那行結果藏起來，避免顯示過期的答案
+var findWireRender = null; // 重畫那行結果（切換語言時用）
 var lastWindingArea = 0; // 給「去DCR計算機確認」按鈕用——DCR自己的槽面積欄位需要這個真實算出來的繞線窗面積，不能留它自己的預設值
 
 /** 左半邊（依序從槽口排到槽底）鏡射回去接成完整封閉多邊形：左半原封
@@ -576,8 +593,95 @@ function renderSvg(innerPoly, pack, needleRect) {
   if (shapeMode === 'custom') attachVertexDragHandlers(svg);
 }
 
+/** 在繞線窗裡排 count 根外徑 diameter 的線材。Coils/slot >= 2 時先切成
+ *  左右兩個線圈邊（中間留導針通道），各自往外側槽壁沉降；否則整個繞線
+ *  窗往槽底沉降。computeAll 與「依匝數回推線徑」共用這一套，確保兩邊
+ *  判斷「放不放得下」的標準完全一致。pack.placedCount >= count 就代表
+ *  全部放得下（雙層時等於兩側都各自放得下分到的根數）。 */
+function packWindow(packableArea, diameter, count, coils, needleWidth) {
+  var needleRect = null;
+  if (coils >= 2) {
+    var packBbox = polygonBBox(packableArea);
+    var splitX = (packBbox.minX + packBbox.maxX) / 2;
+    var gap = needleWidth / 2;
+    var leftArea = clipPolygonMaxX(packableArea, splitX - gap);
+    var rightArea = clipPolygonMinX(packableArea, splitX + gap);
+    var perSide = Math.round(count / 2);
+    var packL = settlePackTowardWall(leftArea, diameter, perSide, 'left');
+    var packR = settlePackTowardWall(rightArea, diameter, count - perSide, 'right');
+    if (needleWidth > 0) {
+      needleRect = { x: splitX - gap, y: packBbox.minY, width: needleWidth, height: packBbox.maxY - packBbox.minY };
+    }
+    return {
+      pack: {
+        placed: packL.placed.concat(packR.placed),
+        placedCount: packL.placedCount + packR.placedCount,
+        requestedCount: count,
+        maxCapacity: packL.maxCapacity + packR.maxCapacity,
+      },
+      needleRect: needleRect,
+    };
+  }
+  return { pack: settlePack(packableArea, diameter, count), needleRect: null };
+}
+
+/** 依匝數回推線徑：槽型與總線數（匝數 × 線圈數 × 股數）固定，從「面積
+ *  上限」（100% 槽滿率時的線徑，實際一定放不下）往下以標準線徑
+ *  0.05 mm 一格試裸銅徑，第一個能把全部線材放進去的就是答案。用逐格往下掃而不是二分
+ *  搜尋：沉降排列的容量對線徑不保證單調，二分可能跳過真正的最大值，逐
+ *  格掃描保證找到網格上最大的可行線徑。漆膜厚度維持使用者輸入的值。 */
+window.findMaxWireDia = function () {
+  var out = $('findWireOut');
+  var L = lastPackable;
+  function show(render) { findWireRender = render; out.innerHTML = render(); out.style.display = 'block'; }
+  if (!L) { findWireSig = null; show(function () { return '<span class="bad">' + mtT('findWireNoSlot') + '</span>'; }); return; }
+
+  var enamel = Math.max(0, num('w_enamel', 0.025));
+  var prevBare = num('w_bareDia', 0.7);
+  var STEP = 0.05; // 標準線徑級距
+  var dAreaLimit = Math.sqrt(4 * L.windingArea / (Math.PI * L.count)); // 外徑上限
+  var kStart = Math.floor((dAreaLimit - 2 * enamel) / STEP + 1e-9);
+  var found = null;
+  for (var k = kStart; k >= 1; k--) {
+    var bare = Math.round(k * STEP * 1000) / 1000;
+    var res = packWindow(L.packableArea, bare + 2 * enamel, L.count, L.coils, L.needleWidth);
+    if (res.pack.placedCount >= L.count) { found = bare; break; }
+  }
+
+  if (found === null) {
+    findWireSig = null;
+    show(function () { return '<span class="bad">' + mtT('findWireNone').replace('{n}', L.count) + '</span>'; });
+    return;
+  }
+  var od = found + 2 * enamel;
+  var fill = L.count * Math.PI / 4 * od * od / L.windingArea * 100;
+  $('w_bareDia').value = found.toFixed(2);
+  computeAll();
+  findWireSig = lastPackable && lastPackable.sig;
+  show(function () {
+    return mtT('findWireResult')
+      .replace('{n}', L.count).replace('{d}', found.toFixed(2)).replace('{od}', fmt(od, 3))
+      .replace('{f}', fmt(fill, 1)).replace('{prev}', fmt(prevBare, 3));
+  });
+};
+
+/** 回推結果只在條件完全沒變時顯示：槽型、線數、線圈數、導針通道、漆膜
+ *  或裸銅徑任何一個被改過就藏起來（套用結果本身改的裸銅徑，是在記下條件
+ *  之前發生的，不會把自己藏掉）。錯誤訊息也在下一次重算時清掉。 */
+function updateFindWireVisibility() {
+  var out = $('findWireOut');
+  if (!out || out.style.display === 'none') return;
+  if (!findWireSig || !lastPackable || lastPackable.sig !== findWireSig) { out.style.display = 'none'; return; }
+  if (findWireRender) out.innerHTML = findWireRender(); // 語言切換時跟著換
+}
+
 /* ── 主重算 ── */
 function computeAll() {
+  computeAllInner();
+  updateFindWireVisibility(); // 不論 computeAllInner 從哪個錯誤分支提早 return 都會檢查
+}
+function computeAllInner() {
+  lastPackable = null;
   if (vertices.length < 3) {
     $('statsOut').innerHTML = '<span class="bad">' + mtT('errFewPoints') + '</span>';
     renderSvg(null, null);
@@ -650,29 +754,14 @@ function computeAll() {
   // 佔其中一邊，不是整個繞線窗混在一起看起來像單層。單層（Coils/slot
   // <= 1）：沒有單一偏向的槽壁可貼，整個繞線窗當一池子往槽底沉降，維
   // 持原樣，也沒有中間通道這個概念。
-  var pack, needleRect = null;
-  if (coils >= 2) {
-    var packBbox = polygonBBox(packableArea);
-    var splitX = (packBbox.minX + packBbox.maxX) / 2;
-    var gap = needleWidth / 2;
-    var leftArea = clipPolygonMaxX(packableArea, splitX - gap);
-    var rightArea = clipPolygonMinX(packableArea, splitX + gap);
-    var perSide = Math.round(count / 2);
-    var packL = settlePackTowardWall(leftArea, diameter, perSide, 'left');
-    var packR = settlePackTowardWall(rightArea, diameter, count - perSide, 'right');
-    pack = {
-      placed: packL.placed.concat(packR.placed),
-      placedCount: packL.placedCount + packR.placedCount,
-      requestedCount: count,
-      maxCapacity: packL.maxCapacity + packR.maxCapacity,
-    };
-    if (needleWidth > 0) {
-      needleRect = { x: splitX - gap, y: packBbox.minY, width: needleWidth, height: packBbox.maxY - packBbox.minY };
-    }
-  } else {
-    pack = settlePack(packableArea, diameter, count);
-  }
+  var packed = packWindow(packableArea, diameter, count, coils, needleWidth);
+  var pack = packed.pack, needleRect = packed.needleRect;
   renderSvg(innerPoly, pack, needleRect);
+
+  lastPackable = {
+    packableArea: packableArea, windingArea: windingArea, count: count, coils: coils, needleWidth: needleWidth,
+    sig: [JSON.stringify(packableArea), count, coils, needleWidth, enamel, bareDia].join('|'),
+  };
 
   var maxFillPct = pack.maxCapacity * circleArea / windingArea * 100;
   var fillClass = fillPctArea > 100 ? 'bad' : (fillPctArea > 85 ? 'warn' : '');
