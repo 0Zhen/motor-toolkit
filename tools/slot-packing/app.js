@@ -379,6 +379,12 @@ function svgPointToUser(svg, clientX, clientY) {
  *  是左點還是右點」（圖上本來就只有左半邊的點有控點）。用
  *  requestAnimationFrame 節流（pointermove 可能比畫面更新頻繁），拖曳
  *  開始時存一次 undo 快照（不是每個影格都存）。 */
+/** 拖曳頂點時凍結的視野（viewBox＋maxDim）。拖曳中每個影格都會重畫，若
+ *  照常依形狀重新算 viewBox，比例尺會跟著一直縮放、控點也會從游標底下
+ *  跑掉；所以按下時凍結目前的視野，放開滑鼠才解除並重畫一次重新貼合。 */
+var dragView = null;
+var lastView = null;
+
 function attachVertexDragHandlers(svg) {
   svg.querySelectorAll('.vertex-handle').forEach(function (handle) {
     handle.style.cursor = 'grab';
@@ -386,6 +392,7 @@ function attachVertexDragHandlers(svg) {
       downEv.preventDefault();
       var i = parseInt(handle.dataset.i, 10);
       pushVertexHistory();
+      dragView = lastView;
       handle.style.cursor = 'grabbing';
       var rafPending = false, latest = null;
       function applyMove() {
@@ -409,6 +416,11 @@ function attachVertexDragHandlers(svg) {
         document.removeEventListener('pointermove', onMove);
         document.removeEventListener('pointerup', onUp);
         document.removeEventListener('pointercancel', onUp);
+        // 若還有排隊中的影格，先把最後位置套用掉，再解除凍結重新貼合比例尺
+        if (rafPending) applyMove();
+        latest = null;
+        dragView = null;
+        computeAll();
       }
       document.addEventListener('pointermove', onMove);
       document.addEventListener('pointerup', onUp);
@@ -424,18 +436,26 @@ function renderSvg(innerPoly, pack, needleRect) {
 
   var bbox = polygonBBox(vertices);
   var w = bbox.maxX - bbox.minX, h = bbox.maxY - bbox.minY;
-  var maxDim = Math.max(w, h, 1);
-  // 參數化模式會在圖外圍標尺寸，需要比自訂頂點模式更大的留白空間才放
-  // 得下尺寸線跟文字——上方堆兩條（開口寬、上寬）、下方一條（下寬）、
-  // 左右各一條（開口高、槽深）。
-  var padTop = maxDim * (shapeMode === 'param' ? 0.40 : 0.18);
-  var padBottom = maxDim * (shapeMode === 'param' ? 0.22 : 0.18);
-  var padLeft = maxDim * (shapeMode === 'param' ? 0.26 : 0.26);
-  var padRight = maxDim * (shapeMode === 'param' ? 0.26 : 0.26);
-  var vx = bbox.minX - padLeft, vy = bbox.minY - padTop, vw = w + padLeft + padRight, vh = h + padTop + padBottom;
+  var maxDim, vx, vy, vw, vh;
+  if (dragView) {
+    // 拖曳中：沿用按下時的視野，比例尺、線寬、字級、控點大小都不變
+    maxDim = dragView.maxDim;
+    vx = dragView.vx; vy = dragView.vy; vw = dragView.vw; vh = dragView.vh;
+  } else {
+    maxDim = Math.max(w, h, 1);
+    // 參數化模式會在圖外圍標尺寸，需要比自訂頂點模式更大的留白空間才放
+    // 得下尺寸線跟文字——上方堆兩條（開口寬、上寬）、下方一條（下寬）、
+    // 左右各一條（開口高、槽深）。
+    var padTop = maxDim * (shapeMode === 'param' ? 0.40 : 0.18);
+    var padBottom = maxDim * (shapeMode === 'param' ? 0.22 : 0.18);
+    var padLeft = maxDim * (shapeMode === 'param' ? 0.26 : 0.26);
+    var padRight = maxDim * (shapeMode === 'param' ? 0.26 : 0.26);
+    vx = bbox.minX - padLeft; vy = bbox.minY - padTop; vw = w + padLeft + padRight; vh = h + padTop + padBottom;
+  }
+  lastView = { vx: vx, vy: vy, vw: vw, vh: vh, maxDim: maxDim };
   svg.setAttribute('viewBox', vx + ' ' + vy + ' ' + vw + ' ' + vh);
 
-  var strokeW = Math.max(w, h, 1) * 0.01;
+  var strokeW = maxDim * 0.01;
   var outerPts = openingAwarePoints(vertices).map(function (p) { return p.x + ',' + p.y; }).join(' ');
 
   // 鐵芯（紅）只畫到槽口那條線（bbox.minY，氣隙側）為止，不要往上延伸到
