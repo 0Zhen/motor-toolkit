@@ -456,3 +456,15 @@ input[type=checkbox], input[type=radio] { accent-color: var(--accent); width: 15
 }
 .mt-footer a { color: var(--accent); text-decoration: none; }
 .mt-footer a:hover { text-decoration: underline; }
+
+/* Plain-HTML tool links written by scripts/sync-static.py for crawlers and
+   screen readers; the visible menu is the one shell.js builds. */
+.mt-sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

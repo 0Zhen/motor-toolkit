@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Motor Toolkit — Free Online Motor Engineering Tools</title>
 <meta name="description"
-  content="Free online tools for motor engineers: FFT spectrum analyser with THD, efficiency map generator with PNG export, and motor working point explorer. No install, runs in the browser.">
+  content="Free online tools for electric motor engineers: winding designer and winding factor, slot fill and wire packing, DCR calculator, working point explorer, FFT / THD analyser, efficiency map, CPK and material cost. No sign-up, runs in the browser.">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://0zhen.github.io/motor-toolkit/">
 <link rel="icon" type="image/png" href="favicon.png">
@@ -15,14 +15,73 @@
   "@type": "WebSite",
   "name": "Motor Toolkit",
   "url": "https://0zhen.github.io/motor-toolkit/",
-  "description": "Free online tools for motor engineers: FFT analyser, efficiency map generator, working point explorer."
+  "description": "Free online tools for electric motor engineers: winding designer, slot packing, DCR calculator, working point explorer, FFT / THD analyser, efficiency map, CPK analysis and cost calculator."
 }
 </script>
-<link rel="stylesheet" href="shared/theme.css?v=20261016">
+<link rel="stylesheet" href="shared/theme.css?v=20261017">
+<!-- mt:static item-list -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Motor Toolkit tools",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Efficiency Map",
+      "url": "https://0zhen.github.io/motor-toolkit/tools/efficiency-map/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "FFT Analyser",
+      "url": "https://0zhen.github.io/motor-toolkit/tools/fft-analyser/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Working Point Explorer",
+      "url": "https://0zhen.github.io/motor-toolkit/tools/working-point/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "DCR Calculator",
+      "url": "https://0zhen.github.io/motor-toolkit/tools/dcr-calculator/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 5,
+      "name": "CPK Analysis",
+      "url": "https://0zhen.github.io/motor-toolkit/tools/cpk-analysis/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 6,
+      "name": "Winding Designer",
+      "url": "https://0zhen.github.io/motor-toolkit/tools/winding-designer/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 7,
+      "name": "Cost Calculator",
+      "url": "https://0zhen.github.io/motor-toolkit/tools/cost-calculator/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 8,
+      "name": "Slot Packing Viewer",
+      "url": "https://0zhen.github.io/motor-toolkit/tools/slot-packing/"
+    }
+  ]
+}
+</script>
+<!-- /mt:static item-list -->
 </head>
 <body>
-<script src="shared/tools.js?v=20261016"></script>
-<script src="shared/shell.js?v=20261016"></script>
+<script src="shared/tools.js?v=20261017"></script>
+<script src="shared/shell.js?v=20261017"></script>
 
 <main class="mt-home">
   <section class="mt-hero">
@@ -40,7 +99,32 @@
     </div>
   </section>
 
-  <div id="toolGroups"></div>
+  <div id="toolGroups">
+<!-- mt:static tool-list -->
+<section class="mt-group">
+  <div class="mt-group-head"><h2>Design</h2><span>Size the winding and the slot</span></div>
+  <div class="mt-tool-grid">
+    <a class="mt-tool-card" href="tools/working-point/index.html"><h3>Working Point Explorer</h3><p>Solve the stable working point of a motor and sweep design parameters.</p></a>
+    <a class="mt-tool-card" href="tools/dcr-calculator/index.html"><h3>DCR Calculator</h3><p>Convert between winding turns, wire diameter, DCR and slot fill factor. Quick calibration or full geometry mode with a wire-diameter sweep table.</p></a>
+    <a class="mt-tool-card" href="tools/winding-designer/index.html"><h3>Winding Designer</h3><p>Pick poles, slots and layers to get the winding layout diagram and fundamental winding factor. Integer- and fractional-slot windings.</p></a>
+    <a class="mt-tool-card" href="tools/slot-packing/index.html"><h3>Slot Packing Viewer</h3><p>See how turns pack into a stator slot: parametric or custom slot shape, liner offset, double-layer needle channel, and the largest standard wire that fits a given turn count.</p></a>
+  </div>
+</section>
+<section class="mt-group">
+  <div class="mt-group-head"><h2>Test &amp; analysis</h2><span>Make sense of bench data</span></div>
+  <div class="mt-tool-grid">
+    <a class="mt-tool-card" href="tools/efficiency-map/index.html"><h3>Efficiency Map</h3><p>Generate a contour efficiency map from speed / torque / efficiency data. PNG export.</p></a>
+    <a class="mt-tool-card" href="tools/fft-analyser/index.html"><h3>FFT Analyser</h3><p>Spectrum analysis with harmonic extraction and THD. Flat-top / Hann / Hamming windows.</p></a>
+  </div>
+</section>
+<section class="mt-group">
+  <div class="mt-group-head"><h2>Production</h2><span>Quality and cost</span></div>
+  <div class="mt-tool-grid">
+    <a class="mt-tool-card" href="tools/cpk-analysis/index.html"><h3>CPK Analysis</h3><p>Process capability (Cp / Cpk) from a single measured parameter. IQR outlier removal, USL/LSL, histogram with sigma lines, PNG export.</p></a>
+    <a class="mt-tool-card" href="tools/cost-calculator/index.html"><h3>Cost Calculator</h3><p>Estimate silicon steel / copper / magnet or rotor material cost from geometry, slot/pole count and winding data. Supports PMSM, EESM and induction motors.</p></a>
+  </div>
+</section>
+<!-- /mt:static tool-list --></div>
 </main>
 
 <footer class="mt-footer">

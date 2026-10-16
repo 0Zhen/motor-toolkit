@@ -111,14 +111,14 @@
 }
 </script>
 
-<link rel="stylesheet" href="../../shared/theme.css?v=20261016">
-<link rel="stylesheet" href="styles.css?v=20261016">
+<link rel="stylesheet" href="../../shared/theme.css?v=20261017">
+<link rel="stylesheet" href="styles.css?v=20261017">
 </head>
 <body data-title="FFT Analyser" data-sub="Harmonics · Window functions · THD"
       data-title-zh="FFT 頻譜分析工具" data-sub-zh="諧波分析・窗函數・THD">
-<script src="../../shared/tools.js?v=20261016"></script>
-<script src="../../shared/shell.js?v=20261016"></script>
-<script src="../../vendor/chart.umd.min.js?v=20261016"></script>
+<script src="../../shared/tools.js?v=20261017"></script>
+<script src="../../shared/shell.js?v=20261017"></script>
+<script src="../../vendor/chart.umd.min.js?v=20261017"></script>
 
 <div id="tt"></div>
 
@@ -256,6 +256,23 @@ Index column (1, 2, 3 …) — enter sampling rate below:<br>
 </div>
 </div><!-- /container -->
 
-<script src="app.js?v=20261016"></script>
+<script src="app.js?v=20261017"></script>
+<!-- mt:static nav -->
+<nav class="mt-sr-only" aria-label="Motor Toolkit tools">
+  <h1>FFT Analyser</h1>
+  <p>Free online FFT analyser — no install needed. Upload oscilloscope CSV or paste data to measure harmonic amplitudes and THD. Supports Flat-top, Hann, Hamming, Rectangular window functions. Used for motor back-EMF analysis, signal quality testing, and audio harmonic distortion measurement.</p>
+  <ul>
+    <li><a href="../../index.html">Motor Toolkit — all tools</a></li>
+    <li><a href="../../tools/efficiency-map/index.html">Efficiency Map</a> — Generate a contour efficiency map from speed / torque / efficiency data. PNG export.</li>
+    <li><a href="../../tools/fft-analyser/index.html">FFT Analyser</a> — Spectrum analysis with harmonic extraction and THD. Flat-top / Hann / Hamming windows.</li>
+    <li><a href="../../tools/working-point/index.html">Working Point Explorer</a> — Solve the stable working point of a motor and sweep design parameters.</li>
+    <li><a href="../../tools/dcr-calculator/index.html">DCR Calculator</a> — Convert between winding turns, wire diameter, DCR and slot fill factor. Quick calibration or full geometry mode with a wire-diameter sweep table.</li>
+    <li><a href="../../tools/cpk-analysis/index.html">CPK Analysis</a> — Process capability (Cp / Cpk) from a single measured parameter. IQR outlier removal, USL/LSL, histogram with sigma lines, PNG export.</li>
+    <li><a href="../../tools/winding-designer/index.html">Winding Designer</a> — Pick poles, slots and layers to get the winding layout diagram and fundamental winding factor. Integer- and fractional-slot windings.</li>
+    <li><a href="../../tools/cost-calculator/index.html">Cost Calculator</a> — Estimate silicon steel / copper / magnet or rotor material cost from geometry, slot/pole count and winding data. Supports PMSM, EESM and induction motors.</li>
+    <li><a href="../../tools/slot-packing/index.html">Slot Packing Viewer</a> — See how turns pack into a stator slot: parametric or custom slot shape, liner offset, double-layer needle channel, and the largest standard wire that fits a given turn count.</li>
+  </ul>
+</nav>
+<!-- /mt:static nav -->
 </body>
 </html>

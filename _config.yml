@@ -1,0 +1,5 @@
+# GitHub Pages (Jekyll) settings: keep repo-only files off the public site.
+exclude:
+  - agent-logs/
+  - scripts/
+  - README.md

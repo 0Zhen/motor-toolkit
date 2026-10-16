@@ -1,0 +1,26 @@
+# Motor Toolkit
+
+> Free, browser-based engineering calculators for electric motor design, testing and production. No sign-up; every calculation runs locally in the browser and no data is uploaded. Interface in English and Traditional Chinese.
+
+Built by a motor design engineer for the calculations motor engineers redo every week. Source: https://github.com/0Zhen/motor-toolkit
+
+## Design — Size the winding and the slot
+
+- [Working Point Explorer](https://0zhen.github.io/motor-toolkit/tools/working-point/): Solve the stable working point of a motor (boundary curve vs. load parabola intersection) and sweep design parameters. Free, browser-based, runs entirely client-side.
+- [DCR Calculator](https://0zhen.github.io/motor-toolkit/tools/dcr-calculator/): Convert between winding turns, wire diameter, DCR and slot fill factor. Quick calibration mode from a single measured point, or full geometry mode with absolute slot fill and a wire-diameter sweep table. Free, browser-based, runs entirely client-side.
+- [Winding Designer](https://0zhen.github.io/motor-toolkit/tools/winding-designer/): Design three-phase motor windings: pick poles, slots and layers, get the winding layout diagram and fundamental winding factor. Free, browser-based, runs entirely client-side.
+- [Slot Packing Viewer](https://0zhen.github.io/motor-toolkit/tools/slot-packing/): Visualize how motor winding turns pack into a stator slot and check slot fill: parametric or custom slot shape, liner offset, double-layer windings with a needle channel, and the largest standard wire diameter (0.05 mm steps) that fits a given turn count. Free, browser-based, runs entirely client-side.
+
+## Test & analysis — Make sense of bench data
+
+- [Efficiency Map](https://0zhen.github.io/motor-toolkit/tools/efficiency-map/): Generate a motor efficiency map (contour plot) from speed / torque / efficiency data points. Free, browser-based, PNG export. Data never leaves your machine.
+- [FFT Analyser](https://0zhen.github.io/motor-toolkit/tools/fft-analyser/): Free online FFT analyser — no install needed. Upload oscilloscope CSV or paste data to measure harmonic amplitudes and THD. Supports Flat-top, Hann, Hamming, Rectangular window functions. Used for motor back-EMF analysis, signal quality testing, and audio harmonic distortion measurement.
+
+## Production — Quality and cost
+
+- [CPK Analysis](https://0zhen.github.io/motor-toolkit/tools/cpk-analysis/): Process capability (Cp / Cpk) from a single measured parameter. IQR outlier removal, USL/LSL, histogram with sigma lines, PNG export. Free, browser-based, data never leaves your machine.
+- [Cost Calculator](https://0zhen.github.io/motor-toolkit/tools/cost-calculator/): Estimate motor material cost from stator/rotor geometry, slot/pole count, winding turns and wire diameter, magnet grade, and silicon steel/copper/magnet unit prices. Supports PMSM, EESM and induction motors. Free, browser-based, runs entirely client-side.
+
+## Optional
+
+- [Author blog (motor design notes, in Chinese)](https://0zhen.github.io/)

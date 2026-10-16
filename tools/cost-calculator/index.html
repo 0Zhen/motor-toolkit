@@ -9,13 +9,55 @@
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/cost-calculator/">
 <link rel="icon" type="image/png" href="../../favicon.png">
-<link rel="stylesheet" href="../../shared/theme.css?v=20261016">
-<link rel="stylesheet" href="styles.css?v=20261016">
+<link rel="stylesheet" href="../../shared/theme.css?v=20261017">
+<link rel="stylesheet" href="styles.css?v=20261017">
+<!-- mt:static seo -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Motor Toolkit">
+<meta property="og:title" content="Cost Calculator | Motor Toolkit">
+<meta property="og:description" content="Estimate motor material cost from stator/rotor geometry, slot/pole count, winding turns and wire diameter, magnet grade, and silicon steel/copper/magnet unit prices. Supports PMSM, EESM and induction motors. Free, browser-based, runs entirely client-side.">
+<meta property="og:url" content="https://0zhen.github.io/motor-toolkit/tools/cost-calculator/">
+<meta property="og:image" content="https://0zhen.github.io/motor-toolkit/favicon.png">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Cost Calculator",
+  "alternateName": "成本計算機",
+  "url": "https://0zhen.github.io/motor-toolkit/tools/cost-calculator/",
+  "description": "Estimate motor material cost from stator/rotor geometry, slot/pole count, winding turns and wire diameter, magnet grade, and silicon steel/copper/magnet unit prices. Supports PMSM, EESM and induction motors. Free, browser-based, runs entirely client-side.",
+  "applicationCategory": "EngineeringApplication",
+  "operatingSystem": "Any (runs in a web browser)",
+  "browserRequirements": "Requires JavaScript",
+  "inLanguage": [
+    "en",
+    "zh-Hant"
+  ],
+  "isAccessibleForFree": true,
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "Motor Toolkit",
+    "url": "https://0zhen.github.io/motor-toolkit/"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "0Zhen",
+    "url": "https://0zhen.github.io/"
+  }
+}
+</script>
+<!-- /mt:static seo -->
 </head>
 <body class="mt-app" data-title="Cost Calculator" data-sub="Silicon steel · Copper · Magnet / Rotor material"
       data-title-zh="成本計算機" data-sub-zh="矽鋼片 · 銅 · 磁鐵/轉子材料">
-<script src="../../shared/tools.js?v=20261016"></script>
-<script src="../../shared/shell.js?v=20261016"></script>
+<script src="../../shared/tools.js?v=20261017"></script>
+<script src="../../shared/shell.js?v=20261017"></script>
 
 <div class="layout">
 
@@ -222,8 +264,25 @@
   </div>
 </div>
 
-<script src="../../vendor/chart.umd.min.js?v=20261016"></script>
-<script src="physics.js?v=20261016"></script>
-<script src="app.js?v=20261016"></script>
+<script src="../../vendor/chart.umd.min.js?v=20261017"></script>
+<script src="physics.js?v=20261017"></script>
+<script src="app.js?v=20261017"></script>
+<!-- mt:static nav -->
+<nav class="mt-sr-only" aria-label="Motor Toolkit tools">
+  <h1>Cost Calculator</h1>
+  <p>Estimate motor material cost from stator/rotor geometry, slot/pole count, winding turns and wire diameter, magnet grade, and silicon steel/copper/magnet unit prices. Supports PMSM, EESM and induction motors. Free, browser-based, runs entirely client-side.</p>
+  <ul>
+    <li><a href="../../index.html">Motor Toolkit — all tools</a></li>
+    <li><a href="../../tools/efficiency-map/index.html">Efficiency Map</a> — Generate a contour efficiency map from speed / torque / efficiency data. PNG export.</li>
+    <li><a href="../../tools/fft-analyser/index.html">FFT Analyser</a> — Spectrum analysis with harmonic extraction and THD. Flat-top / Hann / Hamming windows.</li>
+    <li><a href="../../tools/working-point/index.html">Working Point Explorer</a> — Solve the stable working point of a motor and sweep design parameters.</li>
+    <li><a href="../../tools/dcr-calculator/index.html">DCR Calculator</a> — Convert between winding turns, wire diameter, DCR and slot fill factor. Quick calibration or full geometry mode with a wire-diameter sweep table.</li>
+    <li><a href="../../tools/cpk-analysis/index.html">CPK Analysis</a> — Process capability (Cp / Cpk) from a single measured parameter. IQR outlier removal, USL/LSL, histogram with sigma lines, PNG export.</li>
+    <li><a href="../../tools/winding-designer/index.html">Winding Designer</a> — Pick poles, slots and layers to get the winding layout diagram and fundamental winding factor. Integer- and fractional-slot windings.</li>
+    <li><a href="../../tools/cost-calculator/index.html">Cost Calculator</a> — Estimate silicon steel / copper / magnet or rotor material cost from geometry, slot/pole count and winding data. Supports PMSM, EESM and induction motors.</li>
+    <li><a href="../../tools/slot-packing/index.html">Slot Packing Viewer</a> — See how turns pack into a stator slot: parametric or custom slot shape, liner offset, double-layer needle channel, and the largest standard wire that fits a given turn count.</li>
+  </ul>
+</nav>
+<!-- /mt:static nav -->
 </body>
 </html>

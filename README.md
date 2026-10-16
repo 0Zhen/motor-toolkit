@@ -38,6 +38,8 @@ tools/<id>/           one folder per tool: index.html + styles.css + *.js
 
 Rules that keep it maintainable:
 
+- **Repo-only files** (`agent-logs/`, `scripts/`, `README.md`) are kept off
+  the public site by `_config.yml`.
 - **No build tools, no ES modules.** Plain `<script src>` in order, so every
   page also works under `file://`.
 - **Theme**: only `shared/shell.js` touches `data-theme` / localStorage.
@@ -67,7 +69,14 @@ Rules that keep it maintainable:
 3. Add ONE entry to `shared/tools.js` (`MT_TOOLS`) with a `group` (one of
    `MT_GROUPS`) and an `icon` (inner markup of a 24×24 stroke-only SVG) — the
    homepage card and the header dropdown update automatically.
-4. Add the page URL to `sitemap.xml`.
+4. Give the page a `<title>`, `<meta name="description">` and canonical link, then run
+   `python3 scripts/sync-static.py`. It writes the no-JavaScript copies of the
+   tool list (homepage cards, a hidden link list and Open Graph / JSON-LD on
+   every tool page), `llms.txt` and `sitemap.xml` from `tools.js`. Search
+   engines and AI crawlers often don't run JavaScript, so without this they
+   can't see the tools. Re-run it whenever a tool's name or description changes.
+5. Bump the `?v=` query on CSS/JS links when you change those files, so
+   browsers don't mix a cached old file with a new page.
 
 ## Local preview
 

@@ -9,7 +9,7 @@
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/efficiency-map/">
 <link rel="icon" type="image/png" href="../../favicon.png">
-<link rel="stylesheet" href="../../shared/theme.css?v=20261016">
+<link rel="stylesheet" href="../../shared/theme.css?v=20261017">
 <style>
 .em-wrap { max-width: 1200px; margin: 0 auto; padding: 20px 24px 60px;
            display: grid; grid-template-columns: 320px 1fr; gap: 18px; align-items: start; }
@@ -54,12 +54,54 @@
 .ie-table tr.achieved { background: var(--accent-l); font-weight: 700; }
 .ie-hint { font-size: 12px; color: var(--text2); line-height: 1.6; }
 </style>
+<!-- mt:static seo -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Motor Toolkit">
+<meta property="og:title" content="Efficiency Map Generator | Motor Toolkit">
+<meta property="og:description" content="Generate a motor efficiency map (contour plot) from speed / torque / efficiency data points. Free, browser-based, PNG export. Data never leaves your machine.">
+<meta property="og:url" content="https://0zhen.github.io/motor-toolkit/tools/efficiency-map/">
+<meta property="og:image" content="https://0zhen.github.io/motor-toolkit/favicon.png">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Efficiency Map",
+  "alternateName": "效率地圖產生器",
+  "url": "https://0zhen.github.io/motor-toolkit/tools/efficiency-map/",
+  "description": "Generate a motor efficiency map (contour plot) from speed / torque / efficiency data points. Free, browser-based, PNG export. Data never leaves your machine.",
+  "applicationCategory": "EngineeringApplication",
+  "operatingSystem": "Any (runs in a web browser)",
+  "browserRequirements": "Requires JavaScript",
+  "inLanguage": [
+    "en",
+    "zh-Hant"
+  ],
+  "isAccessibleForFree": true,
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "Motor Toolkit",
+    "url": "https://0zhen.github.io/motor-toolkit/"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "0Zhen",
+    "url": "https://0zhen.github.io/"
+  }
+}
+</script>
+<!-- /mt:static seo -->
 </head>
 <body data-title="Efficiency Map Generator" data-sub="Contour map from speed / torque / efficiency points"
       data-title-zh="效率地圖產生器" data-sub-zh="由轉速／扭矩／效率資料點產生等高線圖">
-<script src="../../shared/tools.js?v=20261016"></script>
-<script src="../../shared/shell.js?v=20261016"></script>
-<script src="../../vendor/plotly-cartesian.min.js?v=20261016"></script>
+<script src="../../shared/tools.js?v=20261017"></script>
+<script src="../../shared/shell.js?v=20261017"></script>
+<script src="../../vendor/plotly-cartesian.min.js?v=20261017"></script>
 
 <main class="em-wrap">
   <section class="mt-card em-panel">
@@ -159,7 +201,24 @@
   </section>
 </div>
 
-<script src="ie-class.js?v=20261016"></script>
-<script src="app.js?v=20261016"></script>
+<script src="ie-class.js?v=20261017"></script>
+<script src="app.js?v=20261017"></script>
+<!-- mt:static nav -->
+<nav class="mt-sr-only" aria-label="Motor Toolkit tools">
+  <h1>Efficiency Map</h1>
+  <p>Generate a motor efficiency map (contour plot) from speed / torque / efficiency data points. Free, browser-based, PNG export. Data never leaves your machine.</p>
+  <ul>
+    <li><a href="../../index.html">Motor Toolkit — all tools</a></li>
+    <li><a href="../../tools/efficiency-map/index.html">Efficiency Map</a> — Generate a contour efficiency map from speed / torque / efficiency data. PNG export.</li>
+    <li><a href="../../tools/fft-analyser/index.html">FFT Analyser</a> — Spectrum analysis with harmonic extraction and THD. Flat-top / Hann / Hamming windows.</li>
+    <li><a href="../../tools/working-point/index.html">Working Point Explorer</a> — Solve the stable working point of a motor and sweep design parameters.</li>
+    <li><a href="../../tools/dcr-calculator/index.html">DCR Calculator</a> — Convert between winding turns, wire diameter, DCR and slot fill factor. Quick calibration or full geometry mode with a wire-diameter sweep table.</li>
+    <li><a href="../../tools/cpk-analysis/index.html">CPK Analysis</a> — Process capability (Cp / Cpk) from a single measured parameter. IQR outlier removal, USL/LSL, histogram with sigma lines, PNG export.</li>
+    <li><a href="../../tools/winding-designer/index.html">Winding Designer</a> — Pick poles, slots and layers to get the winding layout diagram and fundamental winding factor. Integer- and fractional-slot windings.</li>
+    <li><a href="../../tools/cost-calculator/index.html">Cost Calculator</a> — Estimate silicon steel / copper / magnet or rotor material cost from geometry, slot/pole count and winding data. Supports PMSM, EESM and induction motors.</li>
+    <li><a href="../../tools/slot-packing/index.html">Slot Packing Viewer</a> — See how turns pack into a stator slot: parametric or custom slot shape, liner offset, double-layer needle channel, and the largest standard wire that fits a given turn count.</li>
+  </ul>
+</nav>
+<!-- /mt:static nav -->
 </body>
 </html>
