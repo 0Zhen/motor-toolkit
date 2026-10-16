@@ -83,6 +83,9 @@
   font-size: var(--fs-xs);
   color: var(--text);
 }
+/* 圖例說明用 \n 分行 */
+.legend-hint { white-space: pre-line; line-height: 1.6; }
+
 .wd-legend-dot {
   width: 12px; height: 12px;
   border-radius: 3px;
