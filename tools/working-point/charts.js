@@ -128,7 +128,7 @@ const myChart = new Chart(ctx, {
         display: true, position: 'top', align: 'end',
         labels: {
           filter: item => !item.text.startsWith('_'), // 隱藏輔助線圖例（底線開頭）
-          font: { size: 10 }, boxWidth: 20, padding: 10, usePointStyle: true,
+          font: { size: 12 }, boxWidth: 20, padding: 10, usePointStyle: true,
         }
       },
       tooltip: { enabled: false }, // 關閉 hover tooltip
@@ -136,15 +136,15 @@ const myChart = new Chart(ctx, {
     scales: {
       x: {
         type: 'linear',
-        title: { display: true, text: 'Speed N (RPM)', font: { size: 11 } },
+        title: { display: true, text: 'Speed N (RPM)', font: { size: 12 } },
         min: 0, max: 80000,
-        grid: { color: '#e5e7eb' }, ticks: { font: { size: 9 } },
+        grid: { color: '#e5e7eb' }, ticks: { font: { size: 12 } },
       },
       y: {
         type: 'linear',
-        title: { display: true, text: 'T_A  (μN·m)', font: { size: 11 } },
+        title: { display: true, text: 'T_A  (μN·m)', font: { size: 12 } },
         min: 0,
-        grid: { color: '#e5e7eb' }, ticks: { font: { size: 9 } },
+        grid: { color: '#e5e7eb' }, ticks: { font: { size: 12 } },
       }
     }
   }
@@ -163,24 +163,27 @@ const sweepChart = new Chart(sweepCtx, {
     plugins: {
       legend: {
         display: true, position: 'top', align: 'end',
-        labels: { font: { size: 10 }, boxWidth: 20, padding: 8, usePointStyle: true,
+        labels: { font: { size: 12 }, boxWidth: 20, padding: 8, usePointStyle: true,
                   filter: item => !item.text.startsWith('_') },
       },
       tooltip: { enabled: false },
     },
     scales: {
-      x: { type: 'linear', title: { display: true, text: '', font: { size: 11 } },
-           grid: { color: '#e5e7eb' }, ticks: { font: { size: 9 } } },
-      y: { type: 'linear', title: { display: true, text: '', font: { size: 11 } },
-           grid: { color: '#e5e7eb' }, ticks: { font: { size: 9 } } }
+      x: { type: 'linear', title: { display: true, text: '', font: { size: 12 } },
+           grid: { color: '#e5e7eb' }, ticks: { font: { size: 12 } } },
+      y: { type: 'linear', title: { display: true, text: '', font: { size: 12 } },
+           grid: { color: '#e5e7eb' }, ticks: { font: { size: 12 } } }
     }
   }
 });
 
 /** 套用圖表主題（格線、刻度、圖例文字顏色） */
 function applyChartTheme(isDark) {
-  const grid = isDark ? '#2d3148' : '#e5e7eb';
-  const text = isDark ? '#8896b0' : '#374151';
+  /* 格線與文字顏色取自 shared/theme.css 的變數，跟全站主題一致 */
+  const cs   = getComputedStyle(document.documentElement);
+  const grid = cs.getPropertyValue('--grid-c').trim() || (isDark ? '#2d3148' : '#e5e7eb');
+  const text = cs.getPropertyValue('--text2').trim() || (isDark ? '#8896b0' : '#374151');
+  Chart.defaults.font.family = cs.getPropertyValue('--sans').trim() || Chart.defaults.font.family;
   [myChart, sweepChart].forEach(function(ch) {
     ch.options.scales.x.grid.color         = grid;
     ch.options.scales.y.grid.color         = grid;

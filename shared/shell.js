@@ -2,8 +2,8 @@
    Motor Toolkit — shared shell
    Responsibilities:
      1. Apply saved theme ASAP (avoid flash of wrong theme)
-     2. Inject the unified site header (site name / page title /
-        tools dropdown / theme toggle)
+     2. Inject the unified site header (logo / page title /
+        grouped tools dropdown / language + theme toggles)
      3. Google Analytics (fails silently offline / under file://)
 
    Usage on every page (order matters):
@@ -29,12 +29,37 @@
   function setTheme(t) {
     document.documentElement.setAttribute('data-theme', t);
     try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
-    var icon = document.getElementById('mt-theme-icon');
-    if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙';
+    var tbtn = document.getElementById('mt-theme-btn');
+    if (tbtn) tbtn.innerHTML = themeIcon(t);
     /* let tools re-style their charts */
     document.dispatchEvent(new CustomEvent('mt-theme-change', { detail: { theme: t } }));
   }
   document.documentElement.setAttribute('data-theme', getTheme());
+
+  /* ── icons ── */
+  function svg(inner, size) {
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" ' +
+      'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ' +
+      'aria-hidden="true">' + inner + '</svg>';
+  }
+  /* a tool's registry icon as an inline SVG string */
+  window.mtIcon = function (tool, size) { return svg(tool.icon || '', size || 22); };
+  var LOGO = '<svg width="26" height="26" viewBox="0 0 28 28" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" aria-hidden="true"><circle cx="14" cy="14" r="11"/><circle cx="14" cy="14" r="5"/>' +
+    '<path d="M14 3v4M14 21v4M3 14h4M21 14h4M6.2 6.2l2.8 2.8M19 19l2.8 2.8M6.2 21.8L9 19M19 9l2.8-2.8"/></svg>';
+  var MOON = '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
+  var SUN  = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4' +
+             'M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+  function themeIcon(t) { return svg(t === 'dark' ? SUN : MOON, 18); }
+
+  /* tools grouped by MT_GROUPS, in registry order */
+  window.mtToolGroups = function () {
+    if (typeof MT_TOOLS === 'undefined') return [];
+    var groups = (typeof MT_GROUPS !== 'undefined') ? MT_GROUPS : [{ id: '', name: '' }];
+    return groups.map(function (g) {
+      return { group: g, tools: MT_TOOLS.filter(function (t) { return !g.id || t.group === g.id; }) };
+    }).filter(function (x) { return x.tools.length; });
+  };
 
   window.mtToggleTheme = function () {
     setTheme(getTheme() === 'dark' ? 'light' : 'dark');
@@ -81,17 +106,9 @@
                            body.getAttribute('data-title') || '';
     if (s) s.textContent = (lang === 'zh' && body.getAttribute('data-sub-zh')) ||
                            body.getAttribute('data-sub') || '';
-    /* nav dropdown tool names/descs */
-    if (typeof MT_TOOLS !== 'undefined') {
-      document.querySelectorAll('.mt-nav-menu a').forEach(function (a, i) {
-        var tool = MT_TOOLS[i];
-        if (!tool) return;
-        var name = (lang === 'zh' && tool.name_zh) || tool.name;
-        var desc = (lang === 'zh' && tool.desc_zh) || tool.desc;
-        a.innerHTML = tool.icon + ' ' + name +
-          '<span class="mt-nav-desc">' + desc + '</span>';
-      });
-    }
+    renderNav();
+    var nl = document.querySelector('.mt-nav-btn-label');
+    if (nl) nl.textContent = lang === 'zh' ? '所有工具' : 'All tools';
   }
   window.mtApplyLang = applyLang;
   window.mtToggleLang = function () {
@@ -123,79 +140,105 @@
   window.gaTrack = gaTrack;
 
   /* ── 2. header injection ── */
+  function el(tag, cls, html) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+
+  /* tools dropdown contents — rebuilt on language change */
+  function renderNav() {
+    var menu = document.querySelector('.mt-nav-menu');
+    if (!menu) return;
+    var zh = getLang() === 'zh';
+    var here = location.pathname.replace(/index\.html$/, '');
+    menu.innerHTML = '';
+    mtToolGroups().forEach(function (gr) {
+      if (gr.group.name) {
+        menu.appendChild(el('div', 'mt-nav-group', '')).textContent =
+          (zh && gr.group.name_zh) || gr.group.name;
+      }
+      gr.tools.forEach(function (tool) {
+        var a = el('a', '', mtIcon(tool, 18));
+        a.href = BASE + tool.path + 'index.html';
+        if (here.slice(-tool.path.length) === tool.path) a.setAttribute('aria-current', 'page');
+        var txt = el('span');
+        txt.appendChild(document.createTextNode((zh && tool.name_zh) || tool.name));
+        txt.appendChild(el('span', 'mt-nav-desc')).appendChild(
+          document.createTextNode((zh && tool.desc_zh) || tool.desc));
+        a.appendChild(txt);
+        menu.appendChild(a);
+      });
+    });
+  }
+
   function buildHeader() {
     var body  = document.body;
     var title = body.getAttribute('data-title') || '';
     var sub   = body.getAttribute('data-sub') || '';
 
-    var header = document.createElement('header');
-    header.className = 'mt-header';
+    var header = el('header', 'mt-header' + (title ? '' : ' mt-header--home'));
 
-    var left = document.createElement('div');
-    left.className = 'mt-header-left';
-    var home = document.createElement('a');
-    home.className = 'mt-site-name';
+    var left = el('div', 'mt-header-left');
+    var home = el('a', 'mt-site-name', LOGO + '<span class="mt-site-label">Motor Toolkit</span>');
     home.href = BASE + 'index.html';
-    home.textContent = 'MOTOR TOOLKIT';
+    home.setAttribute('aria-label', 'Motor Toolkit home');
     left.appendChild(home);
     if (title) {
-      var t = document.createElement('div');
-      var h = document.createElement('div');
-      h.className = 'mt-page-title';
-      h.textContent = title;
-      t.appendChild(h);
-      if (sub) {
-        var s = document.createElement('div');
-        s.className = 'mt-page-sub';
-        s.textContent = sub;
-        t.appendChild(s);
-      }
-      left.appendChild(t);
+      left.appendChild(el('span', 'mt-crumb-sep', '/')).setAttribute('aria-hidden', 'true');
+      var head = el('div', 'mt-page-head');
+      head.appendChild(el('div', 'mt-page-title')).textContent = title;
+      if (sub) head.appendChild(el('div', 'mt-page-sub')).textContent = sub;
+      left.appendChild(head);
     }
 
-    var right = document.createElement('div');
-    right.className = 'mt-header-right';
+    var right = el('div', 'mt-header-right');
 
     /* tools dropdown */
     if (typeof MT_TOOLS !== 'undefined') {
-      var nav = document.createElement('nav');
-      nav.className = 'mt-nav';
-      var btn = document.createElement('button');
-      btn.className = 'mt-nav-btn';
-      btn.textContent = 'Tools ▾';
-      var menu = document.createElement('div');
-      menu.className = 'mt-nav-menu';
-      MT_TOOLS.forEach(function (tool) {
-        var a = document.createElement('a');
-        a.href = BASE + tool.path + 'index.html';
-        a.innerHTML = tool.icon + ' ' + tool.name +
-          '<span class="mt-nav-desc">' + tool.desc + '</span>';
-        menu.appendChild(a);
-      });
+      var nav = el('nav', 'mt-nav');
+      var btn = el('button', 'mt-nav-btn',
+        svg('<path d="M4 6h16M4 12h16M4 18h16"/>', 16) + '<span class="mt-nav-btn-label">All tools</span>');
+      btn.type = 'button';
+      btn.setAttribute('aria-haspopup', 'true');
+      btn.setAttribute('aria-expanded', 'false');
+      var menu = el('div', 'mt-nav-menu');
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
-        menu.classList.toggle('open');
+        btn.setAttribute('aria-expanded', menu.classList.toggle('open') ? 'true' : 'false');
       });
-      document.addEventListener('click', function () { menu.classList.remove('open'); });
+      document.addEventListener('click', function () {
+        menu.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && menu.classList.contains('open')) {
+          menu.classList.remove('open');
+          btn.setAttribute('aria-expanded', 'false');
+          btn.focus();
+        }
+      });
       nav.appendChild(btn);
       nav.appendChild(menu);
       right.appendChild(nav);
     }
 
     /* language toggle */
-    var lbtn = document.createElement('button');
-    lbtn.className = 'mt-icon-btn';
+    var lbtn = el('button', 'mt-icon-btn');
+    lbtn.type = 'button';
     lbtn.id = 'mt-lang-btn';
     lbtn.title = 'Switch language / 切換語言';
-    lbtn.textContent = getLang() === 'zh' ? 'EN' : '中';
+    lbtn.setAttribute('aria-label', 'Switch language / 切換語言');
     lbtn.addEventListener('click', window.mtToggleLang);
     right.appendChild(lbtn);
 
     /* theme toggle */
-    var tbtn = document.createElement('button');
-    tbtn.className = 'mt-icon-btn';
+    var tbtn = el('button', 'mt-icon-btn', themeIcon(getTheme()));
+    tbtn.type = 'button';
+    tbtn.id = 'mt-theme-btn';
     tbtn.title = 'Toggle dark / light theme';
-    tbtn.innerHTML = '<span id="mt-theme-icon">' + (getTheme() === 'dark' ? '☀️' : '🌙') + '</span>';
+    tbtn.setAttribute('aria-label', 'Toggle dark / light theme');
     tbtn.addEventListener('click', window.mtToggleTheme);
     right.appendChild(tbtn);
 
