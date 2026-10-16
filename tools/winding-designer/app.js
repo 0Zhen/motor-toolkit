@@ -714,12 +714,14 @@ function update() {
     warnEl.textContent = '⚠ ' + msg;
     warnEl.style.display = 'block';
     cardsEl.style.display = 'none';
+    document.getElementById('radialCard').style.display = 'none';
     lastResult = null;
     return;
   }
 
   warnEl.style.display = 'none';
   cardsEl.style.display = 'flex';
+  document.getElementById('radialCard').style.display = '';
   lastResult = result;
   updatePhaseFilterVisibility();
   renderKeyNumbers(result);

@@ -51,22 +51,15 @@
   align-self: center;
 }
 
-.winding-diagram-row {
+/* 展開圖下方：剖面圖和槽極比較表並排，寬度不夠時上下疊 */
+.wd-lower-row {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
+  align-items: flex-start;
 }
-.winding-diagram-col {
-  flex: 1 1 320px;
-  min-width: 0;
-}
-.diagram-panel-title {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text2);
-  text-align: center;
-  margin-bottom: 4px;
-}
+.wd-radial-card { flex: 1 1 360px; min-width: 0; }
+.wd-table-card  { flex: 1 1 420px; min-width: 0; }
 .winding-diagram-wrap {
   overflow-x: auto;
   overflow-y: hidden;
@@ -74,7 +67,7 @@
   display: flex;
   justify-content: center;
 }
-.wd-svg { display: block; max-width: 100%; }
+.wd-svg { display: block; max-width: 100%; height: auto; }
 
 .wd-legend {
   display: flex;

@@ -10,7 +10,7 @@
 <link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/winding-designer/">
 <link rel="icon" type="image/png" href="../../favicon.png">
 <link rel="stylesheet" href="../../shared/theme.css?v=20261016">
-<link rel="stylesheet" href="styles.css?v=20261016">
+<link rel="stylesheet" href="styles.css?v=20261016b">
 </head>
 <body class="mt-app" data-title="Winding Designer" data-sub="Slots · Poles · Layout · Winding factor"
       data-title-zh="繞組設計工具" data-sub-zh="槽極配合 · 繞組展開圖 · 繞組係數">
@@ -78,47 +78,46 @@
           <button class="view-toggle-btn phase-filter-btn" data-phase="C" onclick="setPhaseFilter('C')">C</button>
         </div>
         <div class="hint-text" id="wireOverlapInfo" style="display:none"></div>
-        <div class="winding-diagram-row">
-          <div class="winding-diagram-col">
-            <div class="diagram-panel-title" data-i18n="viewLinear">Linear</div>
-            <div class="winding-diagram-wrap">
-              <svg id="wdSvgLinear" class="wd-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-            </div>
-          </div>
-          <div class="winding-diagram-col">
-            <div class="diagram-panel-title" data-i18n="viewRadial">Cross-section</div>
-            <div class="winding-diagram-wrap">
-              <svg id="wdSvgRadial" class="wd-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-            </div>
-          </div>
+        <div class="winding-diagram-wrap">
+          <svg id="wdSvgLinear" class="wd-svg" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
       </div>
     </div>
 
-    <div class="result-card">
-      <div class="result-card-label" data-i18n="tableTitle">Pole–Slot Comparison — Max Fundamental Winding Factor</div>
-      <div class="table-range-row">
-        <span data-i18n="slotsRangeLabel">Slots</span>
-        <input type="text" class="param-input mini" id="tblQMin" value="3" onchange="renderTable()">
-        <span>–</span>
-        <input type="text" class="param-input mini" id="tblQMax" value="21" onchange="renderTable()">
-        <span data-i18n="polesRangeLabel">Poles</span>
-        <input type="text" class="param-input mini" id="tblPMin" value="4" onchange="renderTable()">
-        <span>–</span>
-        <input type="text" class="param-input mini" id="tblPMax" value="16" onchange="renderTable()">
+    <!-- 剖面圖與槽極比較表並排，放在展開圖下面 -->
+    <div class="wd-lower-row">
+      <div class="result-card wd-radial-card" id="radialCard" style="display:none">
+        <div class="result-card-label" data-i18n="viewRadial">Cross-section</div>
+        <div class="winding-diagram-wrap">
+          <svg id="wdSvgRadial" class="wd-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
       </div>
-      <div class="wd-table-wrap">
-        <table class="wd-table" id="wdTable"></table>
-      </div>
-      <div class="hint-text" data-i18n="tableHint">
-        Click a cell to load that combination above. Red = k_w1 ≥ 0.999, orange = ≥ 0.9, green = feasible, black = no symmetric 3-phase winding exists.
+
+      <div class="result-card wd-table-card">
+        <div class="result-card-label" data-i18n="tableTitle">Pole–Slot Comparison — Max Fundamental Winding Factor</div>
+        <div class="table-range-row">
+          <span data-i18n="slotsRangeLabel">Slots</span>
+          <input type="text" class="param-input mini" id="tblQMin" value="3" onchange="renderTable()">
+          <span>–</span>
+          <input type="text" class="param-input mini" id="tblQMax" value="21" onchange="renderTable()">
+          <span data-i18n="polesRangeLabel">Poles</span>
+          <input type="text" class="param-input mini" id="tblPMin" value="4" onchange="renderTable()">
+          <span>–</span>
+          <input type="text" class="param-input mini" id="tblPMax" value="16" onchange="renderTable()">
+        </div>
+        <div class="wd-table-wrap">
+          <table class="wd-table" id="wdTable"></table>
+        </div>
+        <div class="hint-text" data-i18n="tableHint">
+          Click a cell to load that combination above. Red = k_w1 ≥ 0.999, orange = ≥ 0.9, green = feasible, black = no symmetric 3-phase winding exists.
+        </div>
       </div>
     </div>
 
   </div>
 </div>
 
-<script src="winding.js?v=42"></script>
-<script src="app.js?v=42"></script>
+<script src="winding.js?v=43"></script>
+<script src="app.js?v=43"></script>
 </body>
 </html>
