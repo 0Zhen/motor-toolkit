@@ -75,6 +75,9 @@ Rules that keep it maintainable:
    every tool page), `llms.txt` and `sitemap.xml` from `tools.js`. Search
    engines and AI crawlers often don't run JavaScript, so without this they
    can't see the tools. Re-run it whenever a tool's name or description changes.
+   "Related reading" links (blog posts, motor-notes) live in the `RELATED`
+   table at the top of the script and are written between the page's
+   `<!-- mt:static related -->` markers.
 5. Bump the `?v=` query on CSS/JS links when you change those files, so
    browsers don't mix a cached old file with a new page.
 

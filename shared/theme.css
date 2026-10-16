@@ -457,6 +457,19 @@ input[type=checkbox], input[type=radio] { accent-color: var(--accent); width: 15
 .mt-footer a { color: var(--accent); text-decoration: none; }
 .mt-footer a:hover { text-decoration: underline; }
 
+/* "Related reading" links to blog posts / motor-notes
+   (written by scripts/sync-static.py) */
+.mt-related ul { list-style: none; margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.mt-related li { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-sm); line-height: 1.5; }
+.mt-related a { color: var(--accent); text-decoration: none; }
+.mt-related a:hover { text-decoration: underline; }
+.mt-related-tag {
+  flex: none;
+  font-size: var(--fs-xs); font-weight: 600; color: var(--text2);
+  background: var(--bar-bg); border-radius: var(--r-sm);
+  padding: 1px 6px;
+}
+
 /* Plain-HTML tool links written by scripts/sync-static.py for crawlers and
    screen readers; the visible menu is the one shell.js builds. */
 .mt-sr-only {

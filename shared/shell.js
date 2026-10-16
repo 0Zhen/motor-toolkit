@@ -78,9 +78,15 @@
     try { return localStorage.getItem(LANG_KEY) || 'en'; } catch (e) { return 'en'; }
   }
   window.mtLang = getLang;
+  /* strings used by shared markup on every page (e.g. "Related reading") */
+  var SHARED_I18N = {
+    mtRelated:      { en: 'Related reading', zh: '延伸閱讀' },
+    mtRelatedBlog:  { en: 'Blog',            zh: '文章' },
+    mtRelatedNotes: { en: 'Notes',           zh: '知識點' },
+  };
   window.mtT = function (key) {
     var dict = window.MT_I18N || {};
-    var entry = dict[key];
+    var entry = dict[key] || SHARED_I18N[key];
     if (!entry) return key;
     return entry[getLang()] || entry.en || key;
   };

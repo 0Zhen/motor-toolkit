@@ -20,6 +20,41 @@ AUTHOR = {'@type': 'Person', 'name': '0Zhen', 'url': 'https://0zhen.github.io/'}
 # FFT Analyser keeps its own hand-written SEO head block
 OWN_HEAD = {'fft-analyser'}
 
+# "Related reading" links shown on each tool page (inside the page's
+# <!-- mt:static related --> markers). kind: 'blog' or 'notes'.
+BLOG = 'https://0zhen.github.io/posts/'
+NOTES = 'https://0zhen.github.io/motor-notes/'
+RELATED = {
+    'fft-analyser': [
+        ('blog', 'How to Measure Motor Back-EMF THD with FFT', BLOG + 'how-to-measure-motor-back-emf-thd-with-fft/'),
+        ('blog', 'FFT 頻譜分析完全解析', BLOG + '2026-03-23/'),
+        ('notes', '反電動勢 THD', NOTES + '電磁設計/基礎物理量/反電動勢THD'),
+    ],
+    'efficiency-map': [
+        ('blog', '如何判斷馬達的 IEC 效率等級（IE1~IE5）', BLOG + 'iec-60034-30-2-efficiency-class/'),
+        ('notes', '效率', NOTES + '電磁設計/基礎物理量/效率'),
+        ('notes', 'IE 效率等級', NOTES + '電磁設計/基礎物理量/IE效率等級'),
+    ],
+    'cpk-analysis': [
+        ('blog', '品質管理核心指標完全指南：標準差、常態分佈與 CPK 實務應用', BLOG + '2026-03-13/'),
+    ],
+    'winding-designer': [
+        ('notes', '繞線因數', NOTES + '繞線/繞線因數'),
+        ('notes', '整數槽', NOTES + '繞線/整數槽'),
+        ('notes', '分數槽', NOTES + '繞線/分數槽'),
+        ('notes', '集中繞', NOTES + '繞線/集中繞'),
+        ('notes', '分布繞', NOTES + '繞線/分布繞'),
+        ('notes', '線圈節距 (coil pitch)', NOTES + '繞線/coil-pitch'),
+    ],
+    'dcr-calculator': [
+        ('notes', '繞組阻值', NOTES + '繞線/阻值'),
+        ('notes', '銅損', NOTES + '電磁設計/基礎物理量/銅損'),
+    ],
+    'slot-packing': [
+        ('notes', '排線與槽滿率', NOTES + '繞線/排線'),
+    ],
+}
+
 
 def parse_list(src, name):
     body = src[src.index('const ' + name):]
@@ -122,6 +157,16 @@ for t in tools:
         links.append('    <li><a href="../../%sindex.html">%s</a> — %s</li>' % (o['path'], esc(o['name']), esc(o['desc'])))
     links += ['  </ul>', '</nav>']
     s = replace_block(s, 'nav', '\n'.join(links), ('</body>', True))
+    if '<!-- mt:static related -->' in s:
+        rel = ['<div class="section-title" data-i18n="mtRelated">Related reading</div>', '<ul>']
+        for kind, title, url in RELATED.get(t['id'], []):
+            tag = 'Blog' if kind == 'blog' else 'Notes'
+            rel.append('  <li><span class="mt-related-tag" data-i18n="mtRelated%s">%s</span>'
+                       '<a href="%s">%s</a></li>' % (tag, tag, esc(url), esc(title)))
+        rel.append('</ul>')
+        s = replace_block(s, 'related', '\n'.join(rel), None)
+    elif t['id'] in RELATED:
+        sys.exit('%s has RELATED links but no <!-- mt:static related --> markers' % t['id'])
     p.write_text(s, encoding='utf-8')
 
 # ── llms.txt (https://llmstxt.org) ──
