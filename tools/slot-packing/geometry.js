@@ -438,3 +438,82 @@ function settlePackTowardWall(points, diameter, count, side) {
     maxCapacity: res.maxCapacity,
   };
 }
+
+/**
+ * 雙層繞組的線材編號順序：照實際繞線的走法一層一層排——第 1 層（貼著外
+ * 側槽壁那一層）由上往下，第 2 層由下往上，第 3 層再由上往下……
+ *
+ * 沉降排列放線的順序（settlePack 的 placed 順序）是「哪個位置最深就先
+ * 放」，斜槽壁時第 1、2 層會交錯放，直接拿來編號會跳來跳去，所以另外算。
+ * 分層方式：
+ *   1. 外側槽壁＝這一側繞線窗裡「偏直立（|dx| < |dy|）且位在外側（中點
+ *      比 bbox 中線更靠外）」的邊——中間導針那條切線在內側、槽底跟頂部
+ *      裁切線是橫的，都不算。
+ *   2. 中心到外側槽壁距離 ≤ 半徑（含容差）的線材＝第 1 層。
+ *   3. 從第 1 層沿「互相接觸」（中心距 ≤ 線徑，含容差）往槽中間做 BFS，
+ *      跟槽壁隔幾顆線就是第幾層——跟槽壁角度無關。BFS 走不到的線材（理
+ *      論上不會發生）依它到槽壁的距離估一個層數。
+ *   4. 每一層內照 y 排序（y 小＝靠槽口＝上），奇數層由上往下、偶數層由
+ *      下往上。
+ * @param {Array<{x,y,d}>} placed 這一側已放置的線材（原始槽型座標）
+ * @param {Array<{x,y}>} points 這一側的繞線窗多邊形（切半後）
+ * @param {'left'|'right'} side 外側槽壁在哪一側
+ * @returns {Array<{x,y,d}>} 重新排序後的新陣列（元素本身不變）
+ */
+function serpentineOrder(placed, points, side) {
+  if (placed.length < 2 || points.length < 3) return placed.slice();
+  const d = placed[0].d, r = d / 2, tol = 0.03 * d;
+  const bbox = polygonBBox(points);
+  const midX = (bbox.minX + bbox.maxX) / 2;
+
+  const walls = [];
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i], b = points[(i + 1) % points.length];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const mx = (a.x + b.x) / 2;
+    const outer = side === 'right' ? mx > midX : mx < midX;
+    if (Math.abs(dx) < Math.abs(dy) && outer) walls.push([a, b]);
+  }
+  function distToSeg(p, a, b) {
+    const vx = b.x - a.x, vy = b.y - a.y, len2 = vx * vx + vy * vy;
+    let t = len2 > 0 ? ((p.x - a.x) * vx + (p.y - a.y) * vy) / len2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(p.x - (a.x + t * vx), p.y - (a.y + t * vy));
+  }
+  const wallDist = placed.map(p => {
+    let m = Infinity;
+    for (let k = 0; k < walls.length; k++) m = Math.min(m, distToSeg(p, walls[k][0], walls[k][1]));
+    return m;
+  });
+
+  const n = placed.length;
+  const layer = new Array(n).fill(0);
+  let queue = [];
+  const minDist = Math.min(...wallDist);
+  const seedLimit = isFinite(minDist) ? Math.max(r, minDist) + tol : Infinity;
+  for (let i = 0; i < n; i++) if (wallDist[i] <= seedLimit) { layer[i] = 1; queue.push(i); }
+  while (queue.length) {
+    const next = [];
+    for (let qi = 0; qi < queue.length; qi++) {
+      const i = queue[qi];
+      for (let j = 0; j < n; j++) {
+        if (layer[j]) continue;
+        if (Math.hypot(placed[i].x - placed[j].x, placed[i].y - placed[j].y) <= d + tol) {
+          layer[j] = layer[i] + 1; next.push(j);
+        }
+      }
+    }
+    queue = next;
+  }
+  for (let i = 0; i < n; i++) {
+    if (!layer[i]) layer[i] = 1 + Math.max(0, Math.round((wallDist[i] - r) / (0.866 * d)));
+  }
+
+  const idx = placed.map((_, i) => i);
+  idx.sort((a, b) => {
+    if (layer[a] !== layer[b]) return layer[a] - layer[b];
+    const down = layer[a] % 2 === 1; // 奇數層由上往下（y 遞增）
+    return down ? placed[a].y - placed[b].y : placed[b].y - placed[a].y;
+  });
+  return idx.map(i => placed[i]);
+}

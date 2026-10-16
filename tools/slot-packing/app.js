@@ -611,8 +611,10 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
  *  左右兩個線圈邊（中間留導針通道），各自往外側槽壁沉降；否則整個繞線
  *  窗往槽底沉降。computeAll 與「依匝數回推線徑」共用這一套，確保兩邊
  *  判斷「放不放得下」的標準完全一致。pack.placedCount >= count 就代表
- *  全部放得下（雙層時等於兩側都各自放得下分到的根數）。 */
-function packWindow(packableArea, diameter, count, coils, needleWidth, needleClearance) {
+ *  全部放得下（雙層時等於兩側都各自放得下分到的根數）。orderForLabels
+ *  為 true 時把雙層的 placed 重排成畫面編號用的繞線順序（回推線徑的迴
+ *  圈只看數量，不需要排）。 */
+function packWindow(packableArea, diameter, count, coils, needleWidth, needleClearance, orderForLabels) {
   var needleRect = null, clearanceRect = null;
   var clearance = Math.max(0, needleClearance || 0);
   if (coils >= 2) {
@@ -634,7 +636,11 @@ function packWindow(packableArea, diameter, count, coils, needleWidth, needleCle
     }
     return {
       pack: {
-        placed: packL.placed.concat(packR.placed),
+        // 編號順序照實際繞線走法（每一側：第 1 層由上往下、第 2 層由下往
+        // 上……）；左側編完右側接續。只影響畫面上的編號，不影響位置與數量。
+        placed: orderForLabels ? serpentineOrder(packL.placed, leftArea, 'left')
+                  .concat(serpentineOrder(packR.placed, rightArea, 'right'))
+                : packL.placed.concat(packR.placed),
         placedCount: packL.placedCount + packR.placedCount,
         requestedCount: count,
         maxCapacity: packL.maxCapacity + packR.maxCapacity,
@@ -776,7 +782,7 @@ function computeAllInner() {
   // 佔其中一邊，不是整個繞線窗混在一起看起來像單層。單層（Coils/slot
   // <= 1）：沒有單一偏向的槽壁可貼，整個繞線窗當一池子往槽底沉降，維
   // 持原樣，也沒有中間通道這個概念。
-  var packed = packWindow(packableArea, diameter, count, coils, needleWidth, needleClearance);
+  var packed = packWindow(packableArea, diameter, count, coils, needleWidth, needleClearance, true);
   var pack = packed.pack, needleRect = packed.needleRect;
   renderSvg(innerPoly, pack, needleRect, packed.clearanceRect);
 
