@@ -42,6 +42,13 @@ var MT_I18N = {
   verticesTitle:{ en: 'Vertices', zh: '頂點' },
   colX:         { en: 'X [mm]', zh: 'X [mm]' },
   colY:         { en: 'Y [mm]', zh: 'Y [mm]' },
+  colRTip:      { en: 'Arc radius from this point to the next (blank = straight line)', zh: '這一點到下一點的圓弧半徑（空白＝直線）' },
+  arcHint:      {
+    en: 'R: leave blank for a straight line to the next point, or enter an arc radius — positive bulges outward (into the iron), negative bulges inward. On the last point, R is the slot bottom arc across the centre line (e.g. Bs2/2 for a semicircle).',
+    zh: 'R：空白＝直線連到下一點；填半徑就改成圓弧——正值往槽外（鐵芯那側）凸，負值往槽內凹。最後一點的 R 是跨過中心線的槽底圓弧（例如半圓底就填 Bs2/2）。',
+  },
+  arcErr:       { en: 'Point #{i}: R must be at least {min} mm to reach the next point — drawn straight for now.',
+                  zh: '第 {i} 點：R 至少要 {min} mm 才連得到下一點，目前先畫成直線。' },
   addPointBtn:  { en: '+ Add point', zh: '+ 新增頂點' },
   undoBtn:      { en: '↶ Undo', zh: '↶ 復原' },
   vertexHint:   {
@@ -195,9 +202,31 @@ var lastWindingArea = 0; // 給「去DCR計算機確認」按鈕用——DCR自�
  *  折線）。左半的頭尾兩點不需要剛好落在x=0上：如果不是，鏡射後頭尾會
  *  各自形成一條連接左右兩側的邊（分別對應槽口開口線、槽底線），效果
  *  是對的，不用特判。 */
+var arcProblems = [];
 function syncVerticesFromHalf() {
-  var mirroredBack = halfVertices.slice().reverse().map(function (p) { return { x: -p.x, y: p.y }; });
-  vertices = halfVertices.concat(mirroredBack);
+  var hasArc = halfVertices.some(function (p) { return Number(p.r); });
+  if (!hasArc) {
+    var mirroredBack = halfVertices.slice().reverse().map(function (p) { return { x: -p.x, y: p.y }; });
+    vertices = halfVertices.map(function (p) { return { x: p.x, y: p.y }; }).concat(mirroredBack);
+    arcProblems = [];
+  } else {
+    // 有圓弧：展開成短直線段（見 geometry.js expandHalfWithArcs）
+    var ex = expandHalfWithArcs(halfVertices);
+    vertices = ex.pts;
+    arcProblems = ex.bad;
+  }
+  showArcProblems();
+}
+function showArcProblems() {
+  var el = $('arcErr');
+  if (!el) return;
+  el.style.display = arcProblems.length ? '' : 'none';
+  el.textContent = arcProblems.map(function (b) {
+    return mtT('arcErr').replace('{i}', b.i + 1).replace('{min}', fmt(b.minR, 3));
+  }).join(' ');
+}
+function copyHalf(arr) {
+  return arr.map(function (v) { var c = { x: v.x, y: v.y }; if (Number(v.r)) c.r = Number(v.r); return c; });
 }
 
 /* ── 頂點清單復原（Undo）──
@@ -207,7 +236,7 @@ function syncVerticesFromHalf() {
 var vertexHistory = [];
 var MAX_VERTEX_HISTORY = 50;
 function pushVertexHistory() {
-  vertexHistory.push(halfVertices.map(function (v) { return { x: v.x, y: v.y }; }));
+  vertexHistory.push(copyHalf(halfVertices));
   if (vertexHistory.length > MAX_VERTEX_HISTORY) vertexHistory.shift();
   $('btnUndoVertex').disabled = false;
 }
@@ -264,6 +293,7 @@ function renderVertexTable() {
       '<td>' + (i + 1) + '</td>' +
       '<td><input type="text" data-i="' + i + '" data-axis="x" value="' + fmt(v.x, 3) + '"></td>' +
       '<td><input type="text" data-i="' + i + '" data-axis="y" value="' + fmt(v.y, 3) + '"></td>' +
+      '<td><input type="text" data-i="' + i + '" data-axis="r" placeholder="—" value="' + (Number(v.r) ? fmt(v.r, 3) : '') + '"></td>' +
       '<td><button class="vertex-del-btn" data-i="' + i + '" title="' + mtT('addPointBtn') + '">✕</button></td>' +
       '</tr>';
   });
@@ -276,6 +306,14 @@ function renderVertexTable() {
     inp.addEventListener('input', function () {
       var i = parseInt(this.dataset.i, 10), axis = this.dataset.axis;
       var v = parseFloat(this.value);
+      if (axis === 'r') {
+        // 空白或 0 ＝ 直線
+        if (this.value.trim() === '' || v === 0) delete halfVertices[i].r;
+        else if (isFinite(v)) halfVertices[i].r = v;
+        else return;
+        syncVerticesFromHalf(); computeAll();
+        return;
+      }
       if (isFinite(v)) { halfVertices[i][axis] = v; syncVerticesFromHalf(); computeAll(); }
     });
   });
@@ -948,10 +986,10 @@ window.saveSlotFile = function () {
   PARAM_IDS.concat(WIRE_IDS).forEach(function (id) { inputs[id] = $(id).value; });
   var data = {
     kind: FILE_KIND,
-    version: 2,
+    version: 3,
     savedAt: new Date().toISOString(),
     shapeMode: shapeMode,
-    halfVertices: halfVertices.map(function (v) { return { x: v.x, y: v.y }; }),
+    halfVertices: copyHalf(halfVertices),
     inputs: inputs,
   };
   var d = new Date();
@@ -973,8 +1011,13 @@ window.saveSlotFile = function () {
 /** 驗證後套用；任何一項不對就整個不套用，不會只還原一半 */
 function applySlotFile(data) {
   if (!data || data.kind !== FILE_KIND || !Array.isArray(data.halfVertices) || data.halfVertices.length < 2) return false;
-  var hv = data.halfVertices.map(function (v) { return { x: Number(v && v.x), y: Number(v && v.y) }; });
-  if (hv.some(function (v) { return !isFinite(v.x) || !isFinite(v.y); })) return false;
+  var hv = data.halfVertices.map(function (v) {
+    var c = { x: Number(v && v.x), y: Number(v && v.y) };
+    if (v && v.r !== undefined && v.r !== null) c.r = Number(v.r);
+    return c;
+  });
+  if (hv.some(function (v) { return !isFinite(v.x) || !isFinite(v.y) || (v.r !== undefined && !isFinite(v.r)); })) return false;
+  hv.forEach(function (v) { if (!v.r) delete v.r; });
   var inputs = data.inputs || {};
   pushVertexHistory();
   PARAM_IDS.concat(WIRE_IDS).forEach(function (id) {
@@ -1040,6 +1083,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (typeof gaTrack === 'function') gaTrack('slotpack_slot_type', this.value);
   });
   document.addEventListener('mt-lang-change', updateSlotTypeFields);
+  document.addEventListener('mt-lang-change', showArcProblems);
   $('btnAddPoint').addEventListener('click', addVertexPoint);
   $('btnUndoVertex').addEventListener('click', undoVertices);
   $('btnSaveFile').addEventListener('click', saveSlotFile);

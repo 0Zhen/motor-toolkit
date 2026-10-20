@@ -10,7 +10,7 @@
 <link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/slot-packing/">
 <link rel="icon" type="image/png" href="../../favicon.png">
 <link rel="stylesheet" href="../../shared/theme.css?v=20261018">
-<link rel="stylesheet" href="styles.css?v=20261021">
+<link rel="stylesheet" href="styles.css?v=20261022">
 <!-- mt:static seo -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Motor Toolkit">
@@ -151,7 +151,7 @@
       <div class="section-title" data-i18n="verticesTitle">Vertices</div>
       <div class="vertex-table-wrap">
         <table class="vertex-table" id="vertexTable">
-          <thead><tr><th>#</th><th data-i18n="colX">X [mm]</th><th data-i18n="colY">Y [mm]</th><th></th></tr></thead>
+          <thead><tr><th>#</th><th data-i18n="colX">X [mm]</th><th data-i18n="colY">Y [mm]</th><th data-i18n-title="colRTip" title="Arc radius to the next point">R [mm]</th><th></th></tr></thead>
           <tbody id="vertexTableBody"></tbody>
         </table>
       </div>
@@ -159,9 +159,15 @@
         <button class="mt-btn-ghost" id="btnAddPoint" data-i18n="addPointBtn">+ Add point</button>
         <button class="mt-btn-ghost" id="btnUndoVertex" data-i18n="undoBtn" disabled>↶ Undo</button>
       </div>
+      <div class="hint-text file-status bad" id="arcErr" style="display:none"></div>
       <div class="hint-text" data-i18n="vertexHint">
         Points connect in order and close back to the first one. No self-intersection check — keep
         them tracing a simple outline.
+      </div>
+      <div class="hint-text" data-i18n="arcHint">
+        R: leave blank for a straight line to the next point, or enter an arc radius — positive
+        bulges outward (into the iron), negative bulges inward. On the last point, R is the slot
+        bottom arc across the centre line.
       </div>
     </div>
 
@@ -263,8 +269,8 @@
   </div>
 </div>
 
-<script src="geometry.js?v=20261021"></script>
-<script src="app.js?v=20261021"></script>
+<script src="geometry.js?v=20261022"></script>
+<script src="app.js?v=20261022"></script>
 <!-- mt:static nav -->
 <nav class="mt-sr-only" aria-label="Motor Toolkit tools">
   <h1>Slot Packing Viewer</h1>

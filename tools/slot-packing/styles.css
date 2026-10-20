@@ -66,6 +66,7 @@
   padding: 0 6px;
   outline: none;
 }
+.vertex-table input::placeholder { color: var(--text3); }
 .vertex-table input:focus { border-color: var(--accent); background: var(--surface); }
 .vertex-del-btn {
   border: none;

@@ -571,46 +571,102 @@ function serpentineOrder(placed, points, side) {
    槽底、同心圓弧槽底）都拆成短直線段，後面的 liner 內縮、排列只認多邊形。
    ══════════════════════════════════════════════════════════ */
 
-/** 角 P 的圓角：回傳取代 P 的一串點（從 prev 那側切點到 next 那側切點）。
- *  r 太大、切點超出相鄰邊時自動縮到放得下；maxT 可另外限制切點距離。 */
-function filletCorner(prev, P, next, r, segs, maxT) {
+/** 角 P 的圓角：回傳兩個切點 t1（prev 那側）、t2（next 那側）與實際半徑
+ *  （r 太大、切點超出相鄰邊時自動縮到放得下；maxT 可另外限制切點距離）。 */
+function filletCorner(prev, P, next, r, maxT) {
   const ux = prev.x - P.x, uy = prev.y - P.y, vx = next.x - P.x, vy = next.y - P.y;
   const lu = Math.hypot(ux, uy), lv = Math.hypot(vx, vy);
-  if (!(r > 0) || lu < 1e-9 || lv < 1e-9) return [P];
+  if (!(r > 0) || lu < 1e-9 || lv < 1e-9) return null;
   const u = { x: ux / lu, y: uy / lu }, v = { x: vx / lv, y: vy / lv };
   const theta = Math.acos(Math.max(-1, Math.min(1, u.x * v.x + u.y * v.y)));
-  if (theta < 1e-6 || Math.PI - theta < 1e-6) return [P];
+  if (theta < 1e-6 || Math.PI - theta < 1e-6) return null;
   let t = r / Math.tan(theta / 2);
   const tMax = Math.min(lu, lv, maxT === undefined ? Infinity : maxT) * 0.98;
   if (t > tMax) { t = tMax; r = t * Math.tan(theta / 2); }
-  const T1 = { x: P.x + u.x * t, y: P.y + u.y * t }, T2 = { x: P.x + v.x * t, y: P.y + v.y * t };
-  const bx = u.x + v.x, by = u.y + v.y, bl = Math.hypot(bx, by);
-  const d = r / Math.sin(theta / 2);
-  const C = { x: P.x + bx / bl * d, y: P.y + by / bl * d };
-  const a1 = Math.atan2(T1.y - C.y, T1.x - C.x);
-  let da = Math.atan2(T2.y - C.y, T2.x - C.x) - a1;
-  while (da > Math.PI) da -= 2 * Math.PI;
-  while (da < -Math.PI) da += 2 * Math.PI;
+  return { t1: { x: P.x + u.x * t, y: P.y + u.y * t }, t2: { x: P.x + v.x * t, y: P.y + v.y * t }, r: r };
+}
+
+/* ── 圓弧連接（自訂頂點與參數化共用）──
+ * 左半邊頂點 {x, y, r}：r 是「這一點連到下一點」用的圓弧半徑，0／空白＝直線；
+ * 正值往槽外（鐵芯那側）凸，負值往槽內凹，一律取小於半圓的那段弧。最後一
+ * 點的 r 是跨過對稱軸、連到自己鏡射點的槽底圓弧。展開成短直線段後再鏡射，
+ * 後面的 liner、排列、面積都只看展開後的多邊形。 */
+var ARC_SAGITTA_TOL = 0.005; // mm：每段直線跟真實圓弧的最大偏差
+
+/** 一段圓弧 A→B 的中間點（不含 A、含 B）；半徑不夠跨過弦長時回傳 null */
+function arcPoints(A, B, r, inward) {
+  const dx = B.x - A.x, dy = B.y - A.y, c = Math.hypot(dx, dy);
+  if (c < 1e-12) return [B];
+  const R = Math.abs(r), h = c / 2;
+  if (R < h * (1 - 1e-9)) return null;
+  const bulge = r > 0 ? { x: -inward.x, y: -inward.y } : inward;
+  const d = Math.sqrt(Math.max(0, R * R - h * h));
+  const C = { x: (A.x + B.x) / 2 - bulge.x * d, y: (A.y + B.y) / 2 - bulge.y * d };
+  const aA = Math.atan2(A.y - C.y, A.x - C.x);
+  let delta = Math.atan2(B.y - C.y, B.x - C.x) - aA;
+  while (delta > Math.PI) delta -= 2 * Math.PI;
+  while (delta <= -Math.PI) delta += 2 * Math.PI;
+  const am = aA + delta / 2; // 弧的中點要落在凸出的那一側，不然換另一個方向繞
+  if (Math.cos(am) * bulge.x + Math.sin(am) * bulge.y < 0) delta -= Math.sign(delta || 1) * 2 * Math.PI;
+  const step = 2 * Math.acos(Math.max(-1, 1 - ARC_SAGITTA_TOL / Math.max(R, 1e-9)));
+  let n = Math.max(2, Math.min(256, Math.ceil(Math.abs(delta) / step)));
+  if (n % 2) n++; // 偶數段：槽底圓弧剛好有一點落在對稱軸上
   const out = [];
-  for (let k = 0; k <= segs; k++) {
-    const a = a1 + da * k / segs;
-    out.push({ x: C.x + r * Math.cos(a), y: C.y + r * Math.sin(a) });
+  for (let k = 1; k <= n; k++) {
+    const a = aA + delta * k / n;
+    out.push({ x: C.x + R * Math.cos(a), y: C.y + R * Math.sin(a) });
   }
   return out;
 }
 
-/** 圓弧左半邊的點：圓心 c、半徑 R，從角度 a0 掃到對稱軸（x=0）。整段弧
- *  用奇數段數，左半邊不含 x=0 那一點，鏡射後才不會在軸上疊出重複頂點。 */
-function arcLeftHalf(c, R, a0, aAxis, segsHalf) {
-  const total = 2 * segsHalf + 1, out = [];
-  for (let k = 0; k <= segsHalf; k++) {
-    const a = a0 + (aAxis - a0) * (2 * k) / total;
-    out.push({ x: c.x + R * Math.cos(a), y: c.y + R * Math.sin(a) });
+/** 左半邊頂點（含 r）→ 完整封閉多邊形；bad 列出半徑太小、畫不出圓弧的點
+ *  （那段先當直線）：[{ i, minR }]，i 從 0 開始。 */
+function expandHalfWithArcs(half) {
+  const n = half.length;
+  const mirror = function (q) { return { x: -q.x, y: q.y }; };
+  const straight = half.concat(half.slice().reverse().map(mirror));
+  let area2 = 0;
+  for (let i = 0; i < straight.length; i++) {
+    const a = straight[i], b = straight[(i + 1) % straight.length];
+    area2 += a.x * b.y - b.x * a.y;
   }
-  return out;
+  const side = area2 >= 0 ? 1 : -1;
+  const inwardOf = function (A, B) {
+    const dx = B.x - A.x, dy = B.y - A.y, len = Math.hypot(dx, dy) || 1;
+    return { x: -dy / len * side, y: dx / len * side };
+  };
+  const bad = [];
+  const left = [{ x: half[0].x, y: half[0].y }];
+  let onAxis = false;
+  for (let i = 0; i < n; i++) {
+    const A = half[i], r = Number(A.r) || 0;
+    const isBottom = i === n - 1;
+    const B = isBottom ? mirror(A) : half[i + 1];
+    if (r && !(isBottom && Math.abs(A.x) < 1e-12)) {
+      const pts = arcPoints(A, B, r, inwardOf(A, B));
+      if (!pts) {
+        bad.push({ i: i, minR: Math.hypot(B.x - A.x, B.y - A.y) / 2 });
+      } else if (isBottom) {
+        // 槽底圓弧只取左半（到對稱軸那一點為止），右半由鏡射產生
+        const halfPts = pts.slice(0, pts.length / 2);
+        halfPts[halfPts.length - 1].x = 0;
+        halfPts.forEach(function (q) { left.push(q); });
+        onAxis = true;
+        continue;
+      } else {
+        pts.forEach(function (q) { left.push(q); });
+        continue;
+      }
+    }
+    if (!isBottom) left.push({ x: B.x, y: B.y });
+  }
+  const back = left.slice().reverse().map(mirror);
+  if (onAxis) back.shift(); // 對稱軸上那一點左右共用，不重複
+  return { pts: left.concat(back), bad: bad };
 }
 
 /** p = { bs0, hs0, hs1, bs1, bs2, hs2, rs, dsi }；回傳 { half, y1, y2, yBottom } 或 { error }。
+ *  half 是左半邊的定義點，圓弧用 r 表示（見 expandHalfWithArcs）。
  *  y1 = 槽身開始（Bs1 那條線），y2 = Bs2 那條線，yBottom = 槽最深處。 */
 function rmxprtSlotHalf(type, p) {
   const t = String(type);
@@ -619,10 +675,9 @@ function rmxprtSlotHalf(type, p) {
   if (!(p.bs1 > 0) || !(p.bs2 > 0) || !(p.hs2 > 0)) return { error: 'errSlotParams' };
   if (t !== '2' && !(p.bs0 > 0)) return { error: 'errSlotParams' };
   const y0 = p.hs0, y1 = p.hs0 + p.hs1, y2 = y1 + p.hs2;
-  let half;
   if (t === '2') {
     // 開口槽：槽口寬＝Bs1；Hs1 段是放槽楔的 V 形凹口，凹口深度圖上沒有標，取 Hs1/2（示意）
-    half = [
+    const half = [
       { x: -p.bs1 / 2, y: 0 },
       { x: -p.bs1 / 2, y: y0 },
       { x: -p.bs1 / 2 - p.hs1 / 2, y: y0 + p.hs1 / 2 },
@@ -631,29 +686,25 @@ function rmxprtSlotHalf(type, p) {
     ];
     return { half: dedupe(half), y1: y1, y2: y2, yBottom: y2 };
   }
-  const mouth = [{ x: -p.bs0 / 2, y: 0 }, { x: -p.bs0 / 2, y: y0 }];
-  if (t === '3') mouth.push({ x: -p.bs1 / 2, y: y0 }); // 水平台階，再接 Hs1 直段
-  const body = mouth.concat([{ x: -p.bs1 / 2, y: y1 }]);
+  const body = [{ x: -p.bs0 / 2, y: 0 }, { x: -p.bs0 / 2, y: y0 }];
+  if (t === '3') body.push({ x: -p.bs1 / 2, y: y0 }); // 水平台階，再接 Hs1 直段
+  body.push({ x: -p.bs1 / 2, y: y1 });
   const corner = { x: -p.bs2 / 2, y: y2 };
   if (t === '1' || t === '3') {
-    const prev = body[body.length - 1];
-    half = body.concat(filletCorner(prev, corner, { x: 0, y: y2 }, p.rs > 0 ? p.rs : 0, 8, p.bs2 / 2));
-    return { half: dedupe(half), y1: y1, y2: y2, yBottom: y2 };
+    const f = p.rs > 0 ? filletCorner(body[body.length - 1], corner, { x: 0, y: y2 }, p.rs, p.bs2 / 2) : null;
+    const tail = f ? [{ x: f.t1.x, y: f.t1.y, r: f.r }, { x: f.t2.x, y: f.t2.y }] : [corner];
+    return { half: dedupe(body.concat(tail)), y1: y1, y2: y2, yBottom: y2 };
   }
   if (t === '4') {
     // 半圓槽底：直徑 Bs2，圓心在 Bs2 那條線的中點
-    const R = p.bs2 / 2;
-    half = body.concat(arcLeftHalf({ x: 0, y: y2 }, R, Math.PI, Math.PI / 2, 12));
-    return { half: dedupe(half), y1: y1, y2: y2, yBottom: y2 + R };
+    return { half: dedupe(body.concat([{ x: corner.x, y: corner.y, r: p.bs2 / 2 }])), y1: y1, y2: y2, yBottom: y2 + p.bs2 / 2 };
   }
   if (t === '5') {
     // 與定子同心的圓弧槽底：圓心在定子中心（槽口往氣隙側 Dsi/2 處），通過 Bs2 兩端
     if (!(p.dsi > 0)) return { error: 'errSlotParams' };
-    const c = { x: 0, y: -p.dsi / 2 };
-    const R = Math.hypot(p.bs2 / 2, y2 - c.y);
-    const a0 = Math.atan2(y2 - c.y, -p.bs2 / 2);
-    half = body.concat(arcLeftHalf(c, R, a0, Math.PI / 2, 12));
-    return { half: dedupe(half), y1: y1, y2: y2, yBottom: c.y + R, arcR: R };
+    const R = Math.hypot(p.bs2 / 2, y2 + p.dsi / 2);
+    return { half: dedupe(body.concat([{ x: corner.x, y: corner.y, r: R }])), y1: y1, y2: y2,
+             yBottom: R - p.dsi / 2, arcR: R };
   }
   return { error: 'errSlotParams' };
 
