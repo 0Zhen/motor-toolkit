@@ -10,7 +10,7 @@
 <link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/slot-packing/">
 <link rel="icon" type="image/png" href="../../favicon.png">
 <link rel="stylesheet" href="../../shared/theme.css?v=20261018">
-<link rel="stylesheet" href="styles.css?v=20261020">
+<link rel="stylesheet" href="styles.css?v=20261021">
 <!-- mt:static seo -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Motor Toolkit">
@@ -93,23 +93,49 @@
       </div>
 
       <div id="paramPanel">
-        <div class="param-row-2"><span class="param-label" data-i18n="openWidth">Opening width [mm]</span>
+        <div class="param-row-2"><span class="param-label" data-i18n="slotType">Slot type</span>
+          <select class="mini-select" id="p_slotType">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="trap" data-i18n="slotTypeTrap">Simple trapezoid</option>
+          </select></div>
+        <div class="hint-text" id="slotTypeHint"></div>
+        <div class="hint-text file-status bad" id="slotParamErr" style="display:none"></div>
+        <div class="param-row-2" data-types="1,3,4,5"><span class="param-label">Bs0 [mm]</span>
+          <input type="text" class="param-input" id="p_bs0" value="3"></div>
+        <div class="param-row-2" data-types="1,2,3,4,5"><span class="param-label">Hs0 [mm]</span>
+          <input type="text" class="param-input" id="p_hs0" value="1"></div>
+        <div class="param-row-2" data-types="1,2,3,4,5"><span class="param-label">Hs1 [mm]</span>
+          <input type="text" class="param-input" id="p_hs1" value="0.5"></div>
+        <div class="param-row-2" data-types="1,2,3,4,5"><span class="param-label">Bs1 [mm]</span>
+          <input type="text" class="param-input" id="p_bs1" value="4"></div>
+        <div class="param-row-2" data-types="1,2,3,4,5"><span class="param-label">Bs2 [mm]</span>
+          <input type="text" class="param-input" id="p_bs2" value="7"></div>
+        <div class="param-row-2" data-types="1,2,3,4,5"><span class="param-label">Hs2 [mm]</span>
+          <input type="text" class="param-input" id="p_hs2" value="10.5"></div>
+        <div class="param-row-2" data-types="1,3"><span class="param-label">Rs [mm]</span>
+          <input type="text" class="param-input" id="p_rs" value="0.5"></div>
+        <div class="param-row-2" data-types="5"><span class="param-label" data-i18n="statorDsi">Stator inner dia. Dsi [mm]</span>
+          <input type="text" class="param-input" id="p_dsi" value="50"></div>
+        <div class="param-row-2" data-types="trap"><span class="param-label" data-i18n="openWidth">Opening width [mm]</span>
           <input type="text" class="param-input" id="p_openWidth" value="3"></div>
-        <div class="param-row-2"><span class="param-label" data-i18n="openHeight">Opening height [mm]</span>
+        <div class="param-row-2" data-types="trap"><span class="param-label" data-i18n="openHeight">Opening height [mm]</span>
           <input type="text" class="param-input" id="p_openHeight" value="1.5"></div>
-        <div class="param-row-2"><span class="param-label" data-i18n="topWidth">Body top width [mm]</span>
+        <div class="param-row-2" data-types="trap"><span class="param-label" data-i18n="topWidth">Body top width [mm]</span>
           <input type="text" class="param-input" id="p_topWidth" value="4"></div>
-        <div class="param-row-2"><span class="param-label" data-i18n="bottomWidth">Bottom width [mm]</span>
+        <div class="param-row-2" data-types="trap"><span class="param-label" data-i18n="bottomWidth">Bottom width [mm]</span>
           <input type="text" class="param-input" id="p_bottomWidth" value="7"></div>
-        <div class="param-row-2"><span class="param-label" data-i18n="slotDepth">Depth [mm]</span>
+        <div class="param-row-2" data-types="trap"><span class="param-label" data-i18n="slotDepth">Depth [mm]</span>
           <input type="text" class="param-input" id="p_depth" value="12"></div>
         <button class="mt-btn-ghost full-btn" id="btnGenerate" data-i18n="generateBtn">Generate points (overwrites below)</button>
         <div class="hint-text" data-i18n="paramHint">
-          Symmetric: y=0 is the slot opening (air-gap side), y=depth is the slot bottom (yoke
-          side). A narrow opening throat (opening width/height) runs from y=0, then widens to the
-          body's top width and tapers to the bottom width. Set opening width = body top width (or
-          opening height = 0) to get a plain trapezoid. Generates 8 points below — add more
-          afterwards to refine the shape.
+          Symmetric slot; y=0 is the opening (air-gap side) and y grows toward the slot bottom.
+          Types 1–5 use the same Bs/Hs/Rs names as Ansys RMxprt stator slots, so values can be
+          copied straight from Maxwell. Generate writes the outline into the vertex table below
+          (arcs become short straight segments) — switch to Custom points to keep editing it.
         </div>
       </div>
       <div id="customPanel" style="display:none">
@@ -237,8 +263,8 @@
   </div>
 </div>
 
-<script src="geometry.js?v=20261018"></script>
-<script src="app.js?v=20261020"></script>
+<script src="geometry.js?v=20261021"></script>
+<script src="app.js?v=20261021"></script>
 <!-- mt:static nav -->
 <nav class="mt-sr-only" aria-label="Motor Toolkit tools">
   <h1>Slot Packing Viewer</h1>

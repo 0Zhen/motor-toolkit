@@ -8,6 +8,23 @@ var MT_I18N = {
   shapeTitle:   { en: 'Slot Shape', zh: '槽型' },
   tabParam:     { en: 'Parametric', zh: '參數化' },
   tabCustom:    { en: 'Custom points', zh: '自訂頂點' },
+  slotType:     { en: 'Slot type', zh: '槽型' },
+  slotTypeTrap: { en: 'Simple trapezoid', zh: '簡易梯形' },
+  statorDsi:    { en: 'Stator inner dia. Dsi [mm]', zh: '定子內徑 Dsi [mm]' },
+  slotTypeHint1:{ en: 'Sloped shoulder (Hs1) from Bs0 to Bs1, body Bs1 → Bs2 over Hs2, flat bottom with corner radius Rs.',
+                  zh: '槽口 Bs0 經斜肩（Hs1）展開到 Bs1，槽身 Bs1 → Bs2（深 Hs2），平底、兩角圓角 Rs。' },
+  slotTypeHint2:{ en: 'Open slot (no Bs0): the opening is Bs1 wide; Hs1 is the wedge notch (its depth is drawn as Hs1/2, illustrative only — it sits inside the no-wind depth). Body Bs1 → Bs2 over Hs2, flat bottom.',
+                  zh: '開口槽（沒有 Bs0）：開口寬＝Bs1；Hs1 是放槽楔的 V 形凹口（凹口深度圖上沒標，畫成 Hs1/2 只是示意，而且在不繞線區內）。槽身 Bs1 → Bs2（深 Hs2），平底。' },
+  slotTypeHint3:{ en: 'Flat step from Bs0 out to Bs1, then a straight Bs1-wide section of height Hs1, body Bs1 → Bs2 over Hs2, flat bottom with corner radius Rs.',
+                  zh: '槽口 Bs0 以水平台階展開到 Bs1，接一段寬 Bs1、高 Hs1 的直段，槽身 Bs1 → Bs2（深 Hs2），平底、兩角圓角 Rs。' },
+  slotTypeHint4:{ en: 'Sloped shoulder (Hs1), body Bs1 → Bs2 over Hs2, then a semicircular bottom of diameter Bs2 below the Bs2 line.',
+                  zh: '斜肩（Hs1），槽身 Bs1 → Bs2（深 Hs2），Bs2 那條線以下接直徑 Bs2 的半圓槽底。' },
+  slotTypeHint5:{ en: 'Sloped shoulder (Hs1), body Bs1 → Bs2 over Hs2 (to the Bs2 chord), then an arc bottom concentric with the stator through both Bs2 ends — its radius follows from Dsi.',
+                  zh: '斜肩（Hs1），槽身 Bs1 → Bs2（Hs2 量到 Bs2 弦），之後是通過 Bs2 兩端、跟定子同心的圓弧槽底——半徑由 Dsi 算出。' },
+  slotTypeHinttrap:{ en: 'The original simple shape: a straight opening throat, a flat step out to the body top width, then a trapezoid to a flat bottom.',
+                  zh: '原本的簡易槽型：直的開口喉，水平台階展開到本體上寬，再以梯形接到平底。' },
+  errSlotParams:{ en: 'Check the slot dimensions — widths and Hs2 must be greater than 0 (Dsi too for type 5).',
+                  zh: '請檢查槽型尺寸——寬度與 Hs2 都必須大於 0（槽型 5 的 Dsi 也是）。' },
   openWidth:    { en: 'Opening width [mm]', zh: '開口寬 [mm]' },
   openHeight:   { en: 'Opening height [mm]', zh: '開口高 [mm]' },
   topWidth:     { en: 'Body top width [mm]', zh: '本體上寬 [mm]' },
@@ -15,8 +32,8 @@ var MT_I18N = {
   slotDepth:    { en: 'Depth [mm]', zh: '槽深 [mm]' },
   generateBtn:  { en: 'Generate points (overwrites below)', zh: '產生頂點（覆蓋下方表格）' },
   paramHint:    {
-    en: 'Symmetric: y=0 is the slot opening (air-gap side), y=depth is the slot bottom (yoke side). A narrow opening throat (opening width/height) runs from y=0, then widens to the body’s top width and tapers to the bottom width. Set opening width = body top width (or opening height = 0) for a plain trapezoid. Generates 8 points below — add more afterwards to refine the shape.',
-    zh: '對稱：y=0 是槽口（靠氣隙那端），y=depth 是槽底（靠軛部那端）。從y=0開始先是一段窄直的開口喉（開口寬/開口高），之後展開成本體上寬，再taper到下寬。把開口寬設成等於本體上寬（或開口高設0）就會退化成單純梯形。會產生下方8個頂點，之後可以再手動加點微調形狀。',
+    en: 'Symmetric slot; y=0 is the opening (air-gap side) and y grows toward the slot bottom. Types 1–5 use the same Bs/Hs/Rs names as Ansys RMxprt stator slots, so values can be copied straight from Maxwell. Generate writes the outline into the vertex table below (arcs become short straight segments) — switch to Custom points to keep editing it.',
+    zh: '槽型左右對稱；y=0 是槽口（氣隙側），y 往槽底增加。槽型 1–5 的 Bs/Hs/Rs 參數名稱跟 Ansys RMxprt 定子槽一致，可以直接照 Maxwell 的數值填。按「產生頂點」會把輪廓寫進下方頂點表格（圓弧拆成短直線段），切到「自訂頂點」可以接著修改。',
   },
   customHint:   {
     en: 'Start from scratch, or switch to Parametric, generate a trapezoid, then come back here — every point is editable either way. You only edit the left half; the right half mirrors it automatically (slots are symmetric left-right).',
@@ -274,26 +291,65 @@ function renderVertexTable() {
   });
 }
 
+/* ── 參數化槽型（RMxprt 1–5／簡易梯形）── */
+function readRmxprtParams() {
+  return {
+    bs0: num('p_bs0', NaN), hs0: num('p_hs0', NaN), hs1: num('p_hs1', NaN), bs1: num('p_bs1', NaN),
+    bs2: num('p_bs2', NaN), hs2: num('p_hs2', NaN), rs: num('p_rs', 0), dsi: num('p_dsi', NaN),
+  };
+}
+var slotParamErrKey = null;
+function showSlotParamError(key) {
+  slotParamErrKey = key;
+  var el = $('slotParamErr');
+  el.style.display = key ? '' : 'none';
+  if (key) el.textContent = mtT(key);
+}
+/** 只顯示目前槽型用得到的欄位（data-types 列出適用的槽型） */
+function updateSlotTypeFields() {
+  var type = $('p_slotType').value;
+  document.querySelectorAll('#paramPanel [data-types]').forEach(function (row) {
+    row.style.display = row.getAttribute('data-types').split(',').indexOf(type) >= 0 ? '' : 'none';
+  });
+  $('slotTypeHint').textContent = mtT('slotTypeHint' + type);
+  if (slotParamErrKey) showSlotParamError(slotParamErrKey);
+}
+
 function generateFromParametric() {
   // Generate 會整個覆蓋掉目前的左半邊頂點清單，包含使用者切到自訂頂點
   // 手動改過的內容——這是最容易「不小心弄丟工作」的操作，按之前先存一
   // 次快照（頁面剛載入、halfVertices 還是空的那次不用存，沒有東西好
   // 復原）。
   if (halfVertices.length >= 2) pushVertexHistory();
-  var openW = num('p_openWidth', 3), openH = num('p_openHeight', 1.5);
-  var top = num('p_topWidth', 4), bottom = num('p_bottomWidth', 7), depth = num('p_depth', 12);
-  // 跟 generateSlotShape() 產生的8點是同一個形狀，但這裡直接寫出「左半
-  // 邊、從槽口排到槽底」的4點，不是反過來從8點裡篩選——對稱軸切出來的
-  // 左半邊本來就該長這樣，不需要用篩選+排序去猜。
-  halfVertices = [
-    { x: -openW / 2, y: 0 },
-    { x: -openW / 2, y: openH },
-    { x: -top / 2, y: openH },
-    { x: -bottom / 2, y: depth },
-  ];
+  var type = $('p_slotType').value, windStart;
+  if (type === 'trap') {
+    var openW = num('p_openWidth', 3), openH = num('p_openHeight', 1.5);
+    var top = num('p_topWidth', 4), bottom = num('p_bottomWidth', 7), depth = num('p_depth', 12);
+    // 跟 generateSlotShape() 產生的8點是同一個形狀，但這裡直接寫出「左半
+    // 邊、從槽口排到槽底」的4點，不是反過來從8點裡篩選——對稱軸切出來的
+    // 左半邊本來就該長這樣，不需要用篩選+排序去猜。
+    halfVertices = [
+      { x: -openW / 2, y: 0 },
+      { x: -openW / 2, y: openH },
+      { x: -top / 2, y: openH },
+      { x: -bottom / 2, y: depth },
+    ];
+    windStart = openH;
+  } else {
+    var g = rmxprtSlotHalf(type, readRmxprtParams());
+    if (g.error) {
+      showSlotParamError(g.error);
+      if (vertexHistory.length) vertexHistory.pop(); // 沒有真的改到頂點，剛存的快照收回
+      $('btnUndoVertex').disabled = vertexHistory.length === 0;
+      return;
+    }
+    halfVertices = g.half;
+    windStart = num('p_hs0', 0) + num('p_hs1', 0); // 槽口＋肩部（槽楔區）不繞線
+  }
+  showSlotParamError(null);
   syncVerticesFromHalf();
   renderVertexTable();
-  $('w_windStartY').value = fmt(openH, 3); // 開口喉不繞線，跟著參數化的開口高自動帶
+  $('w_windStartY').value = fmt(windStart, 3); // 開口喉不繞線，跟著參數化的開口高（Hs0+Hs1）自動帶
   computeAll();
   if (typeof gaTrack === 'function') gaTrack('slotpack_generate', 'slot');
 }
@@ -356,21 +412,31 @@ function dimH(x1, x2, yFeature, yDim, label, tick, fontSize) {
     '<line class="dim-line" x1="' + x1 + '" y1="' + yDim + '" x2="' + x2 + '" y2="' + yDim + '"></line>' +
     '<line class="dim-line" x1="' + x1 + '" y1="' + (yDim - tick) + '" x2="' + x1 + '" y2="' + (yDim + tick) + '"></line>' +
     '<line class="dim-line" x1="' + x2 + '" y1="' + (yDim - tick) + '" x2="' + x2 + '" y2="' + (yDim + tick) + '"></line>' +
-    '<text class="dim-text" x="' + midX + '" y="' + yDim + '" font-size="' + fontSize + '">' + label + '</text>'
+    '<text class="dim-text" x="' + midX + '" y="' + (yDim - fontSize * 0.5) + '" font-size="' + fontSize + '">' + label + '</text>'
   );
 }
 /** 跟 dimH 同一套畫法，軸互換；文字旋轉-90度直式顯示（由下往上讀，標準工程圖慣例）。
  *  xFeature1/xFeature2 分開給，因為量垂直距離時兩端對應的槽型寬度通常不同
  *（例如開口高：上端在本體上寬處、下端在開口寬處，不是同一個x）。 */
-function dimV(y1, y2, xFeature1, xFeature2, xDim, label, tick, fontSize) {
+function dimV(y1, y2, xFeature1, xFeature2, xDim, label, tick, fontSize, side) {
   var midY = (y1 + y2) / 2;
+  var dir = side === 'right' ? 1 : -1;
+  var text;
+  if (String(label).length * fontSize * 0.56 > Math.abs(y2 - y1) * 0.9) {
+    // 尺寸太短放不下直式文字（例如 Hs0、Hs1）：改成橫式，放在尺寸線外側
+    text = '<text class="dim-text" x="' + (xDim + dir * fontSize * 0.4) + '" y="' + midY + '" font-size="' + fontSize +
+      '" style="text-anchor:' + (dir > 0 ? 'start' : 'end') + '">' + label + '</text>';
+  } else {
+    var tx = xDim + dir * fontSize * 0.5;
+    text = '<text class="dim-text" x="' + tx + '" y="' + midY + '" font-size="' + fontSize + '" transform="rotate(-90 ' + tx + ' ' + midY + ')">' + label + '</text>';
+  }
   return (
     '<line class="dim-ext" x1="' + xFeature1 + '" y1="' + y1 + '" x2="' + xDim + '" y2="' + y1 + '"></line>' +
     '<line class="dim-ext" x1="' + xFeature2 + '" y1="' + y2 + '" x2="' + xDim + '" y2="' + y2 + '"></line>' +
     '<line class="dim-line" x1="' + xDim + '" y1="' + y1 + '" x2="' + xDim + '" y2="' + y2 + '"></line>' +
     '<line class="dim-line" x1="' + (xDim - tick) + '" y1="' + y1 + '" x2="' + (xDim + tick) + '" y2="' + y1 + '"></line>' +
     '<line class="dim-line" x1="' + (xDim - tick) + '" y1="' + y2 + '" x2="' + (xDim + tick) + '" y2="' + y2 + '"></line>' +
-    '<text class="dim-text" x="' + xDim + '" y="' + midY + '" font-size="' + fontSize + '" transform="rotate(-90 ' + xDim + ' ' + midY + ')">' + label + '</text>'
+    text
   );
 }
 
@@ -481,9 +547,9 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
     // 得下尺寸線跟文字——上方堆兩條（開口寬、上寬）、下方一條（下寬）、
     // 左右各一條（開口高、槽深）。
     var padTop = maxDim * (shapeMode === 'param' ? 0.40 : 0.18);
-    var padBottom = maxDim * (shapeMode === 'param' ? 0.22 : 0.18);
-    var padLeft = maxDim * (shapeMode === 'param' ? 0.26 : 0.26);
-    var padRight = maxDim * (shapeMode === 'param' ? 0.26 : 0.26);
+    var padBottom = maxDim * (shapeMode === 'param' ? 0.32 : 0.18);
+    var padLeft = maxDim * (shapeMode === 'param' ? 0.48 : 0.26);
+    var padRight = maxDim * (shapeMode === 'param' ? 0.48 : 0.26);
     vx = bbox.minX - padLeft; vy = bbox.minY - padTop; vw = w + padLeft + padRight; vh = h + padTop + padBottom;
   }
   lastView = { vx: vx, vy: vy, vw: vw, vh: vh, maxDim: maxDim };
@@ -538,7 +604,7 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
   }
 
   var dimStrokeW = strokeW * 0.5, fontSize = maxDim * 0.062, tick = fontSize * 0.4;
-  if (shapeMode === 'param') {
+  if (shapeMode === 'param' && $('p_slotType').value === 'trap') {
     var openW = num('p_openWidth', 3), openH = num('p_openHeight', 1.5);
     var topW = num('p_topWidth', 4), bottomW = num('p_bottomWidth', 7), depthV = num('p_depth', 12);
     html += '<g style="stroke-width:' + dimStrokeW + '">' +
@@ -546,8 +612,35 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
       dimH(-topW / 2, topW / 2, openH, -maxDim * 0.24, fmt(topW, 2), tick, fontSize) +
       dimH(-bottomW / 2, bottomW / 2, depthV, depthV + maxDim * 0.09, fmt(bottomW, 2), tick, fontSize) +
       dimV(0, openH, -openW / 2, -topW / 2, bbox.minX - maxDim * 0.10, fmt(openH, 2), tick, fontSize) +
-      dimV(0, depthV, openW / 2, bottomW / 2, bbox.maxX + maxDim * 0.10, fmt(depthV, 2), tick, fontSize) +
+      dimV(0, depthV, openW / 2, bottomW / 2, bbox.maxX + maxDim * 0.10, fmt(depthV, 2), tick, fontSize, 'right') +
       '</g>';
+  } else if (shapeMode === 'param') {
+    // RMxprt 槽型：標註名稱跟 Maxwell 一樣（Bs0=3.00），方便對照抄數字。
+    // 上方兩條（Bs0、Bs1）、下方一條（Bs2）、左邊兩欄（Hs0、Hs1）、右邊一條（Hs2）。
+    var type = $('p_slotType').value, P = readRmxprtParams();
+    var y0 = P.hs0, y1 = P.hs0 + P.hs1, y2 = y1 + P.hs2;
+    var mouthW = type === '2' ? P.bs1 : P.bs0;
+    var L = function (name, v) { return name + '=' + fmt(v, 2); };
+    var rightX = bbox.maxX + maxDim * 0.10;
+    html += '<g style="stroke-width:' + dimStrokeW + '">';
+    if (type !== '2') html += dimH(-P.bs0 / 2, P.bs0 / 2, 0, -maxDim * 0.10, L('Bs0', P.bs0), tick, fontSize);
+    html += dimH(-P.bs1 / 2, P.bs1 / 2, y1, -maxDim * (type === '2' ? 0.10 : 0.24), L('Bs1', P.bs1), tick, fontSize) +
+      dimH(-P.bs2 / 2, P.bs2 / 2, y2, bbox.maxY + maxDim * 0.12, L('Bs2', P.bs2), tick, fontSize);
+    // Hs0 在左邊；Hs1、Hs2 在右邊串成連續尺寸（Hs1 接著 Hs2），短的那段自動改橫式文字
+    if (P.hs0 > 0) html += dimV(0, y0, -mouthW / 2, -mouthW / 2, bbox.minX - maxDim * 0.10, L('Hs0', P.hs0), tick, fontSize, 'left');
+    if (P.hs1 > 0) html += dimV(y0, y1, mouthW / 2, P.bs1 / 2, rightX, L('Hs1', P.hs1), tick, fontSize, 'right');
+    html += dimV(y1, y2, P.bs1 / 2, P.bs2 / 2, rightX, L('Hs2', P.hs2), tick, fontSize, 'right');
+    if ((type === '1' || type === '3') && P.rs > 0) {
+      // 圓角標註放在槽外左下方，不壓在線材上
+      html += '<text class="dim-text" x="' + (-P.bs2 / 2 - fontSize * 0.3) + '" y="' + (y2 + fontSize * 0.9) +
+        '" font-size="' + fontSize * 0.85 + '" style="text-anchor:end">' + L('Rs', P.rs) + '</text>';
+    }
+    if (type === '5' && P.dsi > 0) {
+      var R5 = Math.hypot(P.bs2 / 2, y2 + P.dsi / 2);
+      html += '<text class="dim-text" x="0" y="' + (bbox.maxY + maxDim * 0.24) + '" font-size="' + fontSize * 0.85 + '">' +
+        'Dsi=' + fmt(P.dsi, 2) + ' → R=' + fmt(R5, 3) + '</text>';
+    }
+    html += '</g>';
   } else if (shapeMode === 'custom') {
     // 完整座標字串太長，即使做碰撞收斂也容易把兩個離得近的點的標籤推到
     // 視覺順序對調（例如#2比#3高，但收斂後#2的標籤反而畫在#3下面，看
@@ -836,7 +929,8 @@ function computeAllInner() {
  * 左半邊頂點（不是由參數重新產生，自訂頂點的編輯也要留住）、參數化欄位、
  * 線材欄位、目前的模式。算出來的結果不存，開檔後照當時的程式重算。 */
 var FILE_KIND = 'motor-toolkit/slot-packing';
-var PARAM_IDS = ['p_openWidth', 'p_openHeight', 'p_topWidth', 'p_bottomWidth', 'p_depth'];
+var PARAM_IDS = ['p_slotType', 'p_bs0', 'p_hs0', 'p_hs1', 'p_bs1', 'p_bs2', 'p_hs2', 'p_rs', 'p_dsi',
+                 'p_openWidth', 'p_openHeight', 'p_topWidth', 'p_bottomWidth', 'p_depth'];
 var WIRE_IDS = ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_needleWidth', 'w_needleClearance',
                 'w_linerThickness', 'w_windStartY'];
 var fileStatus = null; // { key, name } — 切換語言時重畫狀態訊息
@@ -854,7 +948,7 @@ window.saveSlotFile = function () {
   PARAM_IDS.concat(WIRE_IDS).forEach(function (id) { inputs[id] = $(id).value; });
   var data = {
     kind: FILE_KIND,
-    version: 1,
+    version: 2,
     savedAt: new Date().toISOString(),
     shapeMode: shapeMode,
     halfVertices: halfVertices.map(function (v) { return { x: v.x, y: v.y }; }),
@@ -886,6 +980,10 @@ function applySlotFile(data) {
   PARAM_IDS.concat(WIRE_IDS).forEach(function (id) {
     if (inputs[id] !== undefined && inputs[id] !== null) $(id).value = String(inputs[id]);
   });
+  // 第 1 版檔案還沒有槽型選單，當時的參數化只有簡易梯形
+  if (!inputs.p_slotType) $('p_slotType').value = data.version >= 2 ? '1' : 'trap';
+  updateSlotTypeFields();
+  showSlotParamError(null);
   halfVertices = hv;
   syncVerticesFromHalf();
   renderVertexTable();
@@ -935,6 +1033,13 @@ function applyIncomingParams() {
 
 document.addEventListener('DOMContentLoaded', function () {
   $('btnGenerate').addEventListener('click', generateFromParametric);
+  // 換槽型：只顯示該槽型的欄位，並直接用新槽型重新產生（會先存 Undo 快照）
+  $('p_slotType').addEventListener('change', function () {
+    updateSlotTypeFields();
+    generateFromParametric();
+    if (typeof gaTrack === 'function') gaTrack('slotpack_slot_type', this.value);
+  });
+  document.addEventListener('mt-lang-change', updateSlotTypeFields);
   $('btnAddPoint').addEventListener('click', addVertexPoint);
   $('btnUndoVertex').addEventListener('click', undoVertices);
   $('btnSaveFile').addEventListener('click', saveSlotFile);
@@ -954,6 +1059,7 @@ document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('mt-theme-change', function () { computeAll(); });
 
   applyIncomingParams();
+  updateSlotTypeFields();
   generateFromParametric(); // 進頁面先用預設梯形參數產生一組起始外形，不留空白畫面
 });
 

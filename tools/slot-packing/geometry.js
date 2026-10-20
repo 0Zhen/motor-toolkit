@@ -92,19 +92,22 @@ function offsetPolygonInward(points, distance) {
   const n = points.length;
   if (n < 3 || !(distance > 0)) return points.map(p => ({ x: p.x, y: p.y }));
 
-  const centroid = points.reduce(
-    (acc, p) => ({ x: acc.x + p.x / n, y: acc.y + p.y / n }),
-    { x: 0, y: 0 }
-  );
+  // 「往內」用多邊形的繞行方向判斷（有號面積的正負），不用頂點平均位置：
+  // 圓弧槽底會在槽底擠一堆頂點，把頂點平均位置拉到弧線附近，靠近兩角的
+  // 弧段就會被判斷成反方向、往外偏移。
+  let signedArea2 = 0;
+  for (let i = 0; i < n; i++) {
+    const a = points[i], b = points[(i + 1) % n];
+    signedArea2 += a.x * b.y - b.x * a.y;
+  }
+  const side = signedArea2 >= 0 ? 1 : -1;
 
   const shifted = [];
   for (let i = 0; i < n; i++) {
     const a = points[i], b = points[(i + 1) % n];
     const dx = b.x - a.x, dy = b.y - a.y;
     const len = Math.hypot(dx, dy) || 1;
-    let nx = -dy / len, ny = dx / len; // 邊方向的其中一個法向量
-    const midx = (a.x + b.x) / 2, midy = (a.y + b.y) / 2;
-    if (nx * (centroid.x - midx) + ny * (centroid.y - midy) < 0) { nx = -nx; ny = -ny; }
+    const nx = -dy / len * side, ny = dx / len * side; // 指向多邊形內側的法向量
     shifted.push({
       ax: a.x + nx * distance, ay: a.y + ny * distance,
       bx: b.x + nx * distance, by: b.y + ny * distance,
@@ -117,7 +120,49 @@ function offsetPolygonInward(points, distance) {
     const pt = lineIntersect(prev.ax, prev.ay, prev.bx, prev.by, cur.ax, cur.ay, cur.bx, cur.by);
     result.push(pt || { x: points[i].x, y: points[i].y }); // 平行時退回原頂點（已知限制）
   }
-  return result;
+  if (isOffsetValid(points, result)) return result;
+  return offsetDroppingCollapsedEdges(points, shifted, distance);
+}
+
+/**
+ * 銳角旁邊的短邊（例如圓弧槽底拆出來、緊貼槽壁的第一小段）內縮後本來
+ * 就該整段消失——逐頂點求交點的做法會把它算成方向反過來的邊，被當成
+ * 「liner 太厚」。這裡把方向反過來的邊拿掉、用剩下的邊重新求交點，重複
+ * 到沒有反向邊為止，再嚴格驗證結果：每個頂點都要在原多邊形內、而且離
+ * 原輪廓至少 distance 遠（真正的內縮一定滿足）。槽口喉部真的太窄這類
+ * 情況救不回來，驗證會失敗，照樣回報 liner 太厚。
+ * 回傳的陣列帶 dropped=true 與 valid 旗標，點數可能比原多邊形少。
+ */
+function offsetDroppingCollapsedEdges(points, shifted, distance) {
+  let lines = shifted.map(function (l, i) {
+    const a = points[i], b = points[(i + 1) % points.length];
+    return { l: l, dx: b.x - a.x, dy: b.y - a.y };
+  });
+  let pts = [];
+  for (let iter = 0; iter < points.length; iter++) {
+    const m = lines.length;
+    if (m < 3) break;
+    pts = [];
+    for (let i = 0; i < m; i++) {
+      const prev = lines[(i - 1 + m) % m].l, cur = lines[i].l;
+      pts.push(lineIntersect(prev.ax, prev.ay, prev.bx, prev.by, cur.ax, cur.ay, cur.bx, cur.by));
+    }
+    if (pts.some(function (q) { return !q; })) { pts = []; break; }
+    const keep = lines.filter(function (L, i) {
+      const a = pts[i], b = pts[(i + 1) % m];
+      return (b.x - a.x) * L.dx + (b.y - a.y) * L.dy > 0;
+    });
+    if (keep.length === m) break;
+    lines = keep;
+    pts = [];
+  }
+  const out = pts.slice();
+  out.dropped = true;
+  const tol = 1e-6 * Math.max(1, distance);
+  out.valid = out.length >= 3 && out.every(function (q) {
+    return pointInPolygon(q, points) && distanceToPolygonBoundary(q, points) >= distance - tol;
+  });
+  return out;
 }
 
 /**
@@ -128,6 +173,7 @@ function offsetPolygonInward(points, distance) {
  * 「liner 厚度超過局部幾何能容許範圍」這種最常見的失敗情況。
  */
 function isOffsetValid(original, inset) {
+  if (inset.dropped) return inset.valid;
   const n = original.length;
   if (n !== inset.length || n < 3) return false;
   for (let i = 0; i < n; i++) {
@@ -516,4 +562,104 @@ function serpentineOrder(placed, points, side) {
     return down ? placed[a].y - placed[b].y : placed[b].y - placed[a].y;
   });
   return idx.map(i => placed[i]);
+}
+
+/* ══════════════════════════════════════════════════════════
+   RMxprt 定子槽型 1–5（參數名稱跟 Ansys RMxprt 一致）
+   座標慣例同全工具：y=0 是槽口（氣隙側），y 往槽底增加；只產生左半邊
+   （x ≤ 0，由槽口排到槽底），右半邊由 app.js 鏡射。圓弧（Rs 圓角、半圓
+   槽底、同心圓弧槽底）都拆成短直線段，後面的 liner 內縮、排列只認多邊形。
+   ══════════════════════════════════════════════════════════ */
+
+/** 角 P 的圓角：回傳取代 P 的一串點（從 prev 那側切點到 next 那側切點）。
+ *  r 太大、切點超出相鄰邊時自動縮到放得下；maxT 可另外限制切點距離。 */
+function filletCorner(prev, P, next, r, segs, maxT) {
+  const ux = prev.x - P.x, uy = prev.y - P.y, vx = next.x - P.x, vy = next.y - P.y;
+  const lu = Math.hypot(ux, uy), lv = Math.hypot(vx, vy);
+  if (!(r > 0) || lu < 1e-9 || lv < 1e-9) return [P];
+  const u = { x: ux / lu, y: uy / lu }, v = { x: vx / lv, y: vy / lv };
+  const theta = Math.acos(Math.max(-1, Math.min(1, u.x * v.x + u.y * v.y)));
+  if (theta < 1e-6 || Math.PI - theta < 1e-6) return [P];
+  let t = r / Math.tan(theta / 2);
+  const tMax = Math.min(lu, lv, maxT === undefined ? Infinity : maxT) * 0.98;
+  if (t > tMax) { t = tMax; r = t * Math.tan(theta / 2); }
+  const T1 = { x: P.x + u.x * t, y: P.y + u.y * t }, T2 = { x: P.x + v.x * t, y: P.y + v.y * t };
+  const bx = u.x + v.x, by = u.y + v.y, bl = Math.hypot(bx, by);
+  const d = r / Math.sin(theta / 2);
+  const C = { x: P.x + bx / bl * d, y: P.y + by / bl * d };
+  const a1 = Math.atan2(T1.y - C.y, T1.x - C.x);
+  let da = Math.atan2(T2.y - C.y, T2.x - C.x) - a1;
+  while (da > Math.PI) da -= 2 * Math.PI;
+  while (da < -Math.PI) da += 2 * Math.PI;
+  const out = [];
+  for (let k = 0; k <= segs; k++) {
+    const a = a1 + da * k / segs;
+    out.push({ x: C.x + r * Math.cos(a), y: C.y + r * Math.sin(a) });
+  }
+  return out;
+}
+
+/** 圓弧左半邊的點：圓心 c、半徑 R，從角度 a0 掃到對稱軸（x=0）。整段弧
+ *  用奇數段數，左半邊不含 x=0 那一點，鏡射後才不會在軸上疊出重複頂點。 */
+function arcLeftHalf(c, R, a0, aAxis, segsHalf) {
+  const total = 2 * segsHalf + 1, out = [];
+  for (let k = 0; k <= segsHalf; k++) {
+    const a = a0 + (aAxis - a0) * (2 * k) / total;
+    out.push({ x: c.x + R * Math.cos(a), y: c.y + R * Math.sin(a) });
+  }
+  return out;
+}
+
+/** p = { bs0, hs0, hs1, bs1, bs2, hs2, rs, dsi }；回傳 { half, y1, y2, yBottom } 或 { error }。
+ *  y1 = 槽身開始（Bs1 那條線），y2 = Bs2 那條線，yBottom = 槽最深處。 */
+function rmxprtSlotHalf(type, p) {
+  const t = String(type);
+  const need = ['hs0', 'hs1', 'bs1', 'bs2', 'hs2'].concat(t === '2' ? [] : ['bs0']);
+  for (const k of need) if (!(p[k] >= 0) || !isFinite(p[k])) return { error: 'errSlotParams' };
+  if (!(p.bs1 > 0) || !(p.bs2 > 0) || !(p.hs2 > 0)) return { error: 'errSlotParams' };
+  if (t !== '2' && !(p.bs0 > 0)) return { error: 'errSlotParams' };
+  const y0 = p.hs0, y1 = p.hs0 + p.hs1, y2 = y1 + p.hs2;
+  let half;
+  if (t === '2') {
+    // 開口槽：槽口寬＝Bs1；Hs1 段是放槽楔的 V 形凹口，凹口深度圖上沒有標，取 Hs1/2（示意）
+    half = [
+      { x: -p.bs1 / 2, y: 0 },
+      { x: -p.bs1 / 2, y: y0 },
+      { x: -p.bs1 / 2 - p.hs1 / 2, y: y0 + p.hs1 / 2 },
+      { x: -p.bs1 / 2, y: y1 },
+      { x: -p.bs2 / 2, y: y2 },
+    ];
+    return { half: dedupe(half), y1: y1, y2: y2, yBottom: y2 };
+  }
+  const mouth = [{ x: -p.bs0 / 2, y: 0 }, { x: -p.bs0 / 2, y: y0 }];
+  if (t === '3') mouth.push({ x: -p.bs1 / 2, y: y0 }); // 水平台階，再接 Hs1 直段
+  const body = mouth.concat([{ x: -p.bs1 / 2, y: y1 }]);
+  const corner = { x: -p.bs2 / 2, y: y2 };
+  if (t === '1' || t === '3') {
+    const prev = body[body.length - 1];
+    half = body.concat(filletCorner(prev, corner, { x: 0, y: y2 }, p.rs > 0 ? p.rs : 0, 8, p.bs2 / 2));
+    return { half: dedupe(half), y1: y1, y2: y2, yBottom: y2 };
+  }
+  if (t === '4') {
+    // 半圓槽底：直徑 Bs2，圓心在 Bs2 那條線的中點
+    const R = p.bs2 / 2;
+    half = body.concat(arcLeftHalf({ x: 0, y: y2 }, R, Math.PI, Math.PI / 2, 12));
+    return { half: dedupe(half), y1: y1, y2: y2, yBottom: y2 + R };
+  }
+  if (t === '5') {
+    // 與定子同心的圓弧槽底：圓心在定子中心（槽口往氣隙側 Dsi/2 處），通過 Bs2 兩端
+    if (!(p.dsi > 0)) return { error: 'errSlotParams' };
+    const c = { x: 0, y: -p.dsi / 2 };
+    const R = Math.hypot(p.bs2 / 2, y2 - c.y);
+    const a0 = Math.atan2(y2 - c.y, -p.bs2 / 2);
+    half = body.concat(arcLeftHalf(c, R, a0, Math.PI / 2, 12));
+    return { half: dedupe(half), y1: y1, y2: y2, yBottom: c.y + R, arcR: R };
+  }
+  return { error: 'errSlotParams' };
+
+  function dedupe(pts) {
+    return pts.filter(function (q, i) {
+      return i === 0 || Math.hypot(q.x - pts[i - 1].x, q.y - pts[i - 1].y) > 1e-9;
+    });
+  }
 }
