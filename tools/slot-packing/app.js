@@ -109,6 +109,17 @@ var MT_I18N = {
     zh: 'Liner 厚度對這個槽型來說太厚了（內縮後會在某處自我交叉，例如開口喉部太窄）。請縮小 liner 厚度，或把該處的槽型放寬。',
   },
 
+  fileTitle:     { en: 'Save / Open', zh: '儲存／開啟' },
+  saveFileBtn:   { en: 'Save to file', zh: '存成檔案' },
+  openFileBtn:   { en: 'Open file…', zh: '開啟檔案…' },
+  fileHint: {
+    en: 'Saves the slot shape (every vertex), the parametric inputs and all wire / turns settings to a .json file you can keep with the project or send to a colleague. Opening it restores everything; Undo brings back the previous vertices.',
+    zh: '把槽型（所有頂點）、參數化輸入和所有線材／匝數設定存成一個 .json 檔，可以放在專案資料夾或寄給同事。開啟後會全部還原；按「復原」可以回到開檔前的頂點。',
+  },
+  fileSaved:     { en: 'Saved {name}.', zh: '已存成 {name}。' },
+  fileLoaded:    { en: 'Opened {name}.', zh: '已開啟 {name}。' },
+  fileBad:       { en: '{name} is not a Slot Packing file (or it is damaged).', zh: '{name} 不是槽內排列工具的檔案（或檔案已損壞）。' },
+
   tipSlotArea: {
     en: 'Shoelace formula on the outer vertex list — the slot’s own cut area, before the liner.',
     zh: '用槽型外緣頂點算的鞋帶公式（Shoelace formula）——liner內縮之前，槽本身的切割面積。',
@@ -819,6 +830,81 @@ function computeAllInner() {
     tip(mtT('outMaxFillArea'), 'outMaxFillAreaTip') + ' = <span class="rv">' + fmt(maxFillPct, 1) + '</span><span class="ru">%</span>';
 }
 
+/* ── 存檔／讀檔 ──
+ * 存成使用者自己保管的 .json 檔（不放 localStorage）：可以跟專案資料一起
+ * 歸檔、寄給同事、換電腦也能開。內容是「重現這個畫面需要的全部輸入」：
+ * 左半邊頂點（不是由參數重新產生，自訂頂點的編輯也要留住）、參數化欄位、
+ * 線材欄位、目前的模式。算出來的結果不存，開檔後照當時的程式重算。 */
+var FILE_KIND = 'motor-toolkit/slot-packing';
+var PARAM_IDS = ['p_openWidth', 'p_openHeight', 'p_topWidth', 'p_bottomWidth', 'p_depth'];
+var WIRE_IDS = ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_needleWidth', 'w_needleClearance',
+                'w_linerThickness', 'w_windStartY'];
+var fileStatus = null; // { key, name } — 切換語言時重畫狀態訊息
+
+function showFileStatus(key, name) {
+  fileStatus = key ? { key: key, name: name } : null;
+  var el = $('fileStatus');
+  el.style.display = key ? '' : 'none';
+  if (key) el.textContent = mtT(key).replace('{name}', name);
+  el.classList.toggle('bad', key === 'fileBad');
+}
+
+window.saveSlotFile = function () {
+  var inputs = {};
+  PARAM_IDS.concat(WIRE_IDS).forEach(function (id) { inputs[id] = $(id).value; });
+  var data = {
+    kind: FILE_KIND,
+    version: 1,
+    savedAt: new Date().toISOString(),
+    shapeMode: shapeMode,
+    halfVertices: halfVertices.map(function (v) { return { x: v.x, y: v.y }; }),
+    inputs: inputs,
+  };
+  var d = new Date();
+  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  var name = 'slot-packing_' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' +
+    pad(d.getHours()) + pad(d.getMinutes()) + '.json';
+  var url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  showFileStatus('fileSaved', name);
+  if (typeof gaTrack === 'function') gaTrack('slotpack_save', shapeMode);
+};
+
+/** 驗證後套用；任何一項不對就整個不套用，不會只還原一半 */
+function applySlotFile(data) {
+  if (!data || data.kind !== FILE_KIND || !Array.isArray(data.halfVertices) || data.halfVertices.length < 2) return false;
+  var hv = data.halfVertices.map(function (v) { return { x: Number(v && v.x), y: Number(v && v.y) }; });
+  if (hv.some(function (v) { return !isFinite(v.x) || !isFinite(v.y); })) return false;
+  var inputs = data.inputs || {};
+  pushVertexHistory();
+  PARAM_IDS.concat(WIRE_IDS).forEach(function (id) {
+    if (inputs[id] !== undefined && inputs[id] !== null) $(id).value = String(inputs[id]);
+  });
+  halfVertices = hv;
+  syncVerticesFromHalf();
+  renderVertexTable();
+  switchShapeMode(data.shapeMode === 'custom' ? 'custom' : 'param'); // 會順便 computeAll()
+  return true;
+}
+
+function openSlotFile(file) {
+  var reader = new FileReader();
+  reader.onload = function () {
+    var data = null;
+    try { data = JSON.parse(reader.result); } catch (e) { /* 留給下面一起報錯 */ }
+    showFileStatus(applySlotFile(data) ? 'fileLoaded' : 'fileBad', file.name);
+    if (typeof gaTrack === 'function') gaTrack('slotpack_open', data && data.shapeMode || 'bad');
+  };
+  reader.onerror = function () { showFileStatus('fileBad', file.name); };
+  reader.readAsText(file);
+}
+
 /* ── 事件綁定 ── */
 /* ── 跟 DCR Calculator 的雙向連結 ──
  * 兩個工具都要輸入同一組線材參數（匝數/線圈數/股數/裸銅徑/漆膜厚
@@ -851,11 +937,20 @@ document.addEventListener('DOMContentLoaded', function () {
   $('btnGenerate').addEventListener('click', generateFromParametric);
   $('btnAddPoint').addEventListener('click', addVertexPoint);
   $('btnUndoVertex').addEventListener('click', undoVertices);
+  $('btnSaveFile').addEventListener('click', saveSlotFile);
+  $('btnOpenFile').addEventListener('click', function () { $('fileInput').click(); });
+  $('fileInput').addEventListener('change', function () {
+    if (this.files && this.files[0]) openSlotFile(this.files[0]);
+    this.value = ''; // 同一個檔案再選一次也要觸發 change
+  });
 
   ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_linerThickness', 'w_needleWidth', 'w_needleClearance', 'w_windStartY']
     .forEach(function (id) { $(id).addEventListener('input', computeAll); });
 
   document.addEventListener('mt-lang-change', computeAll);
+  document.addEventListener('mt-lang-change', function () {
+    if (fileStatus) showFileStatus(fileStatus.key, fileStatus.name);
+  });
   document.addEventListener('mt-theme-change', function () { computeAll(); });
 
   applyIncomingParams();

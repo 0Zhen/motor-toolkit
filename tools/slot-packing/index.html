@@ -10,7 +10,7 @@
 <link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/slot-packing/">
 <link rel="icon" type="image/png" href="../../favicon.png">
 <link rel="stylesheet" href="../../shared/theme.css?v=20261018">
-<link rel="stylesheet" href="styles.css?v=20261018">
+<link rel="stylesheet" href="styles.css?v=20261020">
 <!-- mt:static seo -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Motor Toolkit">
@@ -63,6 +63,22 @@
 
   <!-- ── 左側：輸入欄 ── -->
   <div class="panel input-panel">
+
+    <!-- 存檔／讀檔 -->
+    <div class="params-box">
+      <div class="section-title" data-i18n="fileTitle">Save / Open</div>
+      <div class="btn-row">
+        <button class="mt-btn-ghost" id="btnSaveFile" data-i18n="saveFileBtn">Save to file</button>
+        <button class="mt-btn-ghost" id="btnOpenFile" data-i18n="openFileBtn">Open file…</button>
+      </div>
+      <input type="file" id="fileInput" accept=".json,application/json" hidden>
+      <div class="hint-text file-status" id="fileStatus" style="display:none"></div>
+      <div class="hint-text" data-i18n="fileHint">
+        Saves the slot shape (every vertex), the parametric inputs and all wire / turns settings to
+        a .json file you can keep with the project or send to a colleague. Opening it restores
+        everything; Undo brings back the previous vertices.
+      </div>
+    </div>
 
     <!-- 槽型輸入 -->
     <div class="params-box">
@@ -222,7 +238,7 @@
 </div>
 
 <script src="geometry.js?v=20261018"></script>
-<script src="app.js?v=20261018"></script>
+<script src="app.js?v=20261020"></script>
 <!-- mt:static nav -->
 <nav class="mt-sr-only" aria-label="Motor Toolkit tools">
   <h1>Slot Packing Viewer</h1>
