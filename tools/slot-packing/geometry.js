@@ -636,8 +636,24 @@ function expandHalfWithArcs(half) {
     return { x: -dy / len * side, y: dx / len * side };
   };
   const bad = [];
-  const left = [{ x: half[0].x, y: half[0].y }];
-  let onAxis = false;
+  let left = [{ x: half[0].x, y: half[0].y }];
+  let onAxis = false, openOnAxis = false;
+  // 槽口圓弧（第一點的 ro）：從對稱軸連到第一點，跟槽底圓弧一樣只產生左半邊。
+  // 跟定子內徑同心時 ro＝−Dsi/2（往槽內凹）。
+  const ro = Number(half[0].ro) || 0;
+  if (ro && Math.abs(half[0].x) > 1e-12) {
+    const F = half[0], Fm = mirror(F);
+    const pts = arcPoints(Fm, F, ro, inwardOf(Fm, F));
+    if (!pts) bad.push({ i: -1, minR: Math.abs(F.x) });
+    else {
+      const k = pts.length / 2;          // pts[k-1] 落在對稱軸上
+      const opening = pts.slice(k - 1);  // 對稱軸 → … → F
+      opening[0].x = 0;
+      opening[opening.length - 1] = { x: F.x, y: F.y };
+      left = opening;
+      openOnAxis = true;
+    }
+  }
   for (let i = 0; i < n; i++) {
     const A = half[i], r = Number(A.r) || 0;
     const isBottom = i === n - 1;
@@ -662,6 +678,7 @@ function expandHalfWithArcs(half) {
   }
   const back = left.slice().reverse().map(mirror);
   if (onAxis) back.shift(); // 對稱軸上那一點左右共用，不重複
+  if (openOnAxis) back.pop();
   return { pts: left.concat(back), bad: bad };
 }
 
@@ -674,6 +691,15 @@ function rmxprtSlotHalf(type, p) {
   for (const k of need) if (!(p[k] >= 0) || !isFinite(p[k])) return { error: 'errSlotParams' };
   if (!(p.bs1 > 0) || !(p.bs2 > 0) || !(p.hs2 > 0)) return { error: 'errSlotParams' };
   if (t !== '2' && !(p.bs0 > 0)) return { error: 'errSlotParams' };
+  // 定子槽由槽口往槽底展開（平行齒）：除了開口槽 2，槽壁不可畫成等寬或往下收窄
+  if (t !== '2' && !(p.bs2 > p.bs1)) return { error: 'errSlotWiden' };
+  const g = rmxprtSlotHalfRaw(t, p);
+  // 有 Dsi：槽口沿定子內徑的圓弧（跟氣隙同心，往槽內凹）
+  if (g.half && p.dsi > 0) g.half[0].ro = -p.dsi / 2;
+  return g;
+}
+
+function rmxprtSlotHalfRaw(t, p) {
   const y0 = p.hs0, y1 = p.hs0 + p.hs1, y2 = y1 + p.hs2;
   if (t === '2') {
     // 開口槽：槽口寬＝Bs1；Hs1 段是放槽楔的 V 形凹口，凹口深度圖上沒有標，取 Hs1/2（示意）
@@ -713,4 +739,170 @@ function rmxprtSlotHalf(type, p) {
       return i === 0 || Math.hypot(q.x - pts[i - 1].x, q.y - pts[i - 1].y) > 1e-9;
     });
   }
+}
+
+/* ══════════════════════════════════════════════════════════
+   規則層繞（往返排線）
+   每個線圈邊從自己的外側槽壁開始一層一層往內排：層＝平行於槽壁的一排
+   導線，相鄰兩層錯開半個節距、嵌進前一層的凹槽（間距 d·√3/2）。
+   第 1 層由槽底往槽口、第 2 層由槽口往槽底……連續往返。限制：
+   - 第 1 匝在槽底；
+   - 換層跳距（上一層最後一根到下一層第一根的中心距）≤ 3 個節距；
+   - 使用的層數必須是偶數（進出線都在槽底那端）。
+   ══════════════════════════════════════════════════════════ */
+var LAYER_MAX_JUMP = 3; // 換層跳距上限，單位：導線節距（＝外徑）
+
+/** 每一層可放的位置（槽底→槽口排序）。side：外側槽壁在哪一邊。 */
+function layerRuns(area, d, side) {
+  const r = d / 2;
+  const bb = polygonBBox(area), midX = (bb.minX + bb.maxX) / 2;
+  // 槽壁方向：外側那半邊最長的一段偏垂直的邊（圓角、圓弧拆出來的短邊不算進方向）
+  let ux = 0, uy = 1, longest = 0;
+  for (let i = 0; i < area.length; i++) {
+    const a = area[i], b = area[(i + 1) % area.length];
+    let dx = b.x - a.x, dy = b.y - a.y;
+    const mx = (a.x + b.x) / 2, len = Math.hypot(dx, dy);
+    if (Math.abs(dy) <= Math.abs(dx)) continue;
+    if (side === 'left' ? mx > midX : mx < midX) continue;
+    if (len <= longest) continue;
+    if (dy < 0) { dx = -dx; dy = -dy; }
+    ux = dx / len; uy = dy / len; longest = len;
+  }
+  const u = { x: ux, y: uy };                                            // 沿槽壁、朝槽底
+  const n = side === 'left' ? { x: u.y, y: -u.x } : { x: -u.y, y: u.x }; // 離開槽壁、朝槽內
+  let sMin = Infinity, sMax = -Infinity, tMin = Infinity, tMax = -Infinity;
+  area.forEach(function (p) {
+    const s = p.x * n.x + p.y * n.y, t = p.x * u.x + p.y * u.y;
+    sMin = Math.min(sMin, s); sMax = Math.max(sMax, s); tMin = Math.min(tMin, t); tMax = Math.max(tMax, t);
+  });
+  const at = function (s, t) { return { x: s * n.x + t * u.x, y: s * n.y + t * u.y }; };
+  const valid = function (p) { return pointInPolygon(p, area) && distanceToPolygonBoundary(p, area) >= r - 1e-9; };
+  const step = d / 20;
+  // 最靠槽底、而且放得下的位置（沿 t 由槽底往槽口找，再二分逼近邊界）
+  const lowest = function (s) {
+    for (let t = tMax; t >= tMin; t -= step) {
+      if (valid(at(s, t))) {
+        let lo = t, hi = Math.min(t + step, tMax);
+        for (let k = 0; k < 30; k++) { const mid = (lo + hi) / 2; if (valid(at(s, mid))) lo = mid; else hi = mid; }
+        return lo;
+      }
+    }
+    return null;
+  };
+
+  // 第 1 層：貼著槽壁那條線；槽壁不完全是直線時（圓角、圓弧），往內移到放得下為止
+  let s1 = sMin + r, tb = null;
+  for (; s1 <= sMax - r + 1e-9; s1 += d / 50) { tb = lowest(s1); if (tb !== null) break; }
+  if (tb === null) return [];
+  const runs = [];
+  const pitchS = d * Math.sqrt(3) / 2;
+  for (let j = 0; ; j++) {
+    const s = s1 + j * pitchS;
+    if (s > sMax - r + 1e-9) break;
+    const shift = (j % 2) * d / 2;
+    const kMin = Math.floor((tMin - tb - shift) / d) - 1, kMax = Math.ceil((tMax - tb - shift) / d) + 1;
+    // 找最長的一段連續位置（同一層要連續繞，不跳格）
+    let best = [], cur = [];
+    for (let k = kMax; k >= kMin; k--) {
+      const p = at(s, tb + shift + k * d);
+      if (valid(p)) cur.push(p);
+      else { if (cur.length > best.length) best = cur; cur = []; }
+    }
+    if (cur.length > best.length) best = cur;
+    if (!best.length) { if (j === 0) return []; break; }
+    runs.push(best); // 已經是槽底→槽口
+  }
+  return runs;
+}
+
+/** 依各層根數 counts 實際排出往返順序；不可行（位置不夠或跳距超過上限）回傳 null。
+ *  奇數層（第 1、3…層）由槽底往槽口，偶數層反過來；每一層從離上一根最近的
+ *  那端開始，如果該層最遠的起點也在跳距上限內就從最遠的起點開始（放得比較多）。 */
+function layerSequence(runs, counts, d) {
+  const seq = [];
+  let prev = null, maxJump = 0;
+  for (let j = 0; j < counts.length; j++) {
+    if (!counts[j]) continue;
+    const run = runs[j];
+    if (!run) return null;
+    const ordered = j % 2 === 0 ? run : run.slice().reverse();
+    let start = 0;
+    if (prev) {
+      const dist0 = Math.hypot(ordered[0].x - prev.x, ordered[0].y - prev.y);
+      if (dist0 > LAYER_MAX_JUMP * d + 1e-9) {
+        let bestI = 0, bestD = Infinity;
+        ordered.forEach(function (p, i) { const dd = Math.hypot(p.x - prev.x, p.y - prev.y); if (dd < bestD) { bestD = dd; bestI = i; } });
+        start = bestI;
+      }
+    }
+    const take = ordered.slice(start, start + counts[j]);
+    if (take.length < counts[j]) return null;
+    if (prev) {
+      const jump = Math.hypot(take[0].x - prev.x, take[0].y - prev.y) / d;
+      if (jump > LAYER_MAX_JUMP + 1e-9) return null;
+      maxJump = Math.max(maxJump, jump);
+    }
+    take.forEach(function (p) { seq.push({ x: p.x, y: p.y, d: d, layer: j + 1 }); });
+    prev = take[take.length - 1];
+  }
+  return { seq: seq, maxJump: maxJump, layers: counts.filter(function (c) { return c > 0; }).length };
+}
+
+/** 一個線圈邊的規則層繞。回傳格式跟 settlePack 相容（placed/placedCount/
+ *  requestedCount/maxCapacity），另外多 layers、maxJump（節距）與 limitedBy。 */
+function layeredWinding(area, d, count, side) {
+  const empty = { placed: [], placedCount: 0, requestedCount: count, maxCapacity: 0, layers: 0, maxJump: 0, limitedBy: 'space' };
+  if (!area || area.length < 3 || !(d > 0)) return empty;
+  const runs = layerRuns(area, d, side);
+  // 每層最多繞幾根。槽型往槽口收窄時，內層比外層短：上一層如果一路繞到
+  // 槽口，換到下一層的跳距會超過上限——這時把上一層提早折返（尾端少繞幾
+  // 根，讓下一層從最遠端開始），或下一層改從最近的位置開始，取總根數多的。
+  const sum = function (a) { return a.reduce(function (x, y) { return x + y; }, 0); };
+  let full = runs.length ? [runs[0].length] : [];
+  for (let j = 1; j < runs.length; j++) {
+    let best = null, partial = false;
+    for (let k = full[j - 1]; k >= 1; k--) { // 上一層提早折返，這一層繞滿
+      const c = full.slice(0, j - 1).concat([k, runs[j].length]);
+      if (layerSequence(runs, c, d)) { best = c; break; }
+    }
+    for (let c = runs[j].length; c >= 1; c--) { // 上一層不動，這一層從最近的位置開始
+      const cc = full.concat([c]);
+      if (layerSequence(runs, cc, d)) {
+        if (!best || sum(cc) > sum(best)) { best = cc; partial = c < runs[j].length; }
+        break;
+      }
+    }
+    if (!best) break;
+    full = best;
+    if (partial) break; // 這一層沒繞滿，再往下的起點已經不規則，到此為止
+  }
+  const usable = full.length % 2 === 0 ? full : full.slice(0, -1); // 層數要偶數
+  const maxCapacity = usable.reduce(function (a, b) { return a + b; }, 0);
+
+  function plan(N) {
+    // N 根需要幾層；最後一層是奇數層就拆成兩層（後半段往回繞），讓總層數維持偶數
+    let cum = 0, L = 0;
+    while (L < usable.length && cum + usable[L] < N) { cum += usable[L]; L++; }
+    if (L >= usable.length) return null;
+    const m = N - cum, base = usable.slice(0, L);
+    const layerNo = L + 1;
+    if (layerNo % 2 === 0) return layerSequence(runs, base.concat([m]), d);
+    for (let m1 = Math.ceil(m / 2); m1 <= m - 1; m1++) {
+      const s = layerSequence(runs, base.concat([m1, m - m1]), d);
+      if (s) return s;
+    }
+    if (m === 1 && L >= 1) { // 只剩 1 根：跟前一層借 1 根，變成 1+1
+      const b2 = base.slice(); b2[b2.length - 1] -= 1;
+      if (b2[b2.length - 1] >= 1) return layerSequence(runs, b2.concat([1, 1]), d);
+    }
+    return null;
+  }
+
+  let N = Math.min(count, maxCapacity), res = null;
+  while (N > 0 && !(res = plan(N))) N--;
+  if (!res) return Object.assign(empty, { maxCapacity: maxCapacity });
+  return {
+    placed: res.seq, placedCount: res.seq.length, requestedCount: count, maxCapacity: maxCapacity,
+    layers: res.layers, maxJump: res.maxJump, limitedBy: res.seq.length >= count ? null : 'space',
+  };
 }

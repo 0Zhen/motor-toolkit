@@ -176,6 +176,14 @@
   font-family: var(--mono);
   pointer-events: none;
 }
+.wind-path {
+  fill: none;
+  stroke: #8a5a00;
+  stroke-opacity: .55;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.ok-mark { color: var(--green); font-weight: 700; }
 .slot-needle-channel {
   fill: #6f9bd1;
   stroke: #3b6fa8;

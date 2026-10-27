@@ -11,6 +11,8 @@ var MT_I18N = {
   slotType:     { en: 'Slot type', zh: '槽型' },
   slotTypeTrap: { en: 'Simple trapezoid', zh: '簡易梯形' },
   statorDsi:    { en: 'Stator inner dia. Dsi [mm]', zh: '定子內徑 Dsi [mm]' },
+  dsiHint:      { en: 'The slot opening follows the stator bore (an arc concentric with the air gap). Leave Dsi blank for a straight opening.',
+                  zh: '槽口沿定子內徑畫成圓弧（跟氣隙同心）。Dsi 留空就是直線槽口。' },
   slotTypeHint1:{ en: 'Sloped shoulder (Hs1) from Bs0 to Bs1, body Bs1 → Bs2 over Hs2, flat bottom with corner radius Rs.',
                   zh: '槽口 Bs0 經斜肩（Hs1）展開到 Bs1，槽身 Bs1 → Bs2（深 Hs2），平底、兩角圓角 Rs。' },
   slotTypeHint2:{ en: 'Open slot (no Bs0): the opening is Bs1 wide; Hs1 is the wedge notch (its depth is drawn as Hs1/2, illustrative only — it sits inside the no-wind depth). Body Bs1 → Bs2 over Hs2, flat bottom.',
@@ -87,8 +89,8 @@ var MT_I18N = {
   },
   checkDcrBtn:  { en: 'Check DCR with these turns →', zh: '用這組匝數去DCR計算機確認電阻 →' },
   toolHint:     {
-    en: '💡 Each wire is simulated settling into place, coming to rest against the slot wall (or the floor, for single-layer slots) and whichever wires are already placed — so it naturally hugs any wall angle and nests into the gaps between neighbors, without a fixed lattice pattern. For double-layer slots, each coil side settles independently toward its own outer wall. Still a geometric idealization, not a physics simulation — no wire tension, insertion order, friction, or enamel deformation.',
-    zh: '💡 每條線材是用沉降模擬排列：貼著槽壁（單層時則貼槽底）、或已經放好的線材停住——不管槽壁是什麼角度都會自然貼合，也會自然嵌進鄰線間的縫隙，不是套固定格點樣式。雙層繞組時，左右兩個線圈邊各自獨立往自己的外側槽壁沉降。這仍然是幾何上的理想化，不是力學模擬——沒有算線材張力、插入順序、摩擦力或漆膜受壓變形。',
+    en: '💡 Regular layers (default): each coil side is wound layer by layer from its outer wall — turn 1 at the slot bottom, layer 1 toward the opening, layer 2 back down, and so on; the thin line follows the winding order. Settling simulation: each wire drops in and rests against the wall or the wires already placed. Both are geometric idealizations — no wire tension, friction or enamel deformation.',
+    zh: '💡 規則往返（預設）：每個線圈邊從外側槽壁一層一層往內繞——第 1 匝在槽底，第 1 層往槽口、第 2 層繞回槽底，依此往返；細線標出繞線順序。沉降模擬：每根線掉進去、靠著槽壁或已放好的線停住。兩種都是幾何上的理想化，沒有算線材張力、摩擦或漆膜變形。',
   },
   statsTitle:   { en: 'Stats', zh: '統計' },
   legendLam:    { en: 'Lamination', zh: '鐵芯' },
@@ -120,6 +122,48 @@ var MT_I18N = {
     en: 'No standard bare diameter down to 0.05 mm fits {n} wires in this slot.',
     zh: '裸銅徑降到 0.05 mm 也放不下 {n} 根線材。',
   },
+  packMode:      { en: 'Winding layout', zh: '排線方式' },
+  packModeLayer: { en: 'Regular layers (back and forth)', zh: '規則往返（層繞）' },
+  packModeSettle:{ en: 'Settling simulation', zh: '沉降模擬' },
+  packModeHintlayer: {
+    en: 'Each coil side is wound in layers parallel to its outer slot wall, each layer nested half a pitch into the one before. Turn 1 starts at the slot bottom and layer 1 runs toward the opening, layer 2 back toward the bottom, and so on. Rules: a layer change may jump at most 3 wire pitches, and the number of layers used must be even.',
+    zh: '每個線圈邊從外側槽壁開始一層一層往內繞，層平行於槽壁、每層錯開半個節距嵌進前一層。第 1 匝從槽底開始，第 1 層往槽口、第 2 層往回到槽底，依此往返。限制：換層跳距不超過 3 個導線節距，使用的層數必須是偶數。',
+  },
+  packModeHintsettle: {
+    en: 'Each wire drops in and rests against the wall or the wires already placed — the densest free packing, but no winding order rules.',
+    zh: '每根線材掉進去、靠著槽壁或已放好的線材停住——最密的自由堆疊，不考慮繞線順序的限制。',
+  },
+  searchFix:     { en: 'Search keeps fixed', zh: '搜尋時固定' },
+  searchFixWire: { en: 'Wire diameter', zh: '線徑' },
+  searchFixTurns:{ en: 'Turns', zh: '匝數' },
+  searchBtn:     { en: 'Find highest slot fill', zh: '搜尋最高槽滿率' },
+  searchHint:    {
+    en: 'Wire diameter fixed: finds the most turns that still fit. Turns fixed: tries standard bare diameters in 0.05 mm steps and keeps the largest that fits. In Regular layers, every rule must hold (first turn at the bottom, even layer count, layer jumps ≤ 3 pitches).',
+    zh: '固定線徑：找出還放得下的最多匝數。固定匝數：以標準線徑 0.05 mm 一格試裸銅徑，取放得下的最大值。規則往返模式下，所有限制都必須成立（第 1 匝在槽底、層數為偶數、換層跳距 ≤ 3 節距）。',
+  },
+  searchResultWire: {
+    en: 'Bare dia. {d} mm fixed: at most {t} turns ({n} wires), fill {f}%. Applied — was {prev} turns.',
+    zh: '固定裸銅徑 {d} mm：最多 {t} 匝（{n} 根），槽滿率 {f}%。已套用，原本 {prev} 匝。',
+  },
+  searchNoneWire: { en: 'Not even 1 turn fits at this wire diameter.', zh: '這個線徑連 1 匝都放不下。' },
+  outLayers:     { en: 'Layers used', zh: '排線層數' },
+  outLayersTip:  {
+    en: 'Layers actually used per coil side (must be even, so both leads come out at the slot bottom).',
+    zh: '每個線圈邊實際用到的層數（必須是偶數，進出線才會都在槽底那端）。',
+  },
+  outJump:       { en: 'Max layer jump', zh: '最大換層跳距' },
+  outJumpTip:    {
+    en: 'Largest centre distance between the last wire of a layer and the first wire of the next, in wire pitches (wire OD). Limit: 3.',
+    zh: '上一層最後一根到下一層第一根的最大中心距，以導線節距（外徑）為單位。上限 3。',
+  },
+  pitchUnit:     { en: 'pitch', zh: '節距' },
+  sideL:         { en: 'L', zh: '左' },
+  sideR:         { en: 'R', zh: '右' },
+  totalLayers:   { en: 'total', zh: '合計' },
+  openingArcR:   { en: 'Opening arc R [mm]', zh: '槽口圓弧 R [mm]' },
+  arcErrOpening: { en: 'Opening arc: R must be at least {min} mm — drawn straight for now.', zh: '槽口圓弧：R 至少要 {min} mm，目前先畫成直線。' },
+  errSlotWiden:  { en: 'This slot type must widen from the opening to the bottom — make Bs2 larger than Bs1.',
+                   zh: '這個槽型必須由槽口往槽底展開——Bs2 要大於 Bs1。' },
   findWireNoSlot: { en: 'Fix the slot / wire inputs first (see Stats).', zh: '請先修正槽型或線材輸入（見右側統計）。' },
   errFewPoints:  { en: 'Need at least 3 points to form a shape.', zh: '至少需要3個頂點才能構成形狀。' },
   errBadArea:    { en: 'These points don’t enclose a usable area — check the vertex order/values.', zh: '這些頂點圍不出有效面積，請檢查頂點順序/數值。' },
@@ -204,7 +248,7 @@ var lastWindingArea = 0; // 給「去DCR計算機確認」按鈕用——DCR自�
  *  是對的，不用特判。 */
 var arcProblems = [];
 function syncVerticesFromHalf() {
-  var hasArc = halfVertices.some(function (p) { return Number(p.r); });
+  var hasArc = halfVertices.some(function (p) { return Number(p.r); }) || (halfVertices[0] && Number(halfVertices[0].ro));
   if (!hasArc) {
     var mirroredBack = halfVertices.slice().reverse().map(function (p) { return { x: -p.x, y: p.y }; });
     vertices = halfVertices.map(function (p) { return { x: p.x, y: p.y }; }).concat(mirroredBack);
@@ -222,11 +266,17 @@ function showArcProblems() {
   if (!el) return;
   el.style.display = arcProblems.length ? '' : 'none';
   el.textContent = arcProblems.map(function (b) {
+    if (b.i < 0) return mtT('arcErrOpening').replace('{min}', fmt(b.minR, 3));
     return mtT('arcErr').replace('{i}', b.i + 1).replace('{min}', fmt(b.minR, 3));
   }).join(' ');
 }
 function copyHalf(arr) {
-  return arr.map(function (v) { var c = { x: v.x, y: v.y }; if (Number(v.r)) c.r = Number(v.r); return c; });
+  return arr.map(function (v) {
+    var c = { x: v.x, y: v.y };
+    if (Number(v.r)) c.r = Number(v.r);
+    if (Number(v.ro)) c.ro = Number(v.ro);
+    return c;
+  });
 }
 
 /* ── 頂點清單復原（Undo）──
@@ -298,6 +348,8 @@ function renderVertexTable() {
       '</tr>';
   });
   body.innerHTML = html;
+  var ro = halfVertices[0] && Number(halfVertices[0].ro);
+  $('v_openingR').value = ro ? fmt(ro, 3) : '';
 
   body.querySelectorAll('input').forEach(function (inp) {
     // 在開始編輯那一刻（focus）存一次快照，不是每個按鍵都存——這樣一次
@@ -329,6 +381,8 @@ function renderVertexTable() {
   });
 }
 
+function updatePackModeHint() { $('packModeHint').textContent = mtT('packModeHint' + $('w_packMode').value); }
+
 /* ── 參數化槽型（RMxprt 1–5／簡易梯形）── */
 function readRmxprtParams() {
   return {
@@ -349,7 +403,7 @@ function updateSlotTypeFields() {
   document.querySelectorAll('#paramPanel [data-types]').forEach(function (row) {
     row.style.display = row.getAttribute('data-types').split(',').indexOf(type) >= 0 ? '' : 'none';
   });
-  $('slotTypeHint').textContent = mtT('slotTypeHint' + type);
+  $('slotTypeHint').textContent = mtT('slotTypeHint' + type) + (type === 'trap' ? '' : ' ' + mtT('dsiHint'));
   if (slotParamErrKey) showSlotParamError(slotParamErrKey);
 }
 
@@ -407,35 +461,36 @@ function addVertexPoint() {
  * 「開口邊」用 y 最小（靠氣隙那端是整個工具固定的座標慣例）判斷，不是
  * 只認參數化生成時的頂點順序，使用者自訂頂點也適用。找不到明顯的水平
  * 頂緣（例如整個形狀被改到沒有任何一段貼齊最小 y）就退回整圈都畫。 */
-function openingAwarePoints(poly) {
+function openingChain(poly) {
   var n = poly.length;
-  if (n < 2) return poly;
-  var minY = Math.min.apply(null, poly.map(function (p) { return p.y; }));
-  var eps = 1e-6;
-  for (var i = 0; i < n; i++) {
-    var a = poly[i], b = poly[(i + 1) % n];
-    if (Math.abs(a.y - minY) < eps && Math.abs(b.y - minY) < eps) {
-      var reordered = [];
-      for (var k = 0; k < n; k++) reordered.push(poly[(i + 1 + k) % n]);
-      return reordered;
-    }
-  }
-  return poly;
+  if (n < 2) return null;
+  var minY = Infinity, m = 0;
+  poly.forEach(function (p, i) { if (p.y < minY) { minY = p.y; m = i; } });
+  // 槽口是直線時只認貼齊最小 y 的那一段；槽口是圓弧時，整段弧（高低差＝弓
+  // 高）都算槽口
+  var ro = halfVertices[0] && Number(halfVertices[0].ro), fx = halfVertices[0] ? Math.abs(halfVertices[0].x) : 0;
+  var sag = ro && Math.abs(ro) > fx ? Math.abs(ro) - Math.sqrt(ro * ro - fx * fx) : 0;
+  var limit = minY + sag * 1.5 + 1e-6;
+  var flat = function (a, b) { return Math.abs(b.y - a.y) <= Math.abs(b.x - a.x) && a.y <= limit && b.y <= limit; };
+  var i0 = m, i1 = m, steps = 0;
+  while (steps < n && flat(poly[(i0 - 1 + n) % n], poly[i0])) { i0 = (i0 - 1 + n) % n; steps++; }
+  while (steps < n && flat(poly[i1], poly[(i1 + 1) % n])) { i1 = (i1 + 1) % n; steps++; }
+  if (i0 === i1) return null;
+  return { from: i0, to: i1 };
+}
+function openingAwarePoints(poly) {
+  var c = openingChain(poly);
+  if (!c) return poly;
+  var n = poly.length, out = [];
+  for (var k = c.to; ; k = (k + 1) % n) { out.push(poly[k]); if (k === c.from) break; }
+  return out;
 }
 
-/* 跟 openingAwarePoints 用同一條「y 最小＝開口邊」規則，量出那段開口邊
- * 的實際寬度——導針要先穿過這個開口才進得了槽，通道寬度不該比這個還
- * 寬。找不到明顯的水平頂緣就回傳 0（視為沒有可比較的寬度，不擋）。 */
+/* 槽口寬度：openingChain 兩端點的水平距離——導針要先穿過這個開口才進得
+ * 了槽，通道寬度不該比這個還寬。找不到槽口就回傳 0（不擋）。 */
 function openingWidthOf(poly) {
-  var n = poly.length;
-  if (n < 2) return 0;
-  var minY = Math.min.apply(null, poly.map(function (p) { return p.y; }));
-  var eps = 1e-6;
-  for (var i = 0; i < n; i++) {
-    var a = poly[i], b = poly[(i + 1) % n];
-    if (Math.abs(a.y - minY) < eps && Math.abs(b.y - minY) < eps) return Math.abs(b.x - a.x);
-  }
-  return 0;
+  var c = openingChain(poly);
+  return c ? Math.abs(poly[c.to].x - poly[c.from].x) : 0;
 }
 
 /* 畫一條水平尺寸標註：兩端垂直延伸線（從特徵本身的 yFeature 連到尺寸線
@@ -567,6 +622,23 @@ function attachVertexDragHandlers(svg) {
   });
 }
 
+/** 鐵芯底色：槽口是圓弧（定子內徑）時，鐵芯上緣沿同一個圓（氣隙那側留白），
+ *  不然就是從槽口那條線往下的矩形。 */
+function laminationShape(bbox, vx, vy, vw, vh) {
+  var F = halfVertices[0], ro = F && Number(F.ro);
+  if (!ro || ro > 0 || Math.abs(ro) <= Math.abs(F.x)) {
+    return '<rect class="slot-lamination" x="' + vx + '" y="' + bbox.minY + '" width="' + vw + '" height="' + (vy + vh - bbox.minY) + '"></rect>';
+  }
+  var R = Math.abs(ro), yc = F.y - Math.sqrt(R * R - F.x * F.x); // 定子中心（槽口上方）
+  var pts = [];
+  for (var k = 0; k <= 80; k++) {
+    var x = vx + vw * k / 80, dx = Math.min(Math.abs(x), R);
+    pts.push(x + ',' + (yc + Math.sqrt(R * R - dx * dx)));
+  }
+  pts.push((vx + vw) + ',' + (vy + vh), vx + ',' + (vy + vh));
+  return '<polygon class="slot-lamination" points="' + pts.join(' ') + '"></polygon>';
+}
+
 /* ── SVG 繪製：紅=鐵芯、綠=liner內縮後的繞線窗、黃=導線（仿 Motor-CAD 配色） ── */
 function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
   var svg = $('packingSvg');
@@ -599,7 +671,7 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
   // 鐵芯（紅）只畫到槽口那條線（bbox.minY，氣隙側）為止，不要往上延伸到
   // 墊白區域——那裡是氣隙/轉子那側，不是鐵芯，照真實矽鋼片圖只有鐵芯
   // 本體是紅色，氣隙上方留白。
-  var html = '<rect class="slot-lamination" x="' + vx + '" y="' + bbox.minY + '" width="' + vw + '" height="' + (vy + vh - bbox.minY) + '"></rect>' +
+  var html = laminationShape(bbox, vx, vy, vw, vh) +
     '<polyline class="slot-outline" points="' + outerPts + '" style="stroke-width:' + strokeW + '"></polyline>';
 
   if (innerPoly) {
@@ -624,10 +696,18 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
   // 半邊先、右半邊接著，兩側各自獨立沉降但畫面上編號是連續的，不是各
   // 自從1開始，避免畫面同時出現兩個#1）。字體大小跟著線徑縮放，線材
   // 很多很密時數字會很小——這是編號擠進每顆線材裡的必然取捨。
+  // 規則往返模式：用細線把繞線順序連起來，換層跳距一眼看得出來
+  if (pack && pack.paths) {
+    pack.paths.forEach(function (path) {
+      if (path.length < 2) return;
+      html += '<polyline class="wind-path" points="' + path.map(function (c) { return c.x + ',' + c.y; }).join(' ') +
+        '" style="stroke-width:' + (strokeW * 0.5) + '"></polyline>';
+    });
+  }
   (pack ? pack.placed : []).forEach(function (c, idx) {
     var r = c.d / 2;
     html += '<circle class="slot-circle" cx="' + c.x + '" cy="' + c.y + '" r="' + r + '" style="stroke-width:' + (strokeW * 0.4) + '"></circle>' +
-      '<text class="wire-index" x="' + c.x + '" y="' + c.y + '" font-size="' + (r * 0.85) + '">' + (idx + 1) + '</text>';
+      '<text class="wire-index" x="' + c.x + '" y="' + c.y + '" font-size="' + (r * 0.85) + '">' + (c.label || idx + 1) + '</text>';
   });
   if (needleRect) {
     html += '<rect class="slot-needle-channel" x="' + needleRect.x + '" y="' + needleRect.y + '" width="' + needleRect.width + '" height="' + needleRect.height + '" style="stroke-width:' + (strokeW * 0.6) + '"></rect>';
@@ -756,8 +836,15 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
  *  全部放得下（雙層時等於兩側都各自放得下分到的根數）。orderForLabels
  *  為 true 時把雙層的 placed 重排成畫面編號用的繞線順序（回推線徑的迴
  *  圈只看數量，不需要排）。 */
-function packWindow(packableArea, diameter, count, coils, needleWidth, needleClearance, orderForLabels) {
+function packWindow(packableArea, diameter, count, coils, needleWidth, needleClearance, orderForLabels, mode, strands) {
   var needleRect = null, clearanceRect = null;
+  var layered = mode === 'layer';
+  strands = Math.max(1, strands || 1);
+  // 規則往返：每個線圈邊各自從槽底開始編匝號（股數 > 1 時同一匝的幾根同號）
+  function withLabels(p) {
+    p.placed.forEach(function (c, i) { c.label = Math.floor(i / strands) + 1; });
+    return p;
+  }
   var clearance = Math.max(0, needleClearance || 0);
   if (coils >= 2) {
     var packBbox = polygonBBox(packableArea);
@@ -768,8 +855,10 @@ function packWindow(packableArea, diameter, count, coils, needleWidth, needleCle
     var leftArea = clipPolygonMaxX(packableArea, splitX - gap);
     var rightArea = clipPolygonMinX(packableArea, splitX + gap);
     var perSide = Math.round(count / 2);
-    var packL = settlePackTowardWall(leftArea, diameter, perSide, 'left');
-    var packR = settlePackTowardWall(rightArea, diameter, count - perSide, 'right');
+    var packL = layered ? withLabels(layeredWinding(leftArea, diameter, perSide, 'left'))
+                        : settlePackTowardWall(leftArea, diameter, perSide, 'left');
+    var packR = layered ? withLabels(layeredWinding(rightArea, diameter, count - perSide, 'right'))
+                        : settlePackTowardWall(rightArea, diameter, count - perSide, 'right');
     if (needleWidth > 0) {
       needleRect = { x: splitX - needleWidth / 2, y: packBbox.minY, width: needleWidth, height: packBbox.maxY - packBbox.minY };
     }
@@ -780,9 +869,13 @@ function packWindow(packableArea, diameter, count, coils, needleWidth, needleCle
       pack: {
         // 編號順序照實際繞線走法（每一側：第 1 層由上往下、第 2 層由下往
         // 上……）；左側編完右側接續。只影響畫面上的編號，不影響位置與數量。
-        placed: orderForLabels ? serpentineOrder(packL.placed, leftArea, 'left')
+        placed: layered ? packL.placed.concat(packR.placed)
+                : orderForLabels ? serpentineOrder(packL.placed, leftArea, 'left')
                   .concat(serpentineOrder(packR.placed, rightArea, 'right'))
                 : packL.placed.concat(packR.placed),
+        paths: layered ? [packL.placed, packR.placed] : null,
+        layers: layered ? [packL.layers, packR.layers] : null,
+        maxJump: layered ? Math.max(packL.maxJump, packR.maxJump) : null,
         placedCount: packL.placedCount + packR.placedCount,
         requestedCount: count,
         maxCapacity: packL.maxCapacity + packR.maxCapacity,
@@ -790,6 +883,11 @@ function packWindow(packableArea, diameter, count, coils, needleWidth, needleCle
       needleRect: needleRect,
       clearanceRect: clearanceRect,
     };
+  }
+  if (layered) {
+    var one = withLabels(layeredWinding(packableArea, diameter, count, 'left'));
+    one.paths = [one.placed]; one.layers = [one.layers];
+    return { pack: one, needleRect: null, clearanceRect: null };
   }
   return { pack: settlePack(packableArea, diameter, count), needleRect: null, clearanceRect: null };
 }
@@ -799,31 +897,55 @@ function packWindow(packableArea, diameter, count, coils, needleWidth, needleCle
  *  0.05 mm 一格試裸銅徑，第一個能把全部線材放進去的就是答案。用逐格往下掃而不是二分
  *  搜尋：沉降排列的容量對線徑不保證單調，二分可能跳過真正的最大值，逐
  *  格掃描保證找到網格上最大的可行線徑。漆膜厚度維持使用者輸入的值。 */
-window.findMaxWireDia = function () {
+window.searchBestFill = function () {
   var out = $('findWireOut');
   var L = lastPackable;
   function show(render) { findWireRender = render; out.innerHTML = render(); out.style.display = 'block'; }
   if (!L) { findWireSig = null; show(function () { return '<span class="bad">' + mtT('findWireNoSlot') + '</span>'; }); return; }
-
+  var fits = function (od, count) {
+    var res = packWindow(L.packableArea, od, count, L.coils, L.needleWidth, L.needleClearance, false, L.mode, L.strands);
+    return res.pack.placedCount >= count;
+  };
   var enamel = Math.max(0, num('w_enamel', 0.025));
+  var fillOf = function (od, count) { return count * Math.PI / 4 * od * od / L.windingArea * 100; };
+
+  if ($('w_searchFix').value === 'wire') {
+    // 固定線徑：從面積上限往下找第一個放得下的匝數
+    var bare0 = num('w_bareDia', 0.7), od0 = bare0 + 2 * enamel, prevTurns = num('w_turns', 0);
+    var per = L.coils * L.strands;
+    var tMax = Math.floor(L.windingArea / (Math.PI / 4 * od0 * od0) / per);
+    var best = 0;
+    for (var t = tMax; t >= 1; t--) { if (fits(od0, Math.round(t * per))) { best = t; break; } }
+    if (!best) { findWireSig = null; show(function () { return '<span class="bad">' + mtT('searchNoneWire') + '</span>'; }); return; }
+    var n0 = Math.round(best * per), f0 = fillOf(od0, n0);
+    $('w_turns').value = best;
+    computeAll();
+    findWireSig = lastPackable && lastPackable.sig;
+    show(function () {
+      return mtT('searchResultWire').replace('{d}', fmt(bare0, 3)).replace('{t}', best).replace('{n}', n0)
+        .replace('{f}', fmt(f0, 1)).replace('{prev}', prevTurns);
+    });
+    if (typeof gaTrack === 'function') gaTrack('slotpack_search', 'wire');
+    return;
+  }
+
+  // 固定匝數：從「面積上限」（100% 槽滿率的線徑）往下以標準線徑 0.05 mm 一格試，
+  // 逐格往下掃而不是二分——容量對線徑不保證單調，逐格掃保證找到網格上的最大值
   var prevBare = num('w_bareDia', 0.7);
-  var STEP = 0.05; // 標準線徑級距
-  var dAreaLimit = Math.sqrt(4 * L.windingArea / (Math.PI * L.count)); // 外徑上限
+  var STEP = 0.05;
+  var dAreaLimit = Math.sqrt(4 * L.windingArea / (Math.PI * L.count));
   var kStart = Math.floor((dAreaLimit - 2 * enamel) / STEP + 1e-9);
   var found = null;
   for (var k = kStart; k >= 1; k--) {
     var bare = Math.round(k * STEP * 1000) / 1000;
-    var res = packWindow(L.packableArea, bare + 2 * enamel, L.count, L.coils, L.needleWidth, L.needleClearance);
-    if (res.pack.placedCount >= L.count) { found = bare; break; }
+    if (fits(bare + 2 * enamel, L.count)) { found = bare; break; }
   }
-
   if (found === null) {
     findWireSig = null;
     show(function () { return '<span class="bad">' + mtT('findWireNone').replace('{n}', L.count) + '</span>'; });
     return;
   }
-  var od = found + 2 * enamel;
-  var fill = L.count * Math.PI / 4 * od * od / L.windingArea * 100;
+  var od = found + 2 * enamel, fill = fillOf(od, L.count);
   $('w_bareDia').value = found.toFixed(2);
   computeAll();
   findWireSig = lastPackable && lastPackable.sig;
@@ -832,7 +954,9 @@ window.findMaxWireDia = function () {
       .replace('{n}', L.count).replace('{d}', found.toFixed(2)).replace('{od}', fmt(od, 3))
       .replace('{f}', fmt(fill, 1)).replace('{prev}', fmt(prevBare, 3));
   });
+  if (typeof gaTrack === 'function') gaTrack('slotpack_search', 'turns');
 };
+window.findMaxWireDia = function () { $('w_searchFix').value = 'turns'; searchBestFill(); };
 
 /** 回推結果只在條件完全沒變時顯示：槽型、線數、線圈數、導針通道、漆膜
  *  或裸銅徑任何一個被改過就藏起來（套用結果本身改的裸銅徑，是在記下條件
@@ -924,14 +1048,16 @@ function computeAllInner() {
   // 佔其中一邊，不是整個繞線窗混在一起看起來像單層。單層（Coils/slot
   // <= 1）：沒有單一偏向的槽壁可貼，整個繞線窗當一池子往槽底沉降，維
   // 持原樣，也沒有中間通道這個概念。
-  var packed = packWindow(packableArea, diameter, count, coils, needleWidth, needleClearance, true);
+  var packMode = $('w_packMode').value;
+  var packed = packWindow(packableArea, diameter, count, coils, needleWidth, needleClearance, true, packMode, strands);
   var pack = packed.pack, needleRect = packed.needleRect;
+  window.mtSlotLastPack = pack; // 給自動測試讀目前的排線結果（含層號、順序）
   renderSvg(innerPoly, pack, needleRect, packed.clearanceRect);
 
   lastPackable = {
     packableArea: packableArea, windingArea: windingArea, count: count, coils: coils,
-    needleWidth: needleWidth, needleClearance: needleClearance,
-    sig: [JSON.stringify(packableArea), count, coils, needleWidth, needleClearance, enamel, bareDia].join('|'),
+    needleWidth: needleWidth, needleClearance: needleClearance, mode: packMode, strands: strands,
+    sig: [JSON.stringify(packableArea), count, coils, needleWidth, needleClearance, enamel, bareDia, packMode].join('|'),
   };
 
   var maxFillPct = pack.maxCapacity * circleArea / windingArea * 100;
@@ -958,7 +1084,23 @@ function computeAllInner() {
     tip(mtT('outPacked'), 'outPackedTip') + ': <span class="rv ' + packedClass + '">' + pack.placedCount + ' / ' + count + '</span>' +
       ' <span class="ru">(' + packedNote + ')</span><br>' +
     tip(mtT('outMaxCapacity'), 'tipMaxCapacity') + ' = <span class="rv">' + pack.maxCapacity + '</span>' + applyMaxBtn + '<br>' +
-    tip(mtT('outMaxFillArea'), 'outMaxFillAreaTip') + ' = <span class="rv">' + fmt(maxFillPct, 1) + '</span><span class="ru">%</span>';
+    tip(mtT('outMaxFillArea'), 'outMaxFillAreaTip') + ' = <span class="rv">' + fmt(maxFillPct, 1) + '</span><span class="ru">%</span>' +
+    layerStats(pack);
+}
+
+/** 規則往返模式的限制檢查：各線圈邊的層數（要偶數）與最大換層跳距（≤ 3 節距） */
+function layerStats(pack) {
+  if (!pack.layers) return '';
+  var ok = '<span class="ok-mark">✓</span>', no = '<span class="bad">✗</span>';
+  var L = pack.layers, total = L.reduce(function (a, b) { return a + b; }, 0);
+  var allEven = L.every(function (n) { return n % 2 === 0; });
+  var layersTxt = L.length === 2
+    ? mtT('sideL') + ' ' + L[0] + ' ／ ' + mtT('sideR') + ' ' + L[1] + ' <span class="ru">(' + mtT('totalLayers') + ' ' + total + ')</span>'
+    : String(L[0]);
+  var jumpOk = pack.maxJump <= LAYER_MAX_JUMP + 1e-9;
+  return '<br>' + tip(mtT('outLayers'), 'outLayersTip') + ': <span class="rv">' + layersTxt + '</span> ' + (allEven && total > 0 ? ok : no) +
+    '<br>' + tip(mtT('outJump'), 'outJumpTip') + ' = <span class="rv">' + fmt(pack.maxJump, 2) + '</span>' +
+    '<span class="ru"> × ' + mtT('pitchUnit') + ' (≤ ' + LAYER_MAX_JUMP + ')</span> ' + (jumpOk ? ok : no);
 }
 
 /* ── 存檔／讀檔 ──
@@ -969,7 +1111,7 @@ function computeAllInner() {
 var FILE_KIND = 'motor-toolkit/slot-packing';
 var PARAM_IDS = ['p_slotType', 'p_bs0', 'p_hs0', 'p_hs1', 'p_bs1', 'p_bs2', 'p_hs2', 'p_rs', 'p_dsi',
                  'p_openWidth', 'p_openHeight', 'p_topWidth', 'p_bottomWidth', 'p_depth'];
-var WIRE_IDS = ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_needleWidth', 'w_needleClearance',
+var WIRE_IDS = ['w_packMode', 'w_searchFix', 'w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_needleWidth', 'w_needleClearance',
                 'w_linerThickness', 'w_windStartY'];
 var fileStatus = null; // { key, name } — 切換語言時重畫狀態訊息
 
@@ -986,7 +1128,7 @@ window.saveSlotFile = function () {
   PARAM_IDS.concat(WIRE_IDS).forEach(function (id) { inputs[id] = $(id).value; });
   var data = {
     kind: FILE_KIND,
-    version: 3,
+    version: 4,
     savedAt: new Date().toISOString(),
     shapeMode: shapeMode,
     halfVertices: copyHalf(halfVertices),
@@ -1014,18 +1156,24 @@ function applySlotFile(data) {
   var hv = data.halfVertices.map(function (v) {
     var c = { x: Number(v && v.x), y: Number(v && v.y) };
     if (v && v.r !== undefined && v.r !== null) c.r = Number(v.r);
+    if (v && v.ro !== undefined && v.ro !== null) c.ro = Number(v.ro);
     return c;
   });
-  if (hv.some(function (v) { return !isFinite(v.x) || !isFinite(v.y) || (v.r !== undefined && !isFinite(v.r)); })) return false;
-  hv.forEach(function (v) { if (!v.r) delete v.r; });
+  if (hv.some(function (v) {
+    return !isFinite(v.x) || !isFinite(v.y) || (v.r !== undefined && !isFinite(v.r)) || (v.ro !== undefined && !isFinite(v.ro));
+  })) return false;
+  hv.forEach(function (v) { if (!v.r) delete v.r; if (!v.ro) delete v.ro; });
   var inputs = data.inputs || {};
   pushVertexHistory();
   PARAM_IDS.concat(WIRE_IDS).forEach(function (id) {
     if (inputs[id] !== undefined && inputs[id] !== null) $(id).value = String(inputs[id]);
   });
+  // 舊檔沒有排線方式：當時只有沉降模擬
+  if (!inputs.w_packMode) $('w_packMode').value = 'settle';
   // 第 1 版檔案還沒有槽型選單，當時的參數化只有簡易梯形
   if (!inputs.p_slotType) $('p_slotType').value = data.version >= 2 ? '1' : 'trap';
   updateSlotTypeFields();
+  updatePackModeHint();
   showSlotParamError(null);
   halfVertices = hv;
   syncVerticesFromHalf();
@@ -1076,6 +1224,17 @@ function applyIncomingParams() {
 
 document.addEventListener('DOMContentLoaded', function () {
   $('btnGenerate').addEventListener('click', generateFromParametric);
+  $('btnSearchBest').addEventListener('click', searchBestFill);
+  $('w_packMode').addEventListener('change', function () { updatePackModeHint(); computeAll(); });
+  document.addEventListener('mt-lang-change', updatePackModeHint);
+  $('v_openingR').addEventListener('focus', function () { pushVertexHistory(); });
+  $('v_openingR').addEventListener('input', function () {
+    var v = parseFloat(this.value);
+    if (this.value.trim() === '' || v === 0) delete halfVertices[0].ro;
+    else if (isFinite(v)) halfVertices[0].ro = v;
+    else return;
+    syncVerticesFromHalf(); computeAll();
+  });
   // 換槽型：只顯示該槽型的欄位，並直接用新槽型重新產生（會先存 Undo 快照）
   $('p_slotType').addEventListener('change', function () {
     updateSlotTypeFields();
@@ -1103,6 +1262,7 @@ document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('mt-theme-change', function () { computeAll(); });
 
   applyIncomingParams();
+  updatePackModeHint();
   updateSlotTypeFields();
   generateFromParametric(); // 進頁面先用預設梯形參數產生一組起始外形，不留空白畫面
 });

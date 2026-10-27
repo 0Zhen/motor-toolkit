@@ -10,7 +10,7 @@
 <link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/slot-packing/">
 <link rel="icon" type="image/png" href="../../favicon.png">
 <link rel="stylesheet" href="../../shared/theme.css?v=20261018">
-<link rel="stylesheet" href="styles.css?v=20261022">
+<link rel="stylesheet" href="styles.css?v=20261027">
 <!-- mt:static seo -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Motor Toolkit">
@@ -99,7 +99,7 @@
             <option value="2">2</option>
             <option value="3">3</option>
             <option value="4">4</option>
-            <option value="5">5</option>
+            <option value="5" selected>5</option>
             <option value="trap" data-i18n="slotTypeTrap">Simple trapezoid</option>
           </select></div>
         <div class="hint-text" id="slotTypeHint"></div>
@@ -118,7 +118,7 @@
           <input type="text" class="param-input" id="p_hs2" value="10.5"></div>
         <div class="param-row-2" data-types="1,3"><span class="param-label">Rs [mm]</span>
           <input type="text" class="param-input" id="p_rs" value="0.5"></div>
-        <div class="param-row-2" data-types="5"><span class="param-label" data-i18n="statorDsi">Stator inner dia. Dsi [mm]</span>
+        <div class="param-row-2" data-types="1,2,3,4,5"><span class="param-label" data-i18n="statorDsi">Stator inner dia. Dsi [mm]</span>
           <input type="text" class="param-input" id="p_dsi" value="50"></div>
         <div class="param-row-2" data-types="trap"><span class="param-label" data-i18n="openWidth">Opening width [mm]</span>
           <input type="text" class="param-input" id="p_openWidth" value="3"></div>
@@ -149,6 +149,8 @@
     <!-- 頂點編輯表格 -->
     <div class="params-box">
       <div class="section-title" data-i18n="verticesTitle">Vertices</div>
+      <div class="param-row-2"><span class="param-label" data-i18n="openingArcR">Opening arc R [mm]</span>
+        <input type="text" class="param-input" id="v_openingR" placeholder="—"></div>
       <div class="vertex-table-wrap">
         <table class="vertex-table" id="vertexTable">
           <thead><tr><th>#</th><th data-i18n="colX">X [mm]</th><th data-i18n="colY">Y [mm]</th><th data-i18n-title="colRTip" title="Arc radius to the next point">R [mm]</th><th></th></tr></thead>
@@ -174,6 +176,12 @@
     <!-- 線材 -->
     <div class="params-box">
       <div class="section-title" data-i18n="wireTitle">Wire / Turns</div>
+      <div class="param-row-2"><span class="param-label" data-i18n="packMode">Winding layout</span>
+        <select class="mini-select" id="w_packMode">
+          <option value="layer" data-i18n="packModeLayer">Regular layers</option>
+          <option value="settle" data-i18n="packModeSettle">Settling simulation</option>
+        </select></div>
+      <div class="hint-text" id="packModeHint"></div>
       <div class="param-row-2"><span class="param-label" data-i18n="bareDia">Bare copper dia. [mm]</span>
         <input type="text" class="param-input" id="w_bareDia" value="0.7"></div>
       <div class="param-row-2"><span class="param-label" data-i18n="enamelThk">Enamel thk., one side [mm]</span>
@@ -215,10 +223,16 @@
         The liner is modeled as a real inward offset of the slot outline (shown in green below),
         not just a number subtracted from the fill % — turns are packed inside that offset shape.
       </div>
-      <button class="mt-btn-ghost" style="width:100%;margin-top:8px" onclick="findMaxWireDia()" data-i18n="findWireBtn">Max wire dia. for these turns</button>
-      <div class="hint-text" data-i18n="findWireHint">
-        Keeps the slot shape and turns × coils × strands fixed, tries standard bare diameters in
-        0.05 mm steps (enamel thickness held fixed) and applies the largest one where every wire fits.
+      <div class="param-row-2" style="margin-top:8px"><span class="param-label" data-i18n="searchFix">Search keeps fixed</span>
+        <select class="mini-select" id="w_searchFix">
+          <option value="wire" data-i18n="searchFixWire">Wire diameter</option>
+          <option value="turns" data-i18n="searchFixTurns">Turns</option>
+        </select></div>
+      <button class="mt-btn-ghost" style="width:100%;margin-top:8px" id="btnSearchBest" data-i18n="searchBtn">Find highest slot fill</button>
+      <div class="hint-text" data-i18n="searchHint">
+        Wire diameter fixed: finds the most turns that still fit. Turns fixed: tries standard bare
+        diameters in 0.05 mm steps and keeps the largest that fits. In Regular layers, every rule
+        must hold (first turn at the bottom, even layer count, layer jumps ≤ 3 pitches).
       </div>
       <div class="hint-text" id="findWireOut" style="display:none"></div>
       <button class="mt-btn-ghost" style="width:100%;margin-top:8px" onclick="openInDcrCalculator()" data-i18n="checkDcrBtn">Check DCR with these turns →</button>
@@ -239,12 +253,11 @@
   <div class="results-col">
 
     <div class="hint-text" data-i18n="toolHint" style="margin:0 0 2px">
-      💡 Each wire is simulated settling into place, coming to rest against the slot wall (or the
-      floor, for single-layer slots) and whichever wires are already placed — so it naturally hugs
-      any wall angle and nests into the gaps between neighbors, without a fixed lattice pattern. For
-      double-layer slots, each coil side settles independently toward its own outer wall. Still a
-      geometric idealization, not a physics simulation — no wire tension, insertion order, friction,
-      or enamel deformation.
+      💡 Regular layers (default): each coil side is wound layer by layer from its outer wall — turn
+      1 at the slot bottom, layer 1 toward the opening, layer 2 back down, and so on; the thin line
+      follows the winding order. Settling simulation: each wire drops in and rests against the wall
+      or the wires already placed. Both are geometric idealizations — no wire tension, friction or
+      enamel deformation.
     </div>
 
     <div class="results-row">
@@ -269,8 +282,8 @@
   </div>
 </div>
 
-<script src="geometry.js?v=20261022"></script>
-<script src="app.js?v=20261022"></script>
+<script src="geometry.js?v=20261027"></script>
+<script src="app.js?v=20261027"></script>
 <!-- mt:static nav -->
 <nav class="mt-sr-only" aria-label="Motor Toolkit tools">
   <h1>Slot Packing Viewer</h1>
