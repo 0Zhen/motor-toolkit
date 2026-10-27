@@ -10,7 +10,7 @@
 <link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/slot-packing/">
 <link rel="icon" type="image/png" href="../../favicon.png">
 <link rel="stylesheet" href="../../shared/theme.css?v=20261018">
-<link rel="stylesheet" href="styles.css?v=20261027">
+<link rel="stylesheet" href="styles.css?v=20261028">
 <!-- mt:static seo -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Motor Toolkit">
@@ -71,6 +71,7 @@
         <button class="mt-btn-ghost" id="btnSaveFile" data-i18n="saveFileBtn">Save to file</button>
         <button class="mt-btn-ghost" id="btnOpenFile" data-i18n="openFileBtn">Open file…</button>
       </div>
+      <button class="mt-btn-ghost full-btn" id="btnExportDxf" data-i18n="exportDxfBtn">Export DXF (line drawing)</button>
       <input type="file" id="fileInput" accept=".json,application/json" hidden>
       <div class="hint-text file-status" id="fileStatus" style="display:none"></div>
       <div class="hint-text" data-i18n="fileHint">
@@ -116,6 +117,8 @@
           <input type="text" class="param-input" id="p_bs2" value="7"></div>
         <div class="param-row-2" data-types="1,2,3,4,5"><span class="param-label">Hs2 [mm]</span>
           <input type="text" class="param-input" id="p_hs2" value="10.5"></div>
+        <div class="param-row-2" data-types="1,3,4,5"><span class="param-label">Rs0 [mm]</span>
+          <input type="text" class="param-input" id="p_rs0" value="0"></div>
         <div class="param-row-2" data-types="1,3"><span class="param-label">Rs [mm]</span>
           <input type="text" class="param-input" id="p_rs" value="0.5"></div>
         <div class="param-row-2" data-types="1,2,3,4,5"><span class="param-label" data-i18n="statorDsi">Stator inner dia. Dsi [mm]</span>
@@ -142,6 +145,23 @@
         <div class="hint-text" data-i18n="customHint">
           Start from scratch, or switch to Parametric, generate a trapezoid, then come back here —
           every point is editable either way.
+        </div>
+      </div>
+      <div class="view-opts">
+        <div class="param-row-2"><span class="param-label" data-i18n="slotCount">Slots Q</span>
+          <input type="text" class="param-input" id="p_slots" value="12"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="statorDso">Stator outer dia. Dso [mm]</span>
+          <input type="text" class="param-input" id="p_dso" placeholder="—"></div>
+        <div class="param-row-2"><span class="param-label" data-i18n="viewOrient">View</span>
+          <select class="mini-select" id="p_view">
+            <option value="real" data-i18n="viewReal">Real (opening down)</option>
+            <option value="up" data-i18n="viewUp">Opening up</option>
+          </select></div>
+        <div class="hint-text file-status bad" id="pitchWarn" style="display:none"></div>
+        <div class="hint-text" data-i18n="viewHint">
+          Q and Dso are only for drawing the stator around the slot (one slot pitch, teeth on both
+          sides); they need the opening to follow the bore (Dsi). Leave Dso blank to draw a nominal
+          yoke. Calculations are not affected.
         </div>
       </div>
     </div>
@@ -282,8 +302,8 @@
   </div>
 </div>
 
-<script src="geometry.js?v=20261027"></script>
-<script src="app.js?v=20261027"></script>
+<script src="geometry.js?v=20261028"></script>
+<script src="app.js?v=20261028"></script>
 <!-- mt:static nav -->
 <nav class="mt-sr-only" aria-label="Motor Toolkit tools">
   <h1>Slot Packing Viewer</h1>

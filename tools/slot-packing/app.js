@@ -160,6 +160,20 @@ var MT_I18N = {
   sideL:         { en: 'L', zh: '左' },
   sideR:         { en: 'R', zh: '右' },
   totalLayers:   { en: 'total', zh: '合計' },
+  slotCount:     { en: 'Slots Q', zh: '槽數 Q' },
+  statorDso:     { en: 'Stator outer dia. Dso [mm]', zh: '定子外徑 Dso [mm]' },
+  viewOrient:    { en: 'View', zh: '顯示方向' },
+  viewReal:      { en: 'Real (opening down)', zh: '真實方向（槽口朝下）' },
+  viewUp:        { en: 'Opening up', zh: '槽口朝上' },
+  viewHint:      {
+    en: 'Q and Dso are only for drawing the stator around the slot (one slot pitch, teeth on both sides); they need the opening to follow the bore (Dsi). Leave Dso blank to draw a nominal yoke. Calculations are not affected.',
+    zh: 'Q 跟 Dso 只用來畫槽周圍的定子（一個槽距、兩側的齒）；槽口要沿定子內徑（有 Dsi）才畫得出來。Dso 留空就畫一段示意的軛部。不影響任何計算。',
+  },
+  pitchWarn:     { en: 'The slot is wider than one slot pitch at Q = {q} — its sides cross the neighbouring tooth centre lines. Check the slot count.',
+                   zh: 'Q = {q} 時，槽比一個槽距還寬——槽的兩側超過相鄰齒的中心線。請確認槽數。' },
+  exportDxfBtn:  { en: 'Export DXF (line drawing)', zh: '匯出 DXF 線圖' },
+  dxfSaved:      { en: 'Exported {name} (mm, stator centre at 0,0).', zh: '已匯出 {name}（單位 mm，定子中心在原點）。' },
+  dxfNone:       { en: 'Fix the slot inputs first — nothing to export.', zh: '請先修正槽型輸入，目前沒有可以匯出的圖。' },
   openingArcR:   { en: 'Opening arc R [mm]', zh: '槽口圓弧 R [mm]' },
   arcErrOpening: { en: 'Opening arc: R must be at least {min} mm — drawn straight for now.', zh: '槽口圓弧：R 至少要 {min} mm，目前先畫成直線。' },
   errSlotWiden:  { en: 'This slot type must widen from the opening to the bottom — make Bs2 larger than Bs1.',
@@ -387,7 +401,7 @@ function updatePackModeHint() { $('packModeHint').textContent = mtT('packModeHin
 function readRmxprtParams() {
   return {
     bs0: num('p_bs0', NaN), hs0: num('p_hs0', NaN), hs1: num('p_hs1', NaN), bs1: num('p_bs1', NaN),
-    bs2: num('p_bs2', NaN), hs2: num('p_hs2', NaN), rs: num('p_rs', 0), dsi: num('p_dsi', NaN),
+    bs2: num('p_bs2', NaN), hs2: num('p_hs2', NaN), rs: num('p_rs', 0), rs0: num('p_rs0', 0), dsi: num('p_dsi', NaN),
   };
 }
 var slotParamErrKey = null;
@@ -591,6 +605,7 @@ function attachVertexDragHandlers(svg) {
         rafPending = false;
         if (!latest) return;
         var p = svgPointToUser(svg, latest.clientX, latest.clientY);
+        if (lastView && lastView.flip) p.y = -p.y; // 真實方向的畫面是上下翻轉的
         // 卡住x<=0，不讓左半邊的點被拖過Y軸跑到右邊——拖過去的話鏡射出來
         // 的右半邊會變成跑到左邊，兩邊角色對調，畫面會很confusing，直
         // 接限制住比較不會拖錯。同理卡住y>=0：y=0（X軸）是槽口，往上是
@@ -622,21 +637,45 @@ function attachVertexDragHandlers(svg) {
   });
 }
 
-/** 鐵芯底色：槽口是圓弧（定子內徑）時，鐵芯上緣沿同一個圓（氣隙那側留白），
- *  不然就是從槽口那條線往下的矩形。 */
-function laminationShape(bbox, vx, vy, vw, vh) {
+/** 槽口沿定子內徑時的定子幾何（模型座標：y=0 是槽口兩角、往槽底增加；
+ *  定子中心在槽口上方 (0, yc)）。沒有內徑資訊（直線槽口）回傳 null。
+ *  有槽數 Q 時再算一個槽距的扇形（兩側徑向線到相鄰齒中心、外側軛部圓弧）。 */
+function statorGeometry() {
   var F = halfVertices[0], ro = F && Number(F.ro);
-  if (!ro || ro > 0 || Math.abs(ro) <= Math.abs(F.x)) {
+  if (!ro || ro > 0 || Math.abs(ro) <= Math.abs(F.x)) return null;
+  var Rin = Math.abs(ro), yc = F.y - Math.sqrt(Rin * Rin - F.x * F.x);
+  var g = { Rin: Rin, yc: yc, Q: 0 };
+  var Q = Math.round(num('p_slots', 0));
+  if (Q >= 3) {
+    var Rmax = vertices.reduce(function (m, p) { return Math.max(m, Math.hypot(p.x, p.y - yc)); }, 0);
+    var dso = num('p_dso', 0);
+    g.Q = Q;
+    g.half = Math.PI / Q;
+    g.Rout = dso / 2 > Rmax ? dso / 2 : Rmax + Math.max(1.5, 0.35 * (Rmax - Rin));
+  }
+  return g;
+}
+/** 極座標（從定子中心量，角度 0 = 槽的中心線、往槽底方向）→ 模型座標 */
+function statorPt(g, phi, rho) { return { x: rho * Math.sin(phi), y: g.yc + rho * Math.cos(phi) }; }
+
+/** 鐵芯底色：有槽數就畫一個槽距的扇形；只有內徑就畫到內徑圓弧為止；
+ *  都沒有就是從槽口那條線往下的矩形。 */
+function laminationShape(g, bbox, vx, vy, vw, vh) {
+  if (!g) {
     return '<rect class="slot-lamination" x="' + vx + '" y="' + bbox.minY + '" width="' + vw + '" height="' + (vy + vh - bbox.minY) + '"></rect>';
   }
-  var R = Math.abs(ro), yc = F.y - Math.sqrt(R * R - F.x * F.x); // 定子中心（槽口上方）
-  var pts = [];
-  for (var k = 0; k <= 80; k++) {
-    var x = vx + vw * k / 80, dx = Math.min(Math.abs(x), R);
-    pts.push(x + ',' + (yc + Math.sqrt(R * R - dx * dx)));
+  var pts = [], k;
+  if (g.Q) {
+    for (k = 0; k <= 64; k++) pts.push(statorPt(g, -g.half + 2 * g.half * k / 64, g.Rout));
+    for (k = 64; k >= 0; k--) pts.push(statorPt(g, -g.half + 2 * g.half * k / 64, g.Rin));
+  } else {
+    for (k = 0; k <= 80; k++) {
+      var x = vx + vw * k / 80, dx = Math.min(Math.abs(x), g.Rin);
+      pts.push({ x: x, y: g.yc + Math.sqrt(g.Rin * g.Rin - dx * dx) });
+    }
+    pts.push({ x: vx + vw, y: vy + vh }, { x: vx, y: vy + vh });
   }
-  pts.push((vx + vw) + ',' + (vy + vh), vx + ',' + (vy + vh));
-  return '<polygon class="slot-lamination" points="' + pts.join(' ') + '"></polygon>';
+  return '<polygon class="slot-lamination" points="' + pts.map(function (p) { return p.x + ',' + p.y; }).join(' ') + '"></polygon>';
 }
 
 /* ── SVG 繪製：紅=鐵芯、綠=liner內縮後的繞線窗、黃=導線（仿 Motor-CAD 配色） ── */
@@ -645,7 +684,22 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
   if (vertices.length < 3) { svg.innerHTML = ''; return; }
 
   var bbox = polygonBBox(vertices);
-  var w = bbox.maxX - bbox.minX, h = bbox.maxY - bbox.minY;
+  var stator = statorGeometry();
+  var viewBB = bbox;
+  if (stator && stator.Q) {
+    // 扇形也要放進畫面
+    var corners = [statorPt(stator, -stator.half, stator.Rout), statorPt(stator, stator.half, stator.Rout),
+      statorPt(stator, 0, stator.Rout), statorPt(stator, -stator.half, stator.Rin), statorPt(stator, stator.half, stator.Rin)];
+    viewBB = polygonBBox(vertices.concat(corners));
+  }
+  var flip = $('p_view').value === 'real';
+  // 槽寬超過一個槽距（槽數填錯時常見）：扇形還是照畫，但提醒一下
+  var tooWide = !!(stator && stator.Q) && vertices.some(function (p) {
+    return Math.abs(Math.atan2(p.x, p.y - stator.yc)) > stator.half + 1e-9;
+  });
+  $('pitchWarn').style.display = tooWide ? '' : 'none';
+  if (tooWide) $('pitchWarn').textContent = mtT('pitchWarn').replace('{q}', stator.Q);
+  var w = viewBB.maxX - viewBB.minX, h = viewBB.maxY - viewBB.minY;
   var maxDim, vx, vy, vw, vh;
   if (dragView) {
     // 拖曳中：沿用按下時的視野，比例尺、線寬、字級、控點大小都不變
@@ -660,10 +714,12 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
     var padBottom = maxDim * (shapeMode === 'param' ? 0.32 : 0.18);
     var padLeft = maxDim * (shapeMode === 'param' ? 0.48 : 0.26);
     var padRight = maxDim * (shapeMode === 'param' ? 0.48 : 0.26);
-    vx = bbox.minX - padLeft; vy = bbox.minY - padTop; vw = w + padLeft + padRight; vh = h + padTop + padBottom;
+    vx = viewBB.minX - padLeft; vy = viewBB.minY - padTop; vw = w + padLeft + padRight; vh = h + padTop + padBottom;
   }
-  lastView = { vx: vx, vy: vy, vw: vw, vh: vh, maxDim: maxDim };
-  svg.setAttribute('viewBox', vx + ' ' + vy + ' ' + vw + ' ' + vh);
+  lastView = { vx: vx, vy: vy, vw: vw, vh: vh, maxDim: maxDim, flip: flip };
+  // 真實方向：整張圖上下翻轉（定子中心在下、槽口朝下）。幾何都在模型座標裡畫，
+  // 外面包一層 scale(1,-1)；viewBox 用翻轉後的範圍，文字最後再個別翻回來。
+  svg.setAttribute('viewBox', vx + ' ' + (flip ? -(vy + vh) : vy) + ' ' + vw + ' ' + vh);
 
   var strokeW = maxDim * 0.01;
   var outerPts = openingAwarePoints(vertices).map(function (p) { return p.x + ',' + p.y; }).join(' ');
@@ -671,7 +727,7 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
   // 鐵芯（紅）只畫到槽口那條線（bbox.minY，氣隙側）為止，不要往上延伸到
   // 墊白區域——那裡是氣隙/轉子那側，不是鐵芯，照真實矽鋼片圖只有鐵芯
   // 本體是紅色，氣隙上方留白。
-  var html = laminationShape(bbox, vx, vy, vw, vh) +
+  var html = laminationShape(stator, bbox, vx, vy, vw, vh) +
     '<polyline class="slot-outline" points="' + outerPts + '" style="stroke-width:' + strokeW + '"></polyline>';
 
   if (innerPoly) {
@@ -754,7 +810,7 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
         '" font-size="' + fontSize * 0.85 + '" style="text-anchor:end">' + L('Rs', P.rs) + '</text>';
     }
     if (type === '5' && P.dsi > 0) {
-      var R5 = Math.hypot(P.bs2 / 2, y2 + P.dsi / 2);
+      var R5 = Math.hypot(P.bs2 / 2, y2 - statorCentreY(P.dsi, P.bs0));
       html += '<text class="dim-text" x="0" y="' + (bbox.maxY + maxDim * 0.24) + '" font-size="' + fontSize * 0.85 + '">' +
         'Dsi=' + fmt(P.dsi, 2) + ' → R=' + fmt(R5, 3) + '</text>';
     }
@@ -825,9 +881,18 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
       '</g>';
   }
 
-  svg.innerHTML = html;
+  svg.innerHTML = flip ? '<g transform="scale(1,-1)">' + html + '</g>' : html;
+  if (flip) {
+    // 文字以自己的錨點再翻一次，字才不會上下顛倒
+    svg.querySelectorAll('text').forEach(function (t) {
+      var y0 = parseFloat(t.getAttribute('y')) || 0;
+      t.setAttribute('transform', 'matrix(1 0 0 -1 0 ' + 2 * y0 + ') ' + (t.getAttribute('transform') || ''));
+    });
+  }
+  lastDraw = { innerPoly: innerPoly, pack: pack, needleRect: needleRect, stator: stator };
   if (shapeMode === 'custom') attachVertexDragHandlers(svg);
 }
+var lastDraw = null; // 給 DXF 匯出：最後一次畫出來的 liner、線材、導針通道
 
 /** 在繞線窗裡排 count 根外徑 diameter 的線材。Coils/slot >= 2 時先切成
  *  左右兩個線圈邊（中間留導針通道），各自往外側槽壁沉降；否則整個繞線
@@ -1109,7 +1174,8 @@ function layerStats(pack) {
  * 左半邊頂點（不是由參數重新產生，自訂頂點的編輯也要留住）、參數化欄位、
  * 線材欄位、目前的模式。算出來的結果不存，開檔後照當時的程式重算。 */
 var FILE_KIND = 'motor-toolkit/slot-packing';
-var PARAM_IDS = ['p_slotType', 'p_bs0', 'p_hs0', 'p_hs1', 'p_bs1', 'p_bs2', 'p_hs2', 'p_rs', 'p_dsi',
+var PARAM_IDS = ['p_slotType', 'p_bs0', 'p_hs0', 'p_hs1', 'p_bs1', 'p_bs2', 'p_hs2', 'p_rs', 'p_rs0', 'p_dsi',
+                 'p_slots', 'p_dso', 'p_view',
                  'p_openWidth', 'p_openHeight', 'p_topWidth', 'p_bottomWidth', 'p_depth'];
 var WIRE_IDS = ['w_packMode', 'w_searchFix', 'w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_needleWidth', 'w_needleClearance',
                 'w_linerThickness', 'w_windStartY'];
@@ -1120,7 +1186,7 @@ function showFileStatus(key, name) {
   var el = $('fileStatus');
   el.style.display = key ? '' : 'none';
   if (key) el.textContent = mtT(key).replace('{name}', name);
-  el.classList.toggle('bad', key === 'fileBad');
+  el.classList.toggle('bad', key === 'fileBad' || key === 'dxfNone');
 }
 
 window.saveSlotFile = function () {
@@ -1148,6 +1214,112 @@ window.saveSlotFile = function () {
   setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   showFileStatus('fileSaved', name);
   if (typeof gaTrack === 'function') gaTrack('slotpack_save', shapeMode);
+};
+
+/* ── DXF 線圖匯出（AutoCAD R12 格式，幾乎所有 CAD 都讀得到）──
+ * 方向跟「真實方向」畫面一樣：槽底朝 +Y；有定子內徑時原點放在定子中心，
+ * 不然放在槽口中點。單位 mm。槽型外框用定義點＋bulge 寫，CAD 裡就是真正的
+ * 圓弧（不是拆成短線段）；liner 是內縮後的多邊形，線材是 CIRCLE＋匝號。 */
+function fileStamp() {
+  var d = new Date(), pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes());
+}
+function downloadText(name, text, type) {
+  var url = URL.createObjectURL(new Blob([text], { type: type }));
+  var a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+
+/** 槽型外框的定義點（左半＋鏡射，不展開圓弧）與每一段的圓弧半徑 */
+function slotRingWithArcs() {
+  var n = halfVertices.length, pts = [], rs = [];
+  for (var i = 0; i < n; i++) {
+    pts.push({ x: halfVertices[i].x, y: halfVertices[i].y });
+    rs.push(Number(halfVertices[i].r) || 0); // 到下一點（最後一點：槽底，到自己的鏡射點）
+  }
+  var last = halfVertices[n - 1], bottomOnAxis = Math.abs(last.x) < 1e-12;
+  if (bottomOnAxis) rs[n - 1] = 0;
+  for (var k = n - (bottomOnAxis ? 2 : 1); k >= 0; k--) {
+    pts.push({ x: -halfVertices[k].x, y: halfVertices[k].y });
+    rs.push(k > 0 ? (Number(halfVertices[k - 1].r) || 0) : (Number(halfVertices[0].ro) || 0)); // 最後一段：槽口
+  }
+  return { pts: pts, rs: rs };
+}
+
+function buildSlotDxf() {
+  var g = lastDraw && lastDraw.stator, oy = g ? g.yc : 0;
+  var X = function (x) { return x.toFixed(6); }, Y = function (y) { return (y - oy).toFixed(6); };
+  var out = [];
+  var e = function () { for (var i = 0; i < arguments.length; i++) out.push(String(arguments[i])); };
+  var polyline = function (layer, pts, closed, bulges) {
+    e(0, 'POLYLINE', 8, layer, 66, 1, 70, closed ? 1 : 0, 10, 0, 20, 0, 30, 0);
+    pts.forEach(function (p, i) {
+      e(0, 'VERTEX', 8, layer, 10, X(p.x), 20, Y(p.y), 30, 0);
+      if (bulges && bulges[i]) e(42, bulges[i].toFixed(9));
+    });
+    e(0, 'SEQEND', 8, layer);
+  };
+  var arc = function (layer, R, a0, a1) { e(0, 'ARC', 8, layer, 10, X(0), 20, Y(oy), 30, 0, 40, R.toFixed(6), 50, a0.toFixed(6), 51, a1.toFixed(6)); };
+  var line = function (layer, p, q) { e(0, 'LINE', 8, layer, 10, X(p.x), 20, Y(p.y), 30, 0, 11, X(q.x), 21, Y(q.y), 31, 0); };
+
+  var layers = [['STATOR', 8], ['SLOT', 7], ['LINER', 3], ['NEEDLE', 5], ['WIRE', 2], ['WIRE_NO', 1]];
+  e(0, 'SECTION', 2, 'HEADER', 9, '$ACADVER', 1, 'AC1009', 0, 'ENDSEC');
+  e(0, 'SECTION', 2, 'TABLES');
+  e(0, 'TABLE', 2, 'LTYPE', 70, 1, 0, 'LTYPE', 2, 'CONTINUOUS', 70, 0, 3, 'Solid line', 72, 65, 73, 0, 40, '0.0', 0, 'ENDTAB');
+  e(0, 'TABLE', 2, 'LAYER', 70, layers.length);
+  layers.forEach(function (L) { e(0, 'LAYER', 2, L[0], 70, 0, 62, L[1], 6, 'CONTINUOUS'); });
+  e(0, 'ENDTAB', 0, 'ENDSEC');
+  e(0, 'SECTION', 2, 'ENTITIES');
+
+  // 槽型外框：bulge＝tan(圓心角/4)，正值＝從這一點逆時針繞到下一點（Y 朝上）
+  var ring = slotRingWithArcs(), m = ring.pts.length;
+  var area2 = 0;
+  for (var i = 0; i < m; i++) { var a = ring.pts[i], b = ring.pts[(i + 1) % m]; area2 += a.x * b.y - b.x * a.y; }
+  var side = area2 >= 0 ? 1 : -1;
+  var bulges = ring.pts.map(function (A, i) {
+    var r = ring.rs[i]; if (!r) return 0;
+    var B = ring.pts[(i + 1) % m], dx = B.x - A.x, dy = B.y - A.y, c = Math.hypot(dx, dy);
+    if (c < 1e-12 || Math.abs(r) < c / 2 * (1 - 1e-9)) return 0;
+    var inward = { x: -dy / c * side, y: dx / c * side };
+    var bulgeDir = r > 0 ? { x: -inward.x, y: -inward.y } : inward;
+    var theta = 2 * Math.asin(Math.min(1, c / (2 * Math.abs(r))));
+    var right = bulgeDir.x * dy - bulgeDir.y * dx > 0; // 凸向弦的右側＝逆時針
+    return (right ? 1 : -1) * Math.tan(theta / 4);
+  });
+  polyline('SLOT', ring.pts, true, bulges);
+
+  if (lastDraw.innerPoly) polyline('LINER', openingAwarePoints(lastDraw.innerPoly), false);
+  var nr = lastDraw.needleRect;
+  if (nr) polyline('NEEDLE', [{ x: nr.x, y: nr.y }, { x: nr.x + nr.width, y: nr.y },
+    { x: nr.x + nr.width, y: nr.y + nr.height }, { x: nr.x, y: nr.y + nr.height }], true);
+  (lastDraw.pack ? lastDraw.pack.placed : []).forEach(function (c, idx) {
+    e(0, 'CIRCLE', 8, 'WIRE', 10, X(c.x), 20, Y(c.y), 30, 0, 40, (c.d / 2).toFixed(6));
+    e(0, 'TEXT', 8, 'WIRE_NO', 10, X(c.x), 20, Y(c.y), 30, 0, 40, (c.d * 0.4).toFixed(6), 1, c.label || idx + 1,
+      72, 1, 11, X(c.x), 21, Y(c.y), 31, 0, 73, 2);
+  });
+
+  if (g && g.Q) {
+    // 一個槽距的定子：外側軛部圓弧、兩側到相鄰齒中心的徑向線、內徑圓弧（扣掉槽口）
+    var deg = 180 / Math.PI, h = g.half * deg, F = halfVertices[0];
+    var thR = Math.atan2(F.y - g.yc, Math.abs(F.x)) * deg;
+    arc('STATOR', g.Rout, 90 - h, 90 + h);
+    arc('STATOR', g.Rin, 90 - h, thR);
+    arc('STATOR', g.Rin, 180 - thR, 90 + h);
+    line('STATOR', statorPt(g, -g.half, g.Rin), statorPt(g, -g.half, g.Rout));
+    line('STATOR', statorPt(g, g.half, g.Rin), statorPt(g, g.half, g.Rout));
+  }
+  e(0, 'ENDSEC', 0, 'EOF');
+  return out.join('\r\n') + '\r\n';
+}
+
+window.exportSlotDxf = function () {
+  if (!lastDraw || vertices.length < 3) { showFileStatus('dxfNone', ''); return; }
+  var name = 'slot-packing_' + fileStamp() + '.dxf';
+  downloadText(name, buildSlotDxf(), 'application/dxf');
+  showFileStatus('dxfSaved', name);
+  if (typeof gaTrack === 'function') gaTrack('slotpack_dxf', shapeMode);
 };
 
 /** 驗證後套用；任何一項不對就整個不套用，不會只還原一半 */
@@ -1225,6 +1397,9 @@ function applyIncomingParams() {
 document.addEventListener('DOMContentLoaded', function () {
   $('btnGenerate').addEventListener('click', generateFromParametric);
   $('btnSearchBest').addEventListener('click', searchBestFill);
+  $('btnExportDxf').addEventListener('click', exportSlotDxf);
+  ['p_slots', 'p_dso'].forEach(function (id) { $(id).addEventListener('input', computeAll); });
+  $('p_view').addEventListener('change', computeAll);
   $('w_packMode').addEventListener('change', function () { updatePackModeHint(); computeAll(); });
   document.addEventListener('mt-lang-change', updatePackModeHint);
   $('v_openingR').addEventListener('focus', function () { pushVertexHistory(); });

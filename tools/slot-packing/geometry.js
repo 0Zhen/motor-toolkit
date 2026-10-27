@@ -685,6 +685,12 @@ function expandHalfWithArcs(half) {
 /** p = { bs0, hs0, hs1, bs1, bs2, hs2, rs, dsi }；回傳 { half, y1, y2, yBottom } 或 { error }。
  *  half 是左半邊的定義點，圓弧用 r 表示（見 expandHalfWithArcs）。
  *  y1 = 槽身開始（Bs1 那條線），y2 = Bs2 那條線，yBottom = 槽最深處。 */
+/** 定子中心的 y（槽口上方，負值）：內徑圓（直徑 dsi）通過槽口兩角 (±openW/2, 0) */
+function statorCentreY(dsi, openW) {
+  const R = dsi / 2;
+  return -Math.sqrt(Math.max(0, R * R - openW * openW / 4));
+}
+
 function rmxprtSlotHalf(type, p) {
   const t = String(type);
   const need = ['hs0', 'hs1', 'bs1', 'bs2', 'hs2'].concat(t === '2' ? [] : ['bs0']);
@@ -712,9 +718,15 @@ function rmxprtSlotHalfRaw(t, p) {
     ];
     return { half: dedupe(half), y1: y1, y2: y2, yBottom: y2 };
   }
-  const body = [{ x: -p.bs0 / 2, y: 0 }, { x: -p.bs0 / 2, y: y0 }];
+  let body = [{ x: -p.bs0 / 2, y: 0 }, { x: -p.bs0 / 2, y: y0 }];
   if (t === '3') body.push({ x: -p.bs1 / 2, y: y0 }); // 水平台階，再接 Hs1 直段
   body.push({ x: -p.bs1 / 2, y: y1 });
+  // Rs0：槽口直段跟齒頂（肩部）交接的角倒圓。這個角對槽來說是凹角（鐵芯
+  // 的齒尖），圓弧往槽內凸，所以 r 取負值
+  if (p.rs0 > 0 && p.hs0 > 0) {
+    const f = filletCorner(body[0], body[1], body[2], p.rs0);
+    if (f) body = [body[0], { x: f.t1.x, y: f.t1.y, r: -f.r }, { x: f.t2.x, y: f.t2.y }].concat(body.slice(2));
+  }
   const corner = { x: -p.bs2 / 2, y: y2 };
   if (t === '1' || t === '3') {
     const f = p.rs > 0 ? filletCorner(body[body.length - 1], corner, { x: 0, y: y2 }, p.rs, p.bs2 / 2) : null;
@@ -726,11 +738,13 @@ function rmxprtSlotHalfRaw(t, p) {
     return { half: dedupe(body.concat([{ x: corner.x, y: corner.y, r: p.bs2 / 2 }])), y1: y1, y2: y2, yBottom: y2 + p.bs2 / 2 };
   }
   if (t === '5') {
-    // 與定子同心的圓弧槽底：圓心在定子中心（槽口往氣隙側 Dsi/2 處），通過 Bs2 兩端
-    if (!(p.dsi > 0)) return { error: 'errSlotParams' };
-    const R = Math.hypot(p.bs2 / 2, y2 + p.dsi / 2);
+    // 與定子同心的圓弧槽底：圓心在定子中心，通過 Bs2 兩端。定子中心的位置跟
+    // 槽口圓弧用同一個定義（內徑圓通過槽口兩角，見 statorCentreY），兩段弧才會嚴格同心
+    if (!(p.dsi > p.bs0)) return { error: 'errSlotParams' };
+    const yc = statorCentreY(p.dsi, p.bs0);
+    const R = Math.hypot(p.bs2 / 2, y2 - yc);
     return { half: dedupe(body.concat([{ x: corner.x, y: corner.y, r: R }])), y1: y1, y2: y2,
-             yBottom: R - p.dsi / 2, arcR: R };
+             yBottom: yc + R, arcR: R };
   }
   return { error: 'errSlotParams' };
 
