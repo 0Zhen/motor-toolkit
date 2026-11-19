@@ -21,8 +21,8 @@ var MT_I18N = {
                   zh: '槽口 Bs0 以水平台階展開到 Bs1，接一段寬 Bs1、高 Hs1 的直段，槽身 Bs1 → Bs2（深 Hs2），平底、兩角圓角 Rs。' },
   slotTypeHint4:{ en: 'Sloped shoulder (Hs1), body Bs1 → Bs2 over Hs2, then a semicircular bottom of diameter Bs2 below the Bs2 line.',
                   zh: '斜肩（Hs1），槽身 Bs1 → Bs2（深 Hs2），Bs2 那條線以下接直徑 Bs2 的半圓槽底。' },
-  slotTypeHint5:{ en: 'Sloped shoulder (Hs1), body Bs1 → Bs2 over Hs2 (to the Bs2 chord), then an arc bottom concentric with the stator through both Bs2 ends — its radius follows from Dsi.',
-                  zh: '斜肩（Hs1），槽身 Bs1 → Bs2（Hs2 量到 Bs2 弦），之後是通過 Bs2 兩端、跟定子同心的圓弧槽底——半徑由 Dsi 算出。' },
+  slotTypeHint5:{ en: 'Sloped shoulder (Hs1), body Bs1 → Bs2 over Hs2 (to the Bs2 chord), then an arc bottom concentric with the stator through both Bs2 ends — its radius follows from Dsi (inner rotor) or Dso (outer rotor). On an outer rotor that arc is the yoke circle R_y and bulges into the slot.',
+                  zh: '斜肩（Hs1），槽身 Bs1 → Bs2（Hs2 量到 Bs2 弦），之後是通過 Bs2 兩端、跟定子同心的圓弧槽底——半徑由 Dsi（內轉）或 Dso（外轉）算出。外轉子的這段圓弧就是軛部圓 R_y，往槽內凸。' },
   slotTypeHinttrap:{ en: 'The original simple shape: a straight opening throat, a flat step out to the body top width, then a trapezoid to a flat bottom.',
                   zh: '原本的簡易槽型：直的開口喉，水平台階展開到本體上寬，再以梯形接到平底。' },
   errSlotParams:{ en: 'Check the slot dimensions — widths and Hs2 must be greater than 0 (Dsi too for type 5).',
@@ -166,8 +166,8 @@ var MT_I18N = {
   viewReal:      { en: 'Real (opening down)', zh: '真實方向（槽口朝下）' },
   viewUp:        { en: 'Opening up', zh: '槽口朝上' },
   viewHint:      {
-    en: 'Q and Dso are only for drawing the stator around the slot (one slot pitch, teeth on both sides); they need the opening to follow the bore (Dsi). Leave Dso blank to draw a nominal yoke. Calculations are not affected.',
-    zh: 'Q 跟 Dso 只用來畫槽周圍的定子（一個槽距、兩側的齒）；槽口要沿定子內徑（有 Dsi）才畫得出來。Dso 留空就畫一段示意的軛部。不影響任何計算。',
+    en: 'Real: the slot as it sits in the stator, opening toward the rotor (down for an inner rotor). Opening up: flipped so the opening is on top. The stator around the slot is drawn when the opening follows Dsi / Dso and Q is set. Display only — calculations are not affected.',
+    zh: '真實方向：槽在定子裡的實際方向，槽口朝轉子（內轉子朝下）。槽口朝上：上下翻轉，槽口在上。槽口沿 Dsi／Dso 而且有填 Q 時，會畫出槽周圍的定子。只影響顯示，不影響任何計算。',
   },
   pitchWarn:     { en: 'The slot is wider than one slot pitch at Q = {q} — its sides cross the neighbouring tooth centre lines. Check the slot count.',
                    zh: 'Q = {q} 時，槽比一個槽距還寬——槽的兩側超過相鄰齒的中心線。請確認槽數。' },
@@ -230,6 +230,198 @@ var MT_I18N = {
     en: 'Fill % if the slot were packed to its max capacity (above) instead of your requested wire count — the practical ceiling for this wire size. Hexagonal packing on an infinite plane tops out around 90.7%, but a small or tapered slot loses more to boundary effects (circles near the wall can’t nest as tightly), so the real number here is usually well below that.',
     zh: '如果照上面的「最大容量」塞滿（而不是你設定的線材總數）會是多少槽滿率——這個線徑的實際上限。六方密排在無限平面上的理論密度約90.7%，但槽越小、越有taper，邊界效應（貼壁的圓沒辦法跟內部排得一樣緊）損失就越多，這裡算出來的實際數字通常會明顯低於那個理論值。',
   },
+
+  /* ── 內轉／外轉 ── */
+  rotorTitle:    { en: 'Motor type', zh: '馬達型式' },
+  rotorInner:    { en: 'Inner rotor', zh: '內轉子' },
+  rotorOuter:    { en: 'Outer rotor', zh: '外轉子' },
+  iRotor: {
+    en: 'Inner rotor: the slots open toward the bore and the rotor turns inside the stator.\nOuter rotor: the slots open outward, the yoke is on the inside and the magnets turn around the outside (fans, drones, hub motors). The slot narrows toward the yoke, so Bs1 > Bs2.\n\nEach type keeps its own set of inputs — switching back restores them. The outer-rotor defaults are set up like the default example of the siderpan resistance calculator (same tooth, wire and winding), so the two tools can be cross-checked. Add #outer to the address to open straight on the outer rotor.',
+    zh: '內轉子：槽口朝定子內孔，轉子在定子裡面轉。\n外轉子：槽口朝外、軛部在內側，磁鐵在外圈轉（風扇、無人機、輪轂馬達）。槽往軛部收窄，所以 Bs1 > Bs2。\n\n兩種各自保留一組輸入值，切回來會還原。外轉子的預設值照 siderpan 電阻計算的預設範例設定（同樣的齒、線材與繞組），可以拿兩個工具交叉比對。網址加 #outer 可以直接開外轉子。',
+  },
+  statorDsiOuter:{ en: 'Stator outer dia. Dso [mm]', zh: '定子外徑 Dso [mm]' },
+  statorDiOuter: { en: 'Stator inner dia. Di [mm]', zh: '定子內徑 Di [mm]' },
+  dsiHintOuter:  { en: 'The slot opening follows the stator outer diameter Dso (an arc concentric with the air gap, bulging outward). Leave Dso blank for a straight opening.',
+                   zh: '槽口沿定子外徑 Dso 畫成圓弧（跟氣隙同心，往外凸）。Dso 留空就是直線槽口。' },
+  errSlotNarrow: { en: 'An outer-rotor slot narrows from the opening toward the yoke — make Bs2 smaller than Bs1.',
+                   zh: '外轉子的槽由槽口往軛部收窄——Bs2 要小於 Bs1。' },
+
+  fitSlot:       { en: 'Fit slot', zh: '貼合槽' },
+  fitStator:     { en: 'Slot pitch', zh: '整個槽距' },
+  zoomHint:      { en: 'Scroll to zoom · drag to pan · double-click to reset', zh: '滾輪縮放 · 拖曳平移 · 雙擊還原' },
+
+  /* ── 欄位說明（?）── */
+  infoClose:     { en: 'Close', zh: '關閉' },
+  iBs0:  { en: 'Slot opening width — the gap between the two tooth-shoe tips at the air gap. Same name as Ansys RMxprt.',
+           zh: '槽口寬：兩個極靴尖端之間、氣隙那一側的開口寬度。名稱跟 Ansys RMxprt 一致。' },
+  iHs0:  { en: 'Slot opening depth — height of the straight opening throat (the shoe-tip thickness at the opening). No wire goes in here.',
+           zh: '槽口深：槽口直段的高度（槽口處極靴尖的厚度）。這裡不繞線。' },
+  iHs1:  { en: 'Shoulder height — from the opening throat out to the body width Bs1: sloped in types 1, 4 and 5, a straight Bs1-wide section in type 3, the wedge notch in type 2. In types 1, 4 and 5 it is the underside of the tooth shoe.',
+           zh: '肩部高：從槽口直段展開到槽身寬 Bs1 的那一段。槽型 1、4、5 是斜肩，3 是寬 Bs1 的直段，2 是槽楔凹口。槽型 1、4、5 的斜肩就是極靴下緣。' },
+  iBs1:  { en: 'Slot width at the top of the body (shoe side).\nInner rotor: Bs1 < Bs2 — the slot widens toward the yoke.\nOuter rotor: Bs1 > Bs2 — the slot narrows toward the yoke.',
+           zh: '槽身頂端（極靴側）的槽寬。\n內轉子：Bs1 < Bs2，槽往軛部展開。\n外轉子：Bs1 > Bs2，槽往軛部收窄。' },
+  iBs2:  { en: 'Slot width at the bottom of the body (yoke side). See Bs1 for which one must be larger.',
+           zh: '槽身底端（軛部側）的槽寬。哪一個要比較大請看 Bs1 的說明。' },
+  iHs2:  { en: 'Body height, from the Bs1 line to the Bs2 line (type 5: to the Bs2 chord, before the arc bottom).',
+           zh: '槽身高：從 Bs1 那條線到 Bs2 那條線（槽型 5 量到 Bs2 弦，不含圓弧槽底）。' },
+  iRs0:  { en: 'Fillet radius where the opening throat meets the shoulder (the tooth-tip corner).',
+           zh: '槽口直段與肩部交接處（齒尖那個角）的倒圓半徑。' },
+  iRs:   { en: 'Fillet radius of the two bottom corners (types 1 and 3).', zh: '槽底兩個角的倒圓半徑（槽型 1、3）。' },
+  iDsiInner: {
+    en: 'Stator inner (bore) diameter. The opening is drawn as an arc of this circle, and it fixes where the stator centre is — needed for the stator drawing, type 5 and the automatic tooth width.',
+    zh: '定子內徑（內孔）。槽口畫成這個圓上的圓弧，也決定定子中心的位置——定子圖、槽型 5 與自動齒寬都要用到。',
+  },
+  iDsiOuter: {
+    en: 'Stator outer diameter — the circle through the tooth-shoe tips, facing the outer magnets. The opening is drawn as an arc of this circle, and it fixes where the stator centre is — needed for the stator drawing, type 5 (its bottom arc is the yoke circle R_y) and the automatic tooth width.',
+    zh: '定子外徑：通過極靴外緣、面對外圈磁鐵的那個圓。槽口畫成這個圓上的圓弧，也決定定子中心的位置——定子圖、槽型 5（槽底圓弧就是軛部圓 R_y）與自動齒寬都要用到。',
+  },
+  iOpenWidth:  { en: 'Width of the straight opening throat.', zh: '直的開口喉寬度。' },
+  iOpenHeight: { en: 'Height of the opening throat — also the default no-wind depth.', zh: '開口喉的高度，也是不繞線深度的預設值。' },
+  iTopWidth:   { en: 'Slot width where the body starts, just below the throat.', zh: '槽身起點（開口喉下方）的槽寬。' },
+  iBottomWidth:{ en: 'Slot width at the flat bottom.', zh: '平底處的槽寬。' },
+  iDepth:      { en: 'Total slot depth, from the opening to the bottom.', zh: '槽的總深度，從槽口量到槽底。' },
+  iSlots: {
+    en: 'Number of stator slots Q. Sets the slot pitch for the stator drawing and the automatic tooth width, and is used to check Coils / phase (usually Q ÷ 3 for a double-layer concentrated winding).',
+    zh: '定子槽數 Q。決定定子圖與自動齒寬用的槽距，也用來檢查每相線圈數（雙層集中繞通常是 Q ÷ 3）。',
+  },
+  iDsoInner: { en: 'Stator outer diameter — only for drawing the yoke around the slot. Blank draws a nominal yoke. Does not affect any calculation.',
+               zh: '定子外徑，只用來畫槽周圍的軛部。留空就畫一段示意的軛部。不影響任何計算。' },
+  iDsoOuter: { en: 'Stator inner diameter — the centre hole inside the yoke. Only for drawing; blank draws a nominal yoke. Does not affect any calculation.',
+               zh: '定子內徑：軛部內側的中心孔。只用來畫圖，留空就畫一段示意的軛部。不影響任何計算。' },
+  iOpeningR: {
+    en: 'Radius of the opening arc between the two opening corners. Negative = concave into the slot (inner rotor, follows the bore: −Dsi/2). Positive = bulging outward (outer rotor, follows the outer diameter: +Dso/2). It also fixes where the stator centre is. Blank = straight opening.',
+    zh: '兩個槽口角之間的槽口圓弧半徑。負值＝往槽內凹（內轉子，沿內徑：−Dsi/2）；正值＝往外凸（外轉子，沿外徑：+Dso/2）。也決定定子中心的位置。空白＝直線槽口。',
+  },
+  iWire: {
+    en: 'Wire size, turns and how they are laid into the slot. The packing result also feeds the coil resistance: every wire’s distance from the tooth face sets its turn length.',
+    zh: '線徑、匝數，以及線怎麼排進槽裡。排線結果也直接用在線圈電阻：每根導線離齒面多遠，決定它那一匝有多長。',
+  },
+  iBareDia: { en: 'Bare copper diameter d. Used for the copper cross-section A = π/4·d² in the resistance, and (plus enamel) for the packing.',
+              zh: '裸銅徑 d。電阻用它算銅截面積 A = π/4·d²；加上漆膜就是排線用的外徑。' },
+  iTurns: {
+    en: 'Turns per coil N. With 2 coils/slot each coil side holds N turns; with 1 coil/slot the whole window holds N turns. Total wires in the slot = turns × coils × strands.',
+    zh: '每個線圈的匝數 N。每槽 2 個線圈時，每個線圈邊各 N 匝；每槽 1 個線圈時，整個繞線窗 N 匝。槽內線材總數 = 匝數 × 線圈數 × 股數。',
+  },
+  iStrands: { en: 'Wires wound in parallel per turn (n_s). Each strand is placed and measured on its own; the resistance divides by n_s.',
+              zh: '每匝並繞的股數 n_s。每一股都各自排、各自量長度；電阻除以 n_s。' },
+  iLiner: {
+    en: 'The liner is modeled as a real inward offset of the slot outline (shown in green), not just a number subtracted from the fill % — turns are packed inside that offset shape.\n\nThe same thickness is the insulation i around the tooth in the turn length (L′ = L + 2i, b′ = b + 2i), as in the siderpan calculator.',
+    zh: 'Liner 是真的把槽型輪廓向內偏移出來的幾何（綠色區域），不是從槽滿率扣一個數字而已——線材是塞在這個內縮後的區域裡。\n\n同一個厚度也是匝長公式裡包在齒外的絕緣厚 i（L′ = L + 2i、b′ = b + 2i），跟 siderpan 電阻計算一樣。',
+  },
+
+  /* ── 線圈與電阻 ── */
+  coilTitle:     { en: 'Coil & Resistance', zh: '線圈與電阻' },
+  iCoil: {
+    en: 'Mean length of turn (MLT) and winding resistance of the concentrated coil, following the method of the siderpan resistance calculator (verified against measurements on outer-rotor motors).\n\nThe only difference is where c comes from — each wire’s distance from the insulated tooth face. Here it is measured on the wires as they are actually packed in the slot, in whichever winding layout is selected.',
+    zh: '集中繞線圈的平均匝長（MLT）與繞組電阻，計算方式比照 siderpan 電阻計算（已用外轉子馬達的實測驗證過）。\n\n唯一的差別是 c 的來源——每根導線中心離絕緣後齒面的距離。這裡用的是導線在槽內實際排出來的位置，跟著你選的排線方式。',
+  },
+  iCoilF: {
+    en: 'L′ = L + 2i      b′ = b + 2i\nℓ = 2(L′−2r₀) + 2(b′−2r₀) + 2π(r₀ + c)\nMLT = mean ℓ of all wires in one coil\nR_coil = ρ·MLT·N / (A·n_s),  A = π/4·d²\nR_ph = [R_coil·coils/a + ρ·lead/(A·n_s)] / a\nY: R_LL = 2·R_ph     Δ: R_LL = ⅔·R_ph\nR(T) = R₂₀·(234.5 + T) / 254.5',
+    zh: 'L′ = L + 2i      b′ = b + 2i\nℓ = 2(L′−2r₀) + 2(b′−2r₀) + 2π(r₀ + c)\nMLT = 一個線圈所有導線 ℓ 的平均\nR_coil = ρ·MLT·N / (A·n_s)，A = π/4·d²\nR_ph = [R_coil·線圈數/a + ρ·引出線/(A·n_s)] / a\nY：R_LL = 2·R_ph     Δ：R_LL = ⅔·R_ph\nR(T) = R₂₀·(234.5 + T) / 254.5',
+  },
+  stackLength:   { en: 'Stack length L [mm]', zh: '疊厚 L [mm]' },
+  iStack: { en: 'Stack length L — axial length of the lamination stack (the tooth length in the side view). The two long straight sides of every turn run along it.',
+            zh: '疊厚 L：矽鋼片疊起來的軸向長度（側視圖裡齒的長度）。每一匝的兩條長直邊沿著它走。' },
+  toothWidth:    { en: 'Tooth width b [mm]', zh: '齒寬 b [mm]' },
+  iToothW: {
+    en: 'Tooth width b (steel, without insulation). Leave blank to derive it from the slot: twice the distance from the slot wall to the tooth centre line, at the middle of the wall. That needs Q and an opening that follows Dsi (inner) / Dso (outer). For a trapezoid or a custom shape without an opening arc, enter it.',
+    zh: '齒寬 b（鐵芯本身，不含絕緣）。留空就從槽型推算：槽壁中點到齒中心線距離的兩倍。這需要槽數 Q，以及沿 Dsi（內轉）/ Dso（外轉）畫的槽口圓弧；簡易梯形或沒有槽口圓弧的自訂形狀請自己填。',
+  },
+  sideCorner:    { en: 'Side-view corner r₀ [mm]', zh: '側視轉角 r₀ [mm]' },
+  iR0: { en: 'Corner radius of the insulated tooth seen from the side (the bobbin / end-insulation corner). Every turn rounds that corner at radius r₀ + c. Limited to half of L′ or b′.',
+         zh: '從側面看、包好絕緣的齒的轉角半徑（線架／端部絕緣的圓角）。每一匝都以 r₀ + c 的半徑繞過這個角。上限是 L′ 或 b′ 的一半。' },
+  coilsPerPhase: { en: 'Coils / phase', zh: '每相線圈數' },
+  iCpp: { en: 'Coils per phase, all paths together. Double-layer concentrated winding: Q ÷ 3. Single layer (1 coil/slot): Q ÷ 6. Must be divisible by the parallel paths a.',
+          zh: '每相線圈數（所有並聯路合計）。雙層集中繞：Q ÷ 3；單層（每槽 1 個線圈）：Q ÷ 6。必須能被並聯路數 a 整除。' },
+  parallelPaths: { en: 'Parallel paths a', zh: '並聯路數 a' },
+  iPaths: { en: 'Parallel paths per phase a. Each path has coils/a coils in series plus its own lead; the a paths are then connected in parallel.',
+            zh: '每相並聯路數 a。每一路是「線圈數/a」個線圈串聯，再加上自己的引出線；a 路再並聯起來。' },
+  leadLength:    { en: 'Lead length / path [mm]', zh: '引出線長／路 [mm]' },
+  iLead: { en: 'Lead wire per parallel path (from the coils to the terminal), in series with that path’s coils.',
+           zh: '每一路並聯的引出線長度（從線圈到端子），跟那一路的線圈串聯。' },
+  connection:    { en: 'Connection', zh: '接線方式' },
+  connY:         { en: 'Y (star)', zh: 'Y 星形' },
+  connD:         { en: 'Δ (delta)', zh: 'Δ 三角形' },
+  iConn: { en: 'Y: line-to-line resistance R_LL = 2·R_ph.\nΔ: R_LL = ⅔·R_ph (one phase in parallel with the other two in series).',
+           zh: 'Y：端子間電阻 R_LL = 2·R_ph。\nΔ：R_LL = ⅔·R_ph（一相與另外兩相串聯後並聯）。' },
+  iRho: { en: 'Copper resistivity at 20 °C. Annealed copper (100 % IACS): 0.017241 Ω·mm²/m.',
+          zh: '20 °C 的銅電阻率。退火銅（100 % IACS）：0.017241 Ω·mm²/m。' },
+  refTemp:       { en: 'Reference temp. [°C]', zh: '參考溫度 [°C]' },
+  iTref: { en: 'Temperature at which R_LL and R_ph are shown — e.g. the room temperature of your measurement. Corrected from 20 °C with copper’s 234.5 °C constant.',
+           zh: 'R_LL、R_ph 顯示時的溫度，例如量測當下的室溫。以銅的 234.5 °C 常數從 20 °C 換算。' },
+  opTemp:        { en: 'Operating temp. [°C]', zh: '工作溫度 [°C]' },
+  iTop: { en: 'Winding temperature in operation, for the hot R_LL: R(T) = R₂₀·(234.5 + T)/254.5.',
+          zh: '運轉時的繞組溫度，用來算熱態 R_LL：R(T) = R₂₀·(234.5 + T)/254.5。' },
+  hUp:           { en: 'Height limit, top [mm]', zh: '上方高度限制 [mm]' },
+  hDown:         { en: 'Height limit, bottom [mm]', zh: '下方高度限制 [mm]' },
+  iHup: { en: 'Optional. Room above the top lamination end face for the end turns. The coil sticks out by i + t (insulation + coil build). Blank = no check.',
+          zh: '選填。上端面以上留給端部線圈的空間。線圈伸出端面的高度是 i + t（絕緣厚 + 線圈厚）。空白＝不檢查。' },
+  iHdn: { en: 'Optional. Room below the bottom lamination end face for the end turns (i + t). Blank = no check.',
+          zh: '選填。下端面以下留給端部線圈的空間（i + t）。空白＝不檢查。' },
+
+  /* ── 電阻結果 ── */
+  resTitle:      { en: 'Coil Resistance', zh: '線圈電阻' },
+  sideTitle:     { en: 'Side View (one coil)', zh: '側視圖（一個線圈）' },
+  legendTooth:   { en: 'Tooth (L × b)', zh: '齒（L × b）' },
+  legendIns:     { en: 'Insulation (L′ × b′)', zh: '絕緣（L′ × b′）' },
+  legendCoil:    { en: 'Coil', zh: '線圈' },
+  legendMean:    { en: 'Mean turn (MLT)', zh: '平均匝路徑（MLT）' },
+  kRLL:          { en: 'R_LL', zh: '端子間 R_LL' },
+  kRLLop:        { en: 'R_LL hot', zh: '工作溫度 R_LL' },
+  kRph:          { en: 'R_ph', zh: '每相 R_ph' },
+  kMlt:          { en: 'MLT', zh: '平均匝長 MLT' },
+  kLen:          { en: 'Wire / coil', zh: '每線圈線長' },
+  tipRLL:   { en: 'Line-to-line resistance at the reference temperature — what you measure between two terminals.',
+              zh: '參考溫度下的端子間電阻，也就是兩個端子之間量到的值。' },
+  tipRLLop: { en: 'R_LL at the operating temperature: R(T) = R₂₀·(234.5 + T)/254.5.', zh: '工作溫度下的 R_LL：R(T) = R₂₀·(234.5 + T)/254.5。' },
+  tipRph:   { en: 'Phase resistance at the reference temperature: [R_coil·coils/a + R_lead] / a.', zh: '參考溫度下的相電阻：[R_coil·線圈數/a + R_引出線] / a。' },
+  tipMlt:   { en: 'Mean length of turn: the average of ℓ = 2(L′−2r₀) + 2(b′−2r₀) + 2π(r₀ + c) over every wire of one coil, each at the position it is actually packed.',
+              zh: '平均匝長：一個線圈每一根導線的 ℓ = 2(L′−2r₀) + 2(b′−2r₀) + 2π(r₀ + c) 取平均，c 用每根導線實際排到的位置。' },
+  tipLen:   { en: 'Wire length of one coil, per strand: MLT × N.', zh: '一個線圈的線長（每股）：MLT × N。' },
+  outNcoil:      { en: 'Turns per coil N', zh: '每線圈匝數 N' },
+  tipNcoil: { en: 'Turns in one coil, and how many wires (turns × strands) the MLT is averaged over.', zh: '一個線圈的匝數，以及 MLT 是用幾根導線（匝數 × 股數）平均出來的。' },
+  outToothW:     { en: 'Tooth width b', zh: '齒寬 b' },
+  tipToothWOut: { en: 'Tooth width used: from the input, or derived from the slot (wall to tooth centre line × 2, mid-wall).',
+                  zh: '計算用的齒寬：輸入值，或由槽型推算（槽壁中點到齒中心線距離 × 2）。' },
+  autoTag:       { en: 'auto', zh: '自動' },
+  outFrame:      { en: 'L′ × b′', zh: 'L′ × b′' },
+  tipFrame: { en: 'Insulated tooth: L′ = L + 2i, b′ = b + 2i, with i = liner thickness. r₀ is the side-view corner actually used.',
+              zh: '包絕緣後的齒：L′ = L + 2i、b′ = b + 2i，i = liner 厚度。r₀ 是實際採用的側視轉角。' },
+  outC:          { en: 'c (wire centres)', zh: 'c（導線中心）' },
+  tipC: { en: 'Distance c from the insulated tooth face to the wire centres — innermost to outermost wire.',
+          zh: '絕緣後齒面到導線中心的距離 c，從最內側到最外側那根。' },
+  outT:          { en: 'Coil build t', zh: '線圈厚 t' },
+  tipT: { en: 'Coil build t = outermost c + wire OD/2 — the coil thickness measured from the insulation.',
+          zh: '線圈厚 t = 最外側的 c + 導線外徑/2，從絕緣面量起的線圈厚度。' },
+  outOverhang:   { en: 'End-turn overhang i + t', zh: '端部伸出 i + t' },
+  tipOverhang: { en: 'How far the end turns stick out beyond each lamination end face: insulation i + coil build t.',
+                 zh: '端部線圈伸出疊片端面的高度：絕緣厚 i + 線圈厚 t。' },
+  outMltF:       { en: 'MLT, simple formula', zh: 'MLT 簡化公式' },
+  tipMltF: { en: 'Quick estimate 2L′ + 2b′ + π·t, and how far it is from the per-wire MLT above.',
+             zh: '簡化估算 2L′ + 2b′ + π·t，以及跟上面逐根計算的 MLT 差多少。' },
+  outRcoil:      { en: 'R_coil @ 20 °C', zh: '線圈 R_coil @ 20 °C' },
+  tipRcoil: { en: 'One coil at 20 °C: ρ·MLT·N / (A·n_s), A = π/4·d² (bare copper).', zh: '單一線圈 @ 20 °C：ρ·MLT·N / (A·n_s)，A = π/4·d²（裸銅）。' },
+  outPhaseLen:   { en: 'Wire per phase', zh: '每相線長' },
+  tipPhaseLen: { en: 'Wire per phase, per strand: MLT·N·coils + lead·a.', zh: '每相線長（每股）：MLT·N·線圈數 + 引出線·a。' },
+  msgNoToothW:   { en: 'Enter the tooth width b — it can’t be derived here (needs Q and an opening arc that follows Dsi / Dso).',
+                   zh: '請輸入齒寬 b——這裡推算不出來（需要槽數 Q，以及沿 Dsi／Dso 的槽口圓弧）。' },
+  msgBadInput:   { en: 'Stack length, ρ, coils / phase and parallel paths must all be greater than 0.',
+                   zh: '疊厚、ρ、每相線圈數與並聯路數都必須大於 0。' },
+  msgNoWires:    { en: 'No wires placed — nothing to measure.', zh: '沒有排進任何導線，沒有東西可以量。' },
+  msgPartial:    { en: 'Only {p} of {n} wires fit — MLT is the average of the wires that fit, and the resistance still uses N = {N}.',
+                   zh: '{n} 根只排得下 {p} 根——MLT 是排得下的那些的平均，電阻仍以 N = {N} 計算。' },
+  msgR0Clamp:    { en: 'r₀ is more than half of L′ or b′ — limited to {r} mm.', zh: 'r₀ 超過 L′ 或 b′ 的一半，已限制為 {r} mm。' },
+  msgCppA:       { en: 'Coils / phase ({c}) must be divisible by the parallel paths a ({a}).', zh: '每相線圈數（{c}）必須能被並聯路數 a（{a}）整除。' },
+  msgCppQ:       { en: 'With Q = {q} and {k} coil(s)/slot, a 3-phase concentrated winding usually has {e} coils per phase — you entered {c}.',
+                   zh: 'Q = {q}、每槽 {k} 個線圈時，三相集中繞每相通常是 {e} 個線圈，目前輸入 {c}。' },
+  msgToothTaper: { en: 'The tooth is not parallel: b runs {b1}–{b2} mm along the wall; the mid-wall value {b} mm is used.',
+                   zh: '齒不是平行齒：沿槽壁 b 從 {b1} 到 {b2} mm，採用槽壁中點的 {b} mm。' },
+  msgHOver:      { en: 'End turns stick out {oh} mm at the {side} (i + t) — {d} mm over the {h} mm limit.',
+                   zh: '{side}伸出 {oh} mm（i + t），超過限制 {h} mm 達 {d} mm。' },
+  msgHOk:        { en: 'End turns stick out {oh} mm at the {side}, within the {h} mm limit ({d} mm to spare).',
+                   zh: '{side}伸出 {oh} mm，在限制 {h} mm 內，餘裕 {d} mm。' },
+  sideTop:       { en: 'top', zh: '上方' },
+  sideBottom:    { en: 'bottom', zh: '下方' },
 };
 
 (function () {
@@ -239,6 +431,7 @@ var $ = function (id) { return document.getElementById(id); };
 var mtT = window.mtT || function (k) { return (MT_I18N[k] && MT_I18N[k].en) || k; };
 
 var shapeMode = 'param';
+var rotor = 'inner'; // 'inner' | 'outer'：決定槽口圓弧方向、定子中心在哪一側、欄位名稱與顯示方向
 // 使用者只編輯左半邊（由槽口y=0往槽底方向排列），右半邊永遠是左半邊依
 // Y軸（x=0）鏡射自動產生——槽型本來就是左右對稱的，編輯一半、另一半跟
 // 著動，不用使用者自己維護兩份對稱的數字。vertices 是從 halfVertices
@@ -333,8 +526,12 @@ function fmt(v, digits) {
   if (digits === undefined) digits = 2;
   return v.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
+/** 結果欄的標籤＋「?」說明鈕（點開看公式／細節，跟左側欄位同一套 popover） */
 function tip(label, key) {
-  return '<span class="formula-tip" title="' + window.mtT(key).replace(/"/g, '&quot;') + '">' + label + '</span>';
+  return '<span class="tip-label">' + label + infoButton(key) + '</span>';
+}
+function infoButton(key) {
+  return '<button type="button" class="info-btn" data-info="' + key + '" aria-label="?" aria-expanded="false">?</button>';
 }
 
 /* ── 模式切換 ── */
@@ -395,13 +592,15 @@ function renderVertexTable() {
   });
 }
 
-function updatePackModeHint() { $('packModeHint').textContent = mtT('packModeHint' + $('w_packMode').value); }
+// 排線方式的說明改由「?」popover 顯示（內容依目前選的方式），這裡只負責重畫已開著的 popover
+function updatePackModeHint() { refreshInfoPop(); }
 
 /* ── 參數化槽型（RMxprt 1–5／簡易梯形）── */
 function readRmxprtParams() {
   return {
     bs0: num('p_bs0', NaN), hs0: num('p_hs0', NaN), hs1: num('p_hs1', NaN), bs1: num('p_bs1', NaN),
     bs2: num('p_bs2', NaN), hs2: num('p_hs2', NaN), rs: num('p_rs', 0), rs0: num('p_rs0', 0), dsi: num('p_dsi', NaN),
+    outer: rotor === 'outer',
   };
 }
 var slotParamErrKey = null;
@@ -417,8 +616,8 @@ function updateSlotTypeFields() {
   document.querySelectorAll('#paramPanel [data-types]').forEach(function (row) {
     row.style.display = row.getAttribute('data-types').split(',').indexOf(type) >= 0 ? '' : 'none';
   });
-  $('slotTypeHint').textContent = mtT('slotTypeHint' + type) + (type === 'trap' ? '' : ' ' + mtT('dsiHint'));
   if (slotParamErrKey) showSlotParamError(slotParamErrKey);
+  refreshInfoPop();
 }
 
 function generateFromParametric() {
@@ -591,6 +790,73 @@ function svgPointToUser(svg, clientX, clientY) {
 var dragView = null;
 var lastView = null;
 
+/* ── 排線圖的視野：貼合槽／整個槽距，滾輪縮放、拖曳平移 ── */
+var fitMode = 'slot';                  // 'slot' | 'stator'
+var zoom = { z: 1, dx: 0, dy: 0 };     // 相對自動視野的倍率與中心位移（模型座標）
+var autoCenter = { x: 0, y: 0 };
+var ZOOM_MIN = 0.3, ZOOM_MAX = 20;
+function redrawSvg() {
+  if (!lastDraw) return;
+  renderSvg(lastDraw.innerPoly, lastDraw.pack, lastDraw.needleRect, lastDraw.clearanceRect);
+}
+function resetZoom() { zoom = { z: 1, dx: 0, dy: 0 }; }
+window.setFitMode = function (m) {
+  fitMode = m === 'stator' ? 'stator' : 'slot';
+  resetZoom();
+  $('fitSlot').classList.toggle('active', fitMode === 'slot');
+  $('fitStator').classList.toggle('active', fitMode === 'stator');
+  redrawSvg();
+};
+/** 螢幕座標 → 模型座標（真實方向的畫面是上下翻轉的） */
+function screenToModel(svg, x, y) {
+  var p = svgPointToUser(svg, x, y);
+  if (lastView && lastView.flip) p.y = -p.y;
+  return p;
+}
+function attachZoomPan(svg) {
+  svg.addEventListener('wheel', function (e) {
+    if (!lastView || dragView) return;
+    e.preventDefault();
+    var f = Math.exp(-e.deltaY * 0.0015);
+    var nz = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom.z * f));
+    f = nz / zoom.z;
+    if (Math.abs(f - 1) < 1e-9) return;
+    // 游標底下那一點固定不動
+    var p = screenToModel(svg, e.clientX, e.clientY);
+    var c = { x: lastView.vx + lastView.vw / 2, y: lastView.vy + lastView.vh / 2 };
+    zoom.z = nz;
+    zoom.dx = p.x + (c.x - p.x) / f - autoCenter.x;
+    zoom.dy = p.y + (c.y - p.y) / f - autoCenter.y;
+    redrawSvg();
+  }, { passive: false });
+  svg.addEventListener('pointerdown', function (e) {
+    if (e.button !== 0 || (e.target.closest && e.target.closest('.vertex-handle'))) return;
+    var last = { x: e.clientX, y: e.clientY }, moved = false;
+    function onMove(ev) {
+      var a = screenToModel(svg, last.x, last.y), b = screenToModel(svg, ev.clientX, ev.clientY);
+      if (!moved && Math.hypot(ev.clientX - last.x, ev.clientY - last.y) < 3) return;
+      moved = true;
+      zoom.dx -= b.x - a.x; zoom.dy -= b.y - a.y;
+      last = { x: ev.clientX, y: ev.clientY };
+      svg.classList.add('panning');
+      redrawSvg();
+    }
+    function onUp() {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+      svg.classList.remove('panning');
+    }
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+  });
+  svg.addEventListener('dblclick', function (e) {
+    if (e.target.closest && e.target.closest('.vertex-handle')) return;
+    resetZoom(); redrawSvg();
+  });
+}
+
 function attachVertexDragHandlers(svg) {
   svg.querySelectorAll('.vertex-handle').forEach(function (handle) {
     handle.style.cursor = 'grab';
@@ -637,26 +903,56 @@ function attachVertexDragHandlers(svg) {
   });
 }
 
-/** 槽口沿定子內徑時的定子幾何（模型座標：y=0 是槽口兩角、往槽底增加；
- *  定子中心在槽口上方 (0, yc)）。沒有內徑資訊（直線槽口）回傳 null。
- *  有槽數 Q 時再算一個槽距的扇形（兩側徑向線到相鄰齒中心、外側軛部圓弧）。 */
+/** 槽口沿氣隙側圓弧時的定子幾何（模型座標：y=0 是槽口兩角、往槽底增加）。
+ *  槽口圓弧 ro < 0（往槽內凹）＝內轉：定子中心在槽口上方，半徑往槽底變大；
+ *  ro > 0（往外凸）＝外轉：定子中心在槽底那一側，半徑往槽底變小。
+ *  dir：從定子中心看向這個槽是 +y（內轉）還是 −y（外轉）。沒有槽口圓弧回傳 null。
+ *  有槽數 Q 時再算一個槽距的扇形：Rgap＝氣隙側（槽口）圓，Ryoke＝軛部那一側的圓，
+ *  Rin／Rout 是兩者較小／較大的那個。 */
 function statorGeometry() {
   var F = halfVertices[0], ro = F && Number(F.ro);
-  if (!ro || ro > 0 || Math.abs(ro) <= Math.abs(F.x)) return null;
-  var Rin = Math.abs(ro), yc = F.y - Math.sqrt(Rin * Rin - F.x * F.x);
-  var g = { Rin: Rin, yc: yc, Q: 0 };
+  if (!ro || Math.abs(ro) <= Math.abs(F.x)) return null;
+  var Rgap = Math.abs(ro), dir = ro < 0 ? 1 : -1;
+  var yc = F.y - dir * Math.sqrt(Rgap * Rgap - F.x * F.x);
+  var g = { Rgap: Rgap, Rin: Rgap, Rout: Rgap, yc: yc, dir: dir, Q: 0 };
   var Q = Math.round(num('p_slots', 0));
   if (Q >= 3) {
-    var Rmax = vertices.reduce(function (m, p) { return Math.max(m, Math.hypot(p.x, p.y - yc)); }, 0);
-    var dso = num('p_dso', 0);
+    var dists = vertices.map(function (p) { return Math.hypot(p.x, p.y - yc); });
+    var Rmax = Math.max.apply(null, dists), Rmin = Math.min.apply(null, dists);
+    var dYoke = num('p_dso', 0); // 內轉：定子外徑 Dso；外轉：定子內徑 Di（同一個欄位）
     g.Q = Q;
     g.half = Math.PI / Q;
-    g.Rout = dso / 2 > Rmax ? dso / 2 : Rmax + Math.max(1.5, 0.35 * (Rmax - Rin));
+    if (dir > 0) {
+      g.Ryoke = dYoke / 2 > Rmax ? dYoke / 2 : Rmax + Math.max(1.5, 0.35 * (Rmax - Rgap));
+      g.Rin = Rgap; g.Rout = g.Ryoke;
+    } else {
+      g.Ryoke = dYoke / 2 > 0 && dYoke / 2 < Rmin ? dYoke / 2 : Math.max(0.3 * Rmin, Rmin - Math.max(1.5, 0.35 * (Rgap - Rmin)));
+      g.Rin = g.Ryoke; g.Rout = Rgap;
+    }
   }
   return g;
 }
-/** 極座標（從定子中心量，角度 0 = 槽的中心線、往槽底方向）→ 模型座標 */
-function statorPt(g, phi, rho) { return { x: rho * Math.sin(phi), y: g.yc + rho * Math.cos(phi) }; }
+/** 極座標（從定子中心量，角度 0 = 槽的中心線、從中心看向這個槽）→ 模型座標 */
+function statorPt(g, phi, rho) { return { x: rho * Math.sin(phi), y: g.yc + g.dir * rho * Math.cos(phi) }; }
+/** 模型座標 → 極座標（statorPt 的反函數） */
+function statorPolar(g, p) {
+  var dy = g.dir * (p.y - g.yc);
+  return { rho: Math.hypot(p.x, dy), phi: Math.atan2(p.x, dy) };
+}
+
+/** 齒寬 b（鐵芯，不含絕緣）由槽型推算：槽壁（左側齒面）到左邊那顆齒中心線
+ *  （角度 −π/Q 的徑向線）的距離 × 2。量在槽壁中點；兩端也量，給「不是平行
+ *  齒」的提醒用。需要槽數 Q 與沿 Dsi／Dso 的槽口圓弧，不然回傳 null。 */
+function autoToothWidth(g) {
+  if (!g || !g.Q || vertices.length < 3) return null;
+  var fr = toothFaceFrame(vertices, 'left');
+  if (!fr.mid) return null;
+  var bAt = function (p) { var q = statorPolar(g, p); return 2 * q.rho * Math.sin(q.phi + g.half); };
+  var b = bAt(fr.mid);
+  if (!(b > 0)) return null;
+  var e = fr.ends.map(bAt);
+  return { b: b, bMin: Math.min(e[0], e[1]), bMax: Math.max(e[0], e[1]) };
+}
 
 /** 鐵芯底色：有槽數就畫一個槽距的扇形；只有內徑就畫到內徑圓弧為止；
  *  都沒有就是從槽口那條線往下的矩形。 */
@@ -669,9 +965,10 @@ function laminationShape(g, bbox, vx, vy, vw, vh) {
     for (k = 0; k <= 64; k++) pts.push(statorPt(g, -g.half + 2 * g.half * k / 64, g.Rout));
     for (k = 64; k >= 0; k--) pts.push(statorPt(g, -g.half + 2 * g.half * k / 64, g.Rin));
   } else {
+    // 沒有槽數：從氣隙側的圓（槽口圓弧所在的圓）往槽底方向畫到畫面邊緣
     for (k = 0; k <= 80; k++) {
-      var x = vx + vw * k / 80, dx = Math.min(Math.abs(x), g.Rin);
-      pts.push({ x: x, y: g.yc + Math.sqrt(g.Rin * g.Rin - dx * dx) });
+      var x = vx + vw * k / 80, dx = Math.min(Math.abs(x), g.Rgap);
+      pts.push({ x: x, y: g.yc + g.dir * Math.sqrt(g.Rgap * g.Rgap - dx * dx) });
     }
     pts.push({ x: vx + vw, y: vy + vh }, { x: vx, y: vy + vh });
   }
@@ -685,17 +982,21 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
 
   var bbox = polygonBBox(vertices);
   var stator = statorGeometry();
+  // 預設視野只貼合槽本身（定子扇形當背景、超出畫面就裁掉），槽才夠大看得清楚；
+  // 「整個槽距」才把扇形整個框進來。線寬、字級一律跟槽的尺寸走，兩種視野看起來一致。
   var viewBB = bbox;
-  if (stator && stator.Q) {
-    // 扇形也要放進畫面
+  if (fitMode === 'stator' && stator && stator.Q) {
     var corners = [statorPt(stator, -stator.half, stator.Rout), statorPt(stator, stator.half, stator.Rout),
-      statorPt(stator, 0, stator.Rout), statorPt(stator, -stator.half, stator.Rin), statorPt(stator, stator.half, stator.Rin)];
+      statorPt(stator, 0, stator.Rout), statorPt(stator, -stator.half, stator.Rin), statorPt(stator, stator.half, stator.Rin),
+      statorPt(stator, 0, stator.Rin)];
     viewBB = polygonBBox(vertices.concat(corners));
   }
-  var flip = $('p_view').value === 'real';
+  // 真實方向＝槽口朝轉子：內轉子要上下翻轉（槽口朝下、定子中心在下）；外轉子的
+  // 模型座標本來就是槽口朝上、定子中心在下，不用翻
+  var flip = $('p_view').value === 'real' && rotor === 'inner';
   // 槽寬超過一個槽距（槽數填錯時常見）：扇形還是照畫，但提醒一下
   var tooWide = !!(stator && stator.Q) && vertices.some(function (p) {
-    return Math.abs(Math.atan2(p.x, p.y - stator.yc)) > stator.half + 1e-9;
+    return Math.abs(statorPolar(stator, p).phi) > stator.half + 1e-9;
   });
   $('pitchWarn').style.display = tooWide ? '' : 'none';
   if (tooWide) $('pitchWarn').textContent = mtT('pitchWarn').replace('{q}', stator.Q);
@@ -706,7 +1007,7 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
     maxDim = dragView.maxDim;
     vx = dragView.vx; vy = dragView.vy; vw = dragView.vw; vh = dragView.vh;
   } else {
-    maxDim = Math.max(w, h, 1);
+    maxDim = Math.max(bbox.maxX - bbox.minX, bbox.maxY - bbox.minY, 1);
     // 參數化模式會在圖外圍標尺寸，需要比自訂頂點模式更大的留白空間才放
     // 得下尺寸線跟文字——上方堆兩條（開口寬、上寬）、下方一條（下寬）、
     // 左右各一條（開口高、槽深）。
@@ -715,8 +1016,15 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
     var padLeft = maxDim * (shapeMode === 'param' ? 0.48 : 0.26);
     var padRight = maxDim * (shapeMode === 'param' ? 0.48 : 0.26);
     vx = viewBB.minX - padLeft; vy = viewBB.minY - padTop; vw = w + padLeft + padRight; vh = h + padTop + padBottom;
+    // 使用者縮放／平移：以自動視野為基準，倍率 z、中心再位移 (dx, dy)（模型座標）
+    autoCenter = { x: vx + vw / 2, y: vy + vh / 2 };
+    if (zoom.z !== 1 || zoom.dx || zoom.dy) {
+      var zcx = autoCenter.x + zoom.dx, zcy = autoCenter.y + zoom.dy;
+      vw /= zoom.z; vh /= zoom.z; vx = zcx - vw / 2; vy = zcy - vh / 2;
+    }
   }
   lastView = { vx: vx, vy: vy, vw: vw, vh: vh, maxDim: maxDim, flip: flip };
+  svg.classList.toggle('zoomed', zoom.z !== 1 || !!zoom.dx || !!zoom.dy);
   // 真實方向：整張圖上下翻轉（定子中心在下、槽口朝下）。幾何都在模型座標裡畫，
   // 外面包一層 scale(1,-1)；viewBox 用翻轉後的範圍，文字最後再個別翻回來。
   svg.setAttribute('viewBox', vx + ' ' + (flip ? -(vy + vh) : vy) + ' ' + vw + ' ' + vh);
@@ -810,9 +1118,9 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
         '" font-size="' + fontSize * 0.85 + '" style="text-anchor:end">' + L('Rs', P.rs) + '</text>';
     }
     if (type === '5' && P.dsi > 0) {
-      var R5 = Math.hypot(P.bs2 / 2, y2 - statorCentreY(P.dsi, P.bs0));
+      var R5 = Math.hypot(P.bs2 / 2, y2 - statorCentreY(P.dsi, P.bs0, P.outer));
       html += '<text class="dim-text" x="0" y="' + (bbox.maxY + maxDim * 0.24) + '" font-size="' + fontSize * 0.85 + '">' +
-        'Dsi=' + fmt(P.dsi, 2) + ' → R=' + fmt(R5, 3) + '</text>';
+        (P.outer ? 'Dso=' + fmt(P.dsi, 2) + ' → Ry=' : 'Dsi=' + fmt(P.dsi, 2) + ' → R=') + fmt(R5, 3) + '</text>';
     }
     html += '</g>';
   } else if (shapeMode === 'custom') {
@@ -889,7 +1197,7 @@ function renderSvg(innerPoly, pack, needleRect, clearanceRect) {
       t.setAttribute('transform', 'matrix(1 0 0 -1 0 ' + 2 * y0 + ') ' + (t.getAttribute('transform') || ''));
     });
   }
-  lastDraw = { innerPoly: innerPoly, pack: pack, needleRect: needleRect, stator: stator };
+  lastDraw = { innerPoly: innerPoly, pack: pack, needleRect: needleRect, clearanceRect: clearanceRect, stator: stator };
   if (shapeMode === 'custom') attachVertexDragHandlers(svg);
 }
 var lastDraw = null; // 給 DXF 匯出：最後一次畫出來的 liner、線材、導針通道
@@ -944,6 +1252,8 @@ function packWindow(packableArea, diameter, count, coils, needleWidth, needleCle
         placedCount: packL.placedCount + packR.placedCount,
         requestedCount: count,
         maxCapacity: packL.maxCapacity + packR.maxCapacity,
+        // 給 MLT：每個線圈邊繞在自己外側那顆齒上，c 要從那一側的齒面量
+        sides: [{ area: leftArea, side: 'left', placed: packL.placed }, { area: rightArea, side: 'right', placed: packR.placed }],
       },
       needleRect: needleRect,
       clearanceRect: clearanceRect,
@@ -952,9 +1262,12 @@ function packWindow(packableArea, diameter, count, coils, needleWidth, needleCle
   if (layered) {
     var one = withLabels(layeredWinding(packableArea, diameter, count, 'left'));
     one.paths = [one.placed]; one.layers = [one.layers];
+    one.sides = [{ area: packableArea, side: 'left', placed: one.placed }];
     return { pack: one, needleRect: null, clearanceRect: null };
   }
-  return { pack: settlePack(packableArea, diameter, count), needleRect: null, clearanceRect: null };
+  var sp = settlePack(packableArea, diameter, count);
+  sp.sides = [{ area: packableArea, side: 'left', placed: sp.placed }];
+  return { pack: sp, needleRect: null, clearanceRect: null };
 }
 
 /** 依匝數回推線徑：槽型與總線數（匝數 × 線圈數 × 股數）固定，從「面積
@@ -1034,9 +1347,171 @@ function updateFindWireVisibility() {
 }
 
 /* ── 主重算 ── */
+var packCtx = null;  // 這次排線成功時的結果與條件，給線圈電阻用；任何錯誤分支都會留 null
+var lastRes = null;  // 最近一次算出來的電阻結果（給 DCR 連結帶 MLT 過去）
 function computeAll() {
+  packCtx = null;
   computeAllInner();
-  updateFindWireVisibility(); // 不論 computeAllInner 從哪個錯誤分支提早 return 都會檢查
+  updateResistance();         // 不論 computeAllInner 從哪個錯誤分支提早 return，電阻卡片都會跟著更新／清空
+  updateFindWireVisibility(); // 同上
+  refreshInfoPop();           // 結果卡片重畫過，開著的說明跟著換到新的按鈕
+}
+
+/* ── 線圈 MLT 與電阻（計算見 resistance.js，比照 siderpan 電阻計算）── */
+function cFieldNum(id) { var v = parseFloat($(id).value); return isFinite(v) ? v : NaN; }
+function fmtTpl(key, map) {
+  var s = mtT(key);
+  Object.keys(map).forEach(function (k) { s = s.split('{' + k + '}').join(map[k]); });
+  return s;
+}
+
+function computeResistance() {
+  var msgs = [];
+  if (!packCtx) return null;
+  var P = packCtx, pack = P.pack;
+  var cs = [];
+  (pack.sides || []).forEach(function (s) {
+    if (!s.placed.length) return;
+    var fr = toothFaceFrame(s.area, s.side);
+    s.placed.forEach(function (w) { cs.push(w.x * fr.n.x + w.y * fr.n.y - fr.s0); });
+  });
+  if (!cs.length) return { error: 'msgNoWires' };
+
+  var L = cFieldNum('c_stack'), r0 = Math.max(0, cFieldNum('c_r0') || 0);
+  var cpp = Math.round(cFieldNum('c_cpp')), a = Math.round(cFieldNum('c_paths'));
+  var lead = Math.max(0, cFieldNum('c_lead') || 0), rho = cFieldNum('c_rho');
+  var tref = cFieldNum('c_tref'), top = cFieldNum('c_top');
+  if (!isFinite(tref)) tref = 20;
+  if (!isFinite(top)) top = tref;
+  if (!(L > 0) || !(rho > 0) || !(cpp >= 1) || !(a >= 1)) return { error: 'msgBadInput' };
+
+  var stator = statorGeometry();
+  var autoB = autoToothWidth(stator);
+  var bIn = cFieldNum('c_toothW'), b, bAuto = false;
+  if (bIn > 0) b = bIn;
+  else if (autoB) { b = autoB.b; bAuto = true; }
+  else return { error: 'msgNoToothW', autoB: null };
+
+  var i = P.linerThk;
+  var m = coilMlt(cs, { L: L, b: b, i: i, r0: r0 });
+  // 每個線圈的匝數：每槽 2 個線圈時每個線圈邊 N＝匝數；每槽 1 個時整個繞線窗 N＝匝數
+  var Ncoil = P.count / (Math.min(Math.max(1, P.coils), 2) * P.strands);
+  var w = windingResistance({ mlt: m.mlt, N: Ncoil, ns: P.strands, d: P.bareDia, rho: rho, cpp: cpp, a: a,
+                              lead: lead, conn: $('c_conn').value });
+  var rw = P.diameter / 2, t = m.cMax + rw;
+  var kRef = copperTempFactor(tref), kTop = copperTempFactor(top);
+
+  if (pack.placedCount < P.count) msgs.push(['warn', fmtTpl('msgPartial', { p: pack.placedCount, n: P.count, N: fmtSmart(Ncoil) })]);
+  if (m.r0Clamped) msgs.push(['', fmtTpl('msgR0Clamp', { r: fmt(m.r0, 3) })]);
+  if (bAuto && autoB.bMax - autoB.bMin > 0.02 * autoB.b) {
+    msgs.push(['', fmtTpl('msgToothTaper', { b1: fmt(autoB.bMin, 2), b2: fmt(autoB.bMax, 2), b: fmt(autoB.b, 2) })]);
+  }
+  if (cpp % a !== 0) msgs.push(['warn', fmtTpl('msgCppA', { c: cpp, a: a })]);
+  var Q = Math.round(num('p_slots', 0)), k = Math.min(Math.max(1, Math.round(P.coils)), 2);
+  if (Q >= 3) {
+    var expect = Q * k / 6;
+    if (Math.abs(expect - cpp) > 1e-9) msgs.push(['', fmtTpl('msgCppQ', { q: Q, k: k, e: fmtSmart(expect), c: cpp })]);
+  }
+  var oh = i + t;
+  [['c_hup', 'sideTop'], ['c_hdn', 'sideBottom']].forEach(function (h) {
+    var H = cFieldNum(h[0]);
+    if (!(H > 0)) return;
+    var map = { oh: fmt(oh, 2), h: fmt(H, 2), side: mtT(h[1]), d: fmt(Math.abs(H - oh), 2) };
+    msgs.push(oh > H + 1e-9 ? ['warn', fmtTpl('msgHOver', map)] : ['ok', fmtTpl('msgHOk', map)]);
+  });
+
+  var mltF = 2 * m.Lp + 2 * m.bp + Math.PI * t;
+  return {
+    m: m, w: w, b: b, bAuto: bAuto, i: i, t: t, oh: oh, Ncoil: Ncoil, wires: cs.length, strands: P.strands,
+    tref: tref, top: top, kRef: kRef, kTop: kTop, mltF: mltF, msgs: msgs, rw: rw, L: L,
+  };
+}
+
+function fmtSmart(v) { return Math.abs(v - Math.round(v)) < 1e-9 ? String(Math.round(v)) : fmt(v, 2); }
+function fmtOhm(v) { return !isFinite(v) ? '—' : v >= 100 ? fmt(v, 1) : v >= 10 ? fmt(v, 2) : v >= 1 ? fmt(v, 3) : fmt(v, 4); }
+
+function updateResistance() {
+  var R = computeResistance();
+  lastRes = R && !R.error ? R : null;
+  // 齒寬留空時，欄位裡用 placeholder 顯示目前自動推算的值
+  var autoB = autoToothWidth(statorGeometry());
+  $('c_toothW').placeholder = autoB ? mtT('autoTag') + ' ' + fmt(autoB.b, 3) : '—';
+
+  var kpis = $('resKpis'), out = $('resOut'), msgsEl = $('resMsgs');
+  if (!R || R.error) {
+    kpis.innerHTML = '';
+    out.innerHTML = R ? '<span class="bad">' + mtT(R.error) + '</span>' : '—';
+    msgsEl.innerHTML = '';
+    renderSideView(null);
+    return;
+  }
+  var m = R.m, w = R.w;
+  var kpi = function (labelKey, tipKey, val, unit, cls) {
+    return '<div class="kpi' + (cls ? ' ' + cls : '') + '"><div class="kpi-l">' + tip(mtT(labelKey), tipKey) + '</div>' +
+      '<div class="kpi-v">' + val + '<span class="ru">' + unit + '</span></div></div>';
+  };
+  var connTxt = $('c_conn').value === 'D' ? 'Δ' : 'Y';
+  kpis.innerHTML =
+    kpi('kRLL', 'tipRLL', fmtOhm(w.RLL20 * R.kRef), 'Ω @ ' + fmtSmart(R.tref) + ' °C · ' + connTxt, 'main') +
+    kpi('kRLLop', 'tipRLLop', fmtOhm(w.RLL20 * R.kTop), 'Ω @ ' + fmtSmart(R.top) + ' °C') +
+    kpi('kRph', 'tipRph', fmtOhm(w.Rph20 * R.kRef), 'Ω @ ' + fmtSmart(R.tref) + ' °C') +
+    kpi('kMlt', 'tipMlt', fmt(m.mlt, 2), 'mm') +
+    kpi('kLen', 'tipLen', fmt(w.strand / 1000, 3), 'm');
+
+  var dev = (R.mltF - m.mlt) / m.mlt * 100;
+  var line = function (labelKey, tipKey, val) { return tip(mtT(labelKey), tipKey) + ': ' + val + '<br>'; };
+  var rv = function (v, unit) { return '<span class="rv">' + v + '</span>' + (unit ? '<span class="ru">' + unit + '</span>' : ''); };
+  out.innerHTML =
+    line('outNcoil', 'tipNcoil', rv(fmtSmart(R.Ncoil)) + ' <span class="sub-note">(' + R.wires + ' × ℓ)</span>') +
+    line('outToothW', 'tipToothWOut', rv(fmt(R.b, 3), 'mm') + (R.bAuto ? ' <span class="sub-note">(' + mtT('autoTag') + ')</span>' : '')) +
+    line('outFrame', 'tipFrame', rv(fmt(m.Lp, 2) + ' × ' + fmt(m.bp, 2), 'mm') + ' <span class="sub-note">r₀ = ' + fmt(m.r0, 2) + '</span>') +
+    line('outC', 'tipC', rv(fmt(m.cMin, 3) + ' – ' + fmt(m.cMax, 3), 'mm')) +
+    line('outT', 'tipT', rv(fmt(R.t, 3), 'mm')) +
+    line('outOverhang', 'tipOverhang', rv(fmt(R.oh, 3), 'mm')) +
+    line('outMltF', 'tipMltF', rv(fmt(R.mltF, 2), 'mm') + ' <span class="sub-note">(' + (dev >= 0 ? '+' : '') + fmt(dev, 1) + ' %)</span>') +
+    line('outRcoil', 'tipRcoil', rv(fmtOhm(w.Rcoil), 'Ω')) +
+    tip(mtT('outPhaseLen'), 'tipPhaseLen') + ': ' + rv(fmt(w.phaseLen, 2), 'm');
+  msgsEl.innerHTML = R.msgs.map(function (mm) { return '<li class="' + mm[0] + '">' + mm[1] + '</li>'; }).join('');
+  renderSideView(R);
+}
+
+/* ── 側視圖：從徑向看一顆齒＋一個線圈。橫向＝疊厚方向（L），縱向＝齒寬方向（b）。
+   每一匝是一個圓角矩形，離絕緣面 c 的那一匝：寬 L′+2c、高 b′+2c、圓角 r₀+c。 */
+function rrectPath(cx, cy, w, h, r) {
+  r = Math.max(0, Math.min(r, w / 2, h / 2));
+  var x = cx - w / 2, y = cy - h / 2;
+  if (r <= 0) return 'M' + x + ' ' + y + 'h' + w + 'v' + h + 'h' + (-w) + 'Z';
+  return 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r +
+    'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) +
+    'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'Z';
+}
+function renderSideView(R) {
+  var svg = $('sideSvg');
+  if (!R) { svg.innerHTML = ''; return; }
+  var m = R.m, cOut = m.cMax + R.rw, cIn = Math.max(0, m.cMin - R.rw);
+  var W = m.Lp + 2 * cOut, H = m.bp + 2 * cOut, big = Math.max(W, H);
+  var fs = big * 0.055, padX = big * 0.08, padTop = fs * 2.6, padBot = fs * 3.2;
+  svg.setAttribute('viewBox', (-W / 2 - padX) + ' ' + (-H / 2 - padTop) + ' ' + (W + 2 * padX) + ' ' + (H + padTop + padBot));
+  var sw = big * 0.006;
+  var html =
+    '<path class="side-coil" d="' + rrectPath(0, 0, W, H, m.r0 + cOut) + '"></path>' +
+    '<path class="side-gap" d="' + rrectPath(0, 0, m.Lp + 2 * cIn, m.bp + 2 * cIn, m.r0 + cIn) + '"></path>' +
+    '<path class="side-ins" d="' + rrectPath(0, 0, m.Lp, m.bp, m.r0) + '" style="stroke-width:' + sw + '"></path>' +
+    '<path class="side-tooth" d="' + rrectPath(0, 0, R.L, R.b, Math.max(0, m.r0 - R.i)) + '" style="stroke-width:' + sw + '"></path>' +
+    '<path class="side-mean" d="' + rrectPath(0, 0, m.Lp + 2 * m.cMean, m.bp + 2 * m.cMean, m.r0 + m.cMean) +
+      '" style="stroke-width:' + (sw * 2) + ';stroke-dasharray:' + (sw * 8) + ' ' + (sw * 5) + '"></path>';
+  // 尺寸：上方 L′，齒中間 b′，下方 MLT
+  var yDim = -H / 2 - fs * 1.2;
+  html += '<g class="side-dim" style="stroke-width:' + sw + '">' +
+    '<line x1="' + (-m.Lp / 2) + '" y1="' + yDim + '" x2="' + (m.Lp / 2) + '" y2="' + yDim + '"></line>' +
+    '<line x1="' + (-m.Lp / 2) + '" y1="' + (yDim - fs * 0.35) + '" x2="' + (-m.Lp / 2) + '" y2="' + (yDim + fs * 0.35) + '"></line>' +
+    '<line x1="' + (m.Lp / 2) + '" y1="' + (yDim - fs * 0.35) + '" x2="' + (m.Lp / 2) + '" y2="' + (yDim + fs * 0.35) + '"></line>' +
+    '</g>' +
+    '<text class="side-text" x="0" y="' + (yDim - fs * 0.6) + '" font-size="' + fs + '">L′ = ' + fmt(m.Lp, 2) + '</text>' +
+    '<text class="side-text" x="0" y="0" font-size="' + fs + '">b′ = ' + fmt(m.bp, 2) + '</text>' +
+    '<text class="side-text" x="0" y="' + (H / 2 + fs * 1.6) + '" font-size="' + fs + '">MLT = ' + fmt(m.mlt, 2) +
+      ' mm · t = ' + fmt(R.t, 2) + ' mm</text>';
+  svg.innerHTML = html;
 }
 function computeAllInner() {
   lastPackable = null;
@@ -1117,6 +1592,8 @@ function computeAllInner() {
   var packed = packWindow(packableArea, diameter, count, coils, needleWidth, needleClearance, true, packMode, strands);
   var pack = packed.pack, needleRect = packed.needleRect;
   window.mtSlotLastPack = pack; // 給自動測試讀目前的排線結果（含層號、順序）
+  packCtx = { pack: pack, count: count, coils: coils, strands: Math.max(1, Math.round(strands)), diameter: diameter,
+              bareDia: bareDia, linerThk: Math.max(0, linerThk) };
   renderSvg(innerPoly, pack, needleRect, packed.clearanceRect);
 
   lastPackable = {
@@ -1179,6 +1656,8 @@ var PARAM_IDS = ['p_slotType', 'p_bs0', 'p_hs0', 'p_hs1', 'p_bs1', 'p_bs2', 'p_h
                  'p_openWidth', 'p_openHeight', 'p_topWidth', 'p_bottomWidth', 'p_depth'];
 var WIRE_IDS = ['w_packMode', 'w_searchFix', 'w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_needleWidth', 'w_needleClearance',
                 'w_linerThickness', 'w_windStartY'];
+var COIL_IDS = ['c_stack', 'c_toothW', 'c_r0', 'c_cpp', 'c_paths', 'c_lead', 'c_conn', 'c_rho', 'c_tref', 'c_top', 'c_hup', 'c_hdn'];
+var ALL_IDS = PARAM_IDS.concat(WIRE_IDS, COIL_IDS);
 var fileStatus = null; // { key, name } — 切換語言時重畫狀態訊息
 
 function showFileStatus(key, name) {
@@ -1191,11 +1670,12 @@ function showFileStatus(key, name) {
 
 window.saveSlotFile = function () {
   var inputs = {};
-  PARAM_IDS.concat(WIRE_IDS).forEach(function (id) { inputs[id] = $(id).value; });
+  ALL_IDS.forEach(function (id) { inputs[id] = $(id).value; });
   var data = {
     kind: FILE_KIND,
-    version: 4,
+    version: 5,
     savedAt: new Date().toISOString(),
+    rotor: rotor,
     shapeMode: shapeMode,
     halfVertices: copyHalf(halfVertices),
     inputs: inputs,
@@ -1249,8 +1729,10 @@ function slotRingWithArcs() {
 }
 
 function buildSlotDxf() {
-  var g = lastDraw && lastDraw.stator, oy = g ? g.yc : 0;
-  var X = function (x) { return x.toFixed(6); }, Y = function (y) { return (y - oy).toFixed(6); };
+  // 槽一律朝 +Y（從定子中心往外看這個槽）：內轉 Y = y − yc；外轉的槽在中心的 −y 側，
+  // 上下鏡射成 Y = yc − y。鏡射會反轉繞行方向，所以圓弧 bulge 也要乘上 dir。
+  var g = lastDraw && lastDraw.stator, oy = g ? g.yc : 0, dir = g ? g.dir : 1;
+  var X = function (x) { return x.toFixed(6); }, Y = function (y) { return (dir * (y - oy)).toFixed(6); };
   var out = [];
   var e = function () { for (var i = 0; i < arguments.length; i++) out.push(String(arguments[i])); };
   var polyline = function (layer, pts, closed, bulges) {
@@ -1286,7 +1768,7 @@ function buildSlotDxf() {
     var bulgeDir = r > 0 ? { x: -inward.x, y: -inward.y } : inward;
     var theta = 2 * Math.asin(Math.min(1, c / (2 * Math.abs(r))));
     var right = bulgeDir.x * dy - bulgeDir.y * dx > 0; // 凸向弦的右側＝逆時針
-    return (right ? 1 : -1) * Math.tan(theta / 4);
+    return dir * (right ? 1 : -1) * Math.tan(theta / 4);
   });
   polyline('SLOT', ring.pts, true, bulges);
 
@@ -1301,12 +1783,12 @@ function buildSlotDxf() {
   });
 
   if (g && g.Q) {
-    // 一個槽距的定子：外側軛部圓弧、兩側到相鄰齒中心的徑向線、內徑圓弧（扣掉槽口）
+    // 一個槽距的定子：軛部那一側的完整圓弧、兩側到相鄰齒中心的徑向線、氣隙側圓弧（扣掉槽口）
     var deg = 180 / Math.PI, h = g.half * deg, F = halfVertices[0];
-    var thR = Math.atan2(F.y - g.yc, Math.abs(F.x)) * deg;
-    arc('STATOR', g.Rout, 90 - h, 90 + h);
-    arc('STATOR', g.Rin, 90 - h, thR);
-    arc('STATOR', g.Rin, 180 - thR, 90 + h);
+    var thR = Math.atan2(dir * (F.y - g.yc), Math.abs(F.x)) * deg;
+    arc('STATOR', g.Ryoke, 90 - h, 90 + h);
+    arc('STATOR', g.Rgap, 90 - h, thR);
+    arc('STATOR', g.Rgap, 180 - thR, 90 + h);
     line('STATOR', statorPt(g, -g.half, g.Rin), statorPt(g, -g.half, g.Rout));
     line('STATOR', statorPt(g, g.half, g.Rin), statorPt(g, g.half, g.Rout));
   }
@@ -1336,8 +1818,15 @@ function applySlotFile(data) {
   })) return false;
   hv.forEach(function (v) { if (!v.r) delete v.r; if (!v.ro) delete v.ro; });
   var inputs = data.inputs || {};
+  // 第 5 版以前沒有內轉／外轉：當時只有內轉。檔案的型式直接取代目前這一組，不另外存
+  var fileRotor = data.rotor === 'outer' ? 'outer' : 'inner';
+  if (fileRotor !== rotor) {
+    rotor = fileRotor;
+    vertexHistory = [];
+    applyRotorUi();
+  }
   pushVertexHistory();
-  PARAM_IDS.concat(WIRE_IDS).forEach(function (id) {
+  ALL_IDS.forEach(function (id) {
     if (inputs[id] !== undefined && inputs[id] !== null) $(id).value = String(inputs[id]);
   });
   // 舊檔沒有排線方式：當時只有沉降模擬
@@ -1381,6 +1870,11 @@ window.openInDcrCalculator = function () {
   params.set('bareDia', num('w_bareDia', 0.7));
   params.set('enamel', num('w_enamel', 0.025));
   if (lastWindingArea > 0) params.set('slotArea', lastWindingArea.toFixed(4));
+  // 這裡由實際排線算出來的 MLT 與疊厚一起帶過去，DCR 就不用靠「疊厚 × 係數」估 MLT
+  if (lastRes) {
+    params.set('mlt', lastRes.m.mlt.toFixed(3));
+    params.set('stack', lastRes.L);
+  }
   window.open('../dcr-calculator/index.html?' + params.toString(), '_blank');
 };
 /** 從 DCR Calculator 帶過來的參數：有帶到的欄位覆蓋掉預設值，其餘（槽
@@ -1393,6 +1887,184 @@ function applyIncomingParams() {
     if (p.has(k)) { var v = parseFloat(p.get(k)); if (isFinite(v)) $(keys[k]).value = v; }
   });
 }
+
+/* ── 內轉／外轉切換 ──
+ * 兩種各自保留一整組輸入值與頂點（跟 siderpan 電阻計算一樣），切回來還原。
+ * 外轉子的預設值照 siderpan 的外轉子預設範例換算成這裡的槽型參數：齒寬 4、
+ * 疊厚 15、可繞線長度 6、軛部 R_y 16、12 槽、Dso 47、Di 26、槽口 2，
+ * 線徑 0.35／外徑 0.395、60 匝、絕緣 0.3、r₀ 0.5。槽型 5 的同心槽底就是 R_y。 */
+var OUTER_DEFAULTS = {
+  p_slotType: '5', p_bs0: '2', p_hs0: '0.519', p_hs1: '0.77', p_bs1: '7.75', p_bs2: '4.354', p_hs2: '6.338',
+  p_rs0: '0', p_rs: '0.5', p_dsi: '47', p_slots: '12', p_dso: '26', p_view: 'real',
+  p_openWidth: '2', p_openHeight: '0.8', p_topWidth: '7.5', p_bottomWidth: '4.4', p_depth: '7.6',
+  w_packMode: 'layer', w_searchFix: 'wire', w_bareDia: '0.35', w_enamel: '0.0225', w_turns: '60', w_coils: '2', w_strands: '1',
+  w_needleWidth: '0', w_needleClearance: '0', w_linerThickness: '0.3',
+  c_stack: '15', c_toothW: '', c_r0: '0.5', c_cpp: '4', c_paths: '1', c_lead: '40', c_conn: 'Y', c_rho: '0.017241',
+  c_tref: '20', c_top: '110', c_hup: '', c_hdn: '',
+};
+var rotorState = { inner: null, outer: { vals: OUTER_DEFAULTS, half: null, shapeMode: 'param' } };
+
+function snapshotInputs() {
+  var o = {};
+  ALL_IDS.forEach(function (id) { o[id] = $(id).value; });
+  return o;
+}
+/** 只更新畫面上跟型式有關的部分（分頁、欄位名稱、顯示方向那一列），不動數值 */
+function applyRotorUi() {
+  var outer = rotor === 'outer';
+  $('tabInner').classList.toggle('active', !outer);
+  $('tabOuter').classList.toggle('active', outer);
+  $('lblDsi').setAttribute('data-i18n', outer ? 'statorDsiOuter' : 'statorDsi');
+  $('lblDso').setAttribute('data-i18n', outer ? 'statorDiOuter' : 'statorDso');
+  $('lblDsi').textContent = mtT($('lblDsi').getAttribute('data-i18n'));
+  $('lblDso').textContent = mtT($('lblDso').getAttribute('data-i18n'));
+  $('viewRow').style.display = outer ? 'none' : ''; // 外轉子的真實方向本來就是槽口朝上
+  injectInfoButtons();
+  refreshInfoPop();
+}
+window.switchRotor = function (r) {
+  if (r !== 'outer') r = 'inner';
+  if (r === rotor) return;
+  rotorState[rotor] = { vals: snapshotInputs(), half: copyHalf(halfVertices), shapeMode: shapeMode };
+  rotor = r;
+  resetZoom();
+  vertexHistory = []; // 復原只在同一種型式裡有意義
+  $('btnUndoVertex').disabled = true;
+  applyRotorUi();
+  var st = rotorState[r];
+  ALL_IDS.forEach(function (id) { if (st.vals[id] !== undefined) $(id).value = st.vals[id]; });
+  updateSlotTypeFields();
+  updatePackModeHint();
+  showSlotParamError(null);
+  showFileStatus(null);
+  if (st.half && st.half.length >= 2) {
+    halfVertices = copyHalf(st.half);
+    syncVerticesFromHalf();
+    renderVertexTable();
+    switchShapeMode(st.shapeMode === 'custom' ? 'custom' : 'param'); // 會順便 computeAll()
+  } else {
+    shapeMode = 'param';
+    $('tabParam').classList.add('active'); $('tabCustom').classList.remove('active');
+    $('paramPanel').style.display = ''; $('customPanel').style.display = 'none';
+    generateFromParametric();
+    vertexHistory = []; // generate 會存一次快照（另一種型式的頂點），不能留著讓復原跳回去
+    $('btnUndoVertex').disabled = true;
+  }
+  try { history.replaceState(null, '', r === 'outer' ? '#outer' : '#inner'); } catch (e) { /* file:// 等環境可能不允許 */ }
+  if (typeof gaTrack === 'function') gaTrack('slotpack_rotor', r);
+};
+
+/* ── 「?」說明 popover ──
+ * 每個欄位列、區塊標題（data-info="key"）與結果標籤旁邊都有一顆「?」，點開
+ * 顯示標題＋說明（＋公式）。內容依目前的槽型／排線方式／內外轉而變的，用
+ * INFO_DYNAMIC 即時組。語言切換時 shell 會重寫標籤文字（按鈕跟著被清掉），
+ * 所以 injectInfoButtons() 在每次 mt-lang-change 之後再補一次。 */
+var INFO_DYNAMIC = {
+  iShape: function () { return mtT(shapeMode === 'param' ? 'paramHint' : 'customHint'); },
+  iSlotType: function () {
+    var t = $('p_slotType').value;
+    return mtT('slotTypeHint' + t) + (t === 'trap' ? '' : '\n\n' + mtT(rotor === 'outer' ? 'dsiHintOuter' : 'dsiHint'));
+  },
+  iDsi: function () { return mtT(rotor === 'outer' ? 'iDsiOuter' : 'iDsiInner'); },
+  iDso: function () { return mtT(rotor === 'outer' ? 'iDsoOuter' : 'iDsoInner'); },
+  iVertices: function () { return mtT('vertexHint') + '\n\n' + mtT('arcHint') + '\n\n' + mtT('customHint'); },
+  iPackMode: function () { return mtT('packModeHint' + $('w_packMode').value); },
+};
+var infoOpen = null; // { key, btn }
+
+function injectInfoButtons() {
+  document.querySelectorAll('[data-info]').forEach(function (host) {
+    if (host.classList.contains('info-btn')) return;
+    var label = host.classList.contains('section-title') ? host : host.querySelector('.param-label');
+    if (!label || label.querySelector('.info-btn')) return;
+    attachInfoButton(label, host.getAttribute('data-info'));
+  });
+}
+/** 標籤最後一個字跟「?」包進同一個不換行的 span：長標籤換行時「?」跟著最後一個字，
+ *  不會自己掉到下一行（中文標籤沒有空格，整段都會包進去，一樣不會斷開）。 */
+function attachInfoButton(label, key) {
+  var walker = document.createTreeWalker(label, NodeFilter.SHOW_TEXT), n, last = null;
+  while ((n = walker.nextNode())) if (n.nodeValue.trim()) last = n;
+  var glue = document.createElement('span');
+  glue.className = 'info-glue';
+  if (last) {
+    var txt = last.nodeValue.replace(/\s+$/, ''), k = txt.search(/\S+$/);
+    glue.textContent = txt.slice(k);
+    last.nodeValue = txt.slice(0, k);
+    last.parentNode.insertBefore(glue, last.nextSibling);
+  } else {
+    label.appendChild(glue);
+  }
+  glue.insertAdjacentHTML('beforeend', infoButton(key));
+}
+function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function infoTitleOf(btn) {
+  var host = btn.closest('.param-label, .section-title, .tip-label') || btn.parentNode;
+  var c = host.cloneNode(true);
+  c.querySelectorAll('.info-btn').forEach(function (x) { x.remove(); });
+  return c.textContent.trim();
+}
+function fillInfoPop() {
+  var key = infoOpen.key, btn = infoOpen.btn;
+  var body = INFO_DYNAMIC[key] ? INFO_DYNAMIC[key]() : mtT(key);
+  var html = '<div class="info-title">' + escHtml(infoTitleOf(btn)) + '</div>' +
+    escHtml(body).split(/\n\n/).map(function (p) { return '<p>' + p.replace(/\n/g, '<br>') + '</p>'; }).join('');
+  if (MT_I18N[key + 'F']) html += '<pre class="info-formula">' + escHtml(mtT(key + 'F')) + '</pre>';
+  $('infoPopBody').innerHTML = html;
+  $('infoPop').querySelector('.info-x').setAttribute('aria-label', mtT('infoClose'));
+}
+function placeInfoPop() {
+  var pop = $('infoPop'), r = infoOpen.btn.getBoundingClientRect();
+  pop.style.left = '0px'; pop.style.top = '0px';
+  var w = pop.offsetWidth, h = pop.offsetHeight;
+  var left = Math.min(Math.max(8, r.left - 14), window.innerWidth - w - 8);
+  var top = r.bottom + 8;
+  if (top + h > window.innerHeight - 8 && r.top - h - 8 > 8) top = r.top - h - 8;
+  pop.style.left = left + 'px';
+  pop.style.top = Math.max(8, top) + 'px';
+}
+function openInfo(btn) {
+  if (infoOpen) infoOpen.btn.setAttribute('aria-expanded', 'false');
+  infoOpen = { key: btn.getAttribute('data-info'), btn: btn };
+  btn.setAttribute('aria-expanded', 'true');
+  $('infoPop').hidden = false;
+  fillInfoPop();
+  placeInfoPop();
+  if (typeof gaTrack === 'function') gaTrack('slotpack_info', infoOpen.key);
+}
+function closeInfo() {
+  if (!infoOpen) return;
+  infoOpen.btn.setAttribute('aria-expanded', 'false');
+  $('infoPop').hidden = true;
+  infoOpen = null;
+}
+/** 內容跟著目前狀態（語言、槽型、重畫過的結果卡片）更新；按鈕被重畫掉就找同一個 key 的新按鈕 */
+function refreshInfoPop() {
+  if (!infoOpen || !$('infoPop')) return;
+  if (!document.body.contains(infoOpen.btn)) {
+    var nb = document.querySelector('.info-btn[data-info="' + infoOpen.key + '"]');
+    if (!nb || !nb.offsetParent) { closeInfo(); return; }
+    infoOpen.btn = nb;
+    nb.setAttribute('aria-expanded', 'true');
+  }
+  fillInfoPop();
+}
+document.addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('.info-btn');
+  if (b) {
+    e.preventDefault();
+    if (infoOpen && infoOpen.btn === b) closeInfo(); else openInfo(b);
+    return;
+  }
+  if (infoOpen && (e.target.closest('.info-x') || !$('infoPop').contains(e.target))) closeInfo();
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && infoOpen) { var b = infoOpen.btn; closeInfo(); if (document.body.contains(b)) b.focus(); }
+});
+document.addEventListener('scroll', function (e) {
+  if (infoOpen && !$('infoPop').contains(e.target)) closeInfo();
+}, true);
+window.addEventListener('resize', closeInfo);
 
 document.addEventListener('DOMContentLoaded', function () {
   $('btnGenerate').addEventListener('click', generateFromParametric);
@@ -1429,17 +2101,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
   ['w_bareDia', 'w_enamel', 'w_turns', 'w_coils', 'w_strands', 'w_linerThickness', 'w_needleWidth', 'w_needleClearance', 'w_windStartY']
     .forEach(function (id) { $(id).addEventListener('input', computeAll); });
+  // 線圈與電阻：只影響電阻卡片，不必重排線
+  COIL_IDS.forEach(function (id) {
+    $(id).addEventListener($(id).tagName === 'SELECT' ? 'change' : 'input', function () { updateResistance(); refreshInfoPop(); });
+  });
 
+  document.addEventListener('mt-lang-change', injectInfoButtons);
   document.addEventListener('mt-lang-change', computeAll);
   document.addEventListener('mt-lang-change', function () {
     if (fileStatus) showFileStatus(fileStatus.key, fileStatus.name);
   });
   document.addEventListener('mt-theme-change', function () { computeAll(); });
 
+  injectInfoButtons();
+  attachZoomPan($('packingSvg'));
+  // 網址 #outer 直接開外轉子：內轉子的 HTML 預設值先存起來，切回去才還原得到
+  if (/^#outer$/i.test(window.location.hash)) {
+    rotorState.inner = { vals: snapshotInputs(), half: null, shapeMode: 'param' };
+    rotor = 'outer';
+    ALL_IDS.forEach(function (id) { if (OUTER_DEFAULTS[id] !== undefined) $(id).value = OUTER_DEFAULTS[id]; });
+    applyRotorUi();
+  }
   applyIncomingParams();
   updatePackModeHint();
   updateSlotTypeFields();
-  generateFromParametric(); // 進頁面先用預設梯形參數產生一組起始外形，不留空白畫面
+  generateFromParametric(); // 進頁面先用預設參數產生一組起始外形，不留空白畫面
 });
 
 })();
