@@ -223,7 +223,9 @@ function openInSlotPacking() {
  *  數這一整組），其餘沒帶到的欄位維持原本預設值不動。 */
 function applyIncomingParams() {
   var p = new URLSearchParams(window.location.search);
-  var keys = { turns: 'f_Nslot', coils: 'f_coilsSlot', strands: 'f_strands', bareDia: 'f_dbare', enamel: 'f_enamel', slotArea: 'f_slotArea' };
+  // mlt／stack：Slot Packing Viewer 由實際排線算出的平均匝長與疊厚，帶了就不必用「疊厚 × 係數」估 MLT
+  var keys = { turns: 'f_Nslot', coils: 'f_coilsSlot', strands: 'f_strands', bareDia: 'f_dbare', enamel: 'f_enamel', slotArea: 'f_slotArea',
+               mlt: 'f_mlt', stack: 'f_stack' };
   var any = false;
   Object.keys(keys).forEach(function (k) {
     if (p.has(k)) { var v = parseFloat(p.get(k)); if (isFinite(v)) { $(keys[k]).value = v; any = true; } }

@@ -685,23 +685,29 @@ function expandHalfWithArcs(half) {
 /** p = { bs0, hs0, hs1, bs1, bs2, hs2, rs, dsi }；回傳 { half, y1, y2, yBottom } 或 { error }。
  *  half 是左半邊的定義點，圓弧用 r 表示（見 expandHalfWithArcs）。
  *  y1 = 槽身開始（Bs1 那條線），y2 = Bs2 那條線，yBottom = 槽最深處。 */
-/** 定子中心的 y（槽口上方，負值）：內徑圓（直徑 dsi）通過槽口兩角 (±openW/2, 0) */
-function statorCentreY(dsi, openW) {
+/** 定子中心的 y：氣隙側的圓（直徑 dsi）通過槽口兩角 (±openW/2, 0)。
+ *  內轉：中心在槽口上方（負值）；外轉（outer）：中心在槽底那一側（正值）。 */
+function statorCentreY(dsi, openW, outer) {
   const R = dsi / 2;
-  return -Math.sqrt(Math.max(0, R * R - openW * openW / 4));
+  const d = Math.sqrt(Math.max(0, R * R - openW * openW / 4));
+  return outer ? d : -d;
 }
 
+/** p.outer：外轉子。p.dsi 一律是「氣隙側直徑」——內轉是定子內徑 Dsi，外轉是
+ *  定子外徑 Dso（極靴外緣）。外轉子的槽由槽口往軛部收窄（平行齒），槽口
+ *  圓弧往槽外凸，同心槽底（槽型 5）往槽內凸。 */
 function rmxprtSlotHalf(type, p) {
   const t = String(type);
   const need = ['hs0', 'hs1', 'bs1', 'bs2', 'hs2'].concat(t === '2' ? [] : ['bs0']);
   for (const k of need) if (!(p[k] >= 0) || !isFinite(p[k])) return { error: 'errSlotParams' };
   if (!(p.bs1 > 0) || !(p.bs2 > 0) || !(p.hs2 > 0)) return { error: 'errSlotParams' };
   if (t !== '2' && !(p.bs0 > 0)) return { error: 'errSlotParams' };
-  // 定子槽由槽口往槽底展開（平行齒）：除了開口槽 2，槽壁不可畫成等寬或往下收窄
-  if (t !== '2' && !(p.bs2 > p.bs1)) return { error: 'errSlotWiden' };
+  // 平行齒：內轉的槽由槽口往槽底展開，外轉的槽往槽底（軛部）收窄。開口槽 2 不檢查
+  if (t !== '2' && !p.outer && !(p.bs2 > p.bs1)) return { error: 'errSlotWiden' };
+  if (t !== '2' && p.outer && !(p.bs2 < p.bs1)) return { error: 'errSlotNarrow' };
   const g = rmxprtSlotHalfRaw(t, p);
-  // 有 Dsi：槽口沿定子內徑的圓弧（跟氣隙同心，往槽內凹）
-  if (g.half && p.dsi > 0) g.half[0].ro = -p.dsi / 2;
+  // 有氣隙側直徑：槽口沿那個圓畫成圓弧（內轉往槽內凹＝負，外轉往槽外凸＝正）
+  if (g.half && p.dsi > 0) g.half[0].ro = (p.outer ? 1 : -1) * p.dsi / 2;
   return g;
 }
 
@@ -741,8 +747,14 @@ function rmxprtSlotHalfRaw(t, p) {
     // 與定子同心的圓弧槽底：圓心在定子中心，通過 Bs2 兩端。定子中心的位置跟
     // 槽口圓弧用同一個定義（內徑圓通過槽口兩角，見 statorCentreY），兩段弧才會嚴格同心
     if (!(p.dsi > p.bs0)) return { error: 'errSlotParams' };
-    const yc = statorCentreY(p.dsi, p.bs0);
+    const yc = statorCentreY(p.dsi, p.bs0, p.outer);
     const R = Math.hypot(p.bs2 / 2, y2 - yc);
+    // 外轉：軛部在定子中心那一側，同心圓弧往槽內凸（r 取負），最深處在 Bs2 兩端
+    if (p.outer) {
+      if (!(R < yc)) return { error: 'errSlotParams' };
+      return { half: dedupe(body.concat([{ x: corner.x, y: corner.y, r: -R }])), y1: y1, y2: y2,
+               yBottom: y2, arcR: R };
+    }
     return { half: dedupe(body.concat([{ x: corner.x, y: corner.y, r: R }])), y1: y1, y2: y2,
              yBottom: yc + R, arcR: R };
   }
@@ -766,12 +778,14 @@ function rmxprtSlotHalfRaw(t, p) {
    ══════════════════════════════════════════════════════════ */
 var LAYER_MAX_JUMP = 3; // 換層跳距上限，單位：導線節距（＝外徑）
 
-/** 每一層可放的位置（槽底→槽口排序）。side：外側槽壁在哪一邊。 */
-function layerRuns(area, d, side) {
-  const r = d / 2;
+/** 齒面座標系：外側那半邊最長的一段偏垂直的邊就是齒面（圓角、圓弧拆出來
+ *  的短邊不算進方向）。u＝沿齒面、朝槽底；n＝垂直齒面、朝槽內；s0＝齒面本身
+ *  在 n 方向的位置，所以任一點 p 離齒面的距離＝p·n − s0。規則層繞的層方向
+ *  與 MLT 的「離齒面距離 c」都用這同一個座標系，兩邊對齒面的認定才會一致。
+ *  side：外側槽壁（＝這個線圈邊所繞的那顆齒）在哪一邊。mid：齒面線段中點。 */
+function toothFaceFrame(area, side) {
   const bb = polygonBBox(area), midX = (bb.minX + bb.maxX) / 2;
-  // 槽壁方向：外側那半邊最長的一段偏垂直的邊（圓角、圓弧拆出來的短邊不算進方向）
-  let ux = 0, uy = 1, longest = 0;
+  let ux = 0, uy = 1, longest = 0, mid = null, ends = null;
   for (let i = 0; i < area.length; i++) {
     const a = area[i], b = area[(i + 1) % area.length];
     let dx = b.x - a.x, dy = b.y - a.y;
@@ -781,9 +795,23 @@ function layerRuns(area, d, side) {
     if (len <= longest) continue;
     if (dy < 0) { dx = -dx; dy = -dy; }
     ux = dx / len; uy = dy / len; longest = len;
+    mid = { x: mx, y: (a.y + b.y) / 2 };
+    ends = [{ x: a.x, y: a.y }, { x: b.x, y: b.y }];
   }
-  const u = { x: ux, y: uy };                                            // 沿槽壁、朝槽底
-  const n = side === 'left' ? { x: u.y, y: -u.x } : { x: -u.y, y: u.x }; // 離開槽壁、朝槽內
+  const u = { x: ux, y: uy };
+  const n = side === 'left' ? { x: u.y, y: -u.x } : { x: -u.y, y: u.x };
+  let s0;
+  if (mid) s0 = mid.x * n.x + mid.y * n.y;
+  else s0 = Math.min.apply(null, area.map(function (p) { return p.x * n.x + p.y * n.y; }));
+  return { u: u, n: n, s0: s0, mid: mid, ends: ends };
+}
+
+/** 每一層可放的位置（槽底→槽口排序）。side：外側槽壁在哪一邊。 */
+function layerRuns(area, d, side) {
+  const r = d / 2;
+  const frame = toothFaceFrame(area, side);
+  const u = frame.u;                                                     // 沿槽壁、朝槽底
+  const n = frame.n;                                                     // 離開槽壁、朝槽內
   let sMin = Infinity, sMax = -Infinity, tMin = Infinity, tMax = -Infinity;
   area.forEach(function (p) {
     const s = p.x * n.x + p.y * n.y, t = p.x * u.x + p.y * u.y;

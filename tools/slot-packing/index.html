@@ -5,17 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Slot Packing Viewer | Motor Toolkit</title>
 <meta name="description"
-  content="Visualize how motor winding turns pack into a stator slot and check slot fill: parametric or custom slot shape, liner offset, double-layer windings with a needle channel, and the largest standard wire diameter (0.05 mm steps) that fits a given turn count. Free, browser-based, runs entirely client-side.">
+  content="Visualize how motor winding turns pack into a stator slot (inner or outer rotor) and check slot fill: parametric or custom slot shape, liner offset, double-layer windings with a needle channel, the largest standard wire diameter (0.05 mm steps) that fits a given turn count, and the coil mean length of turn (MLT) and winding resistance computed from the packed wires. Free, browser-based, runs entirely client-side.">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://0zhen.github.io/motor-toolkit/tools/slot-packing/">
 <link rel="icon" type="image/png" href="../../favicon.png">
 <link rel="stylesheet" href="../../shared/theme.css?v=20261018">
-<link rel="stylesheet" href="styles.css?v=20261028">
+<link rel="stylesheet" href="styles.css?v=20261113">
 <!-- mt:static seo -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Motor Toolkit">
 <meta property="og:title" content="Slot Packing Viewer | Motor Toolkit">
-<meta property="og:description" content="Visualize how motor winding turns pack into a stator slot and check slot fill: parametric or custom slot shape, liner offset, double-layer windings with a needle channel, and the largest standard wire diameter (0.05 mm steps) that fits a given turn count. Free, browser-based, runs entirely client-side.">
+<meta property="og:description" content="Visualize how motor winding turns pack into a stator slot (inner or outer rotor) and check slot fill: parametric or custom slot shape, liner offset, double-layer windings with a needle channel, the largest standard wire diameter (0.05 mm steps) that fits a given turn count, and the coil mean length of turn (MLT) and winding resistance computed from the packed wires. Free, browser-based, runs entirely client-side.">
 <meta property="og:url" content="https://0zhen.github.io/motor-toolkit/tools/slot-packing/">
 <meta property="og:image" content="https://0zhen.github.io/motor-toolkit/favicon.png">
 <meta name="twitter:card" content="summary">
@@ -26,7 +26,7 @@
   "name": "Slot Packing Viewer",
   "alternateName": "槽內排列工具",
   "url": "https://0zhen.github.io/motor-toolkit/tools/slot-packing/",
-  "description": "Visualize how motor winding turns pack into a stator slot and check slot fill: parametric or custom slot shape, liner offset, double-layer windings with a needle channel, and the largest standard wire diameter (0.05 mm steps) that fits a given turn count. Free, browser-based, runs entirely client-side.",
+  "description": "Visualize how motor winding turns pack into a stator slot (inner or outer rotor) and check slot fill: parametric or custom slot shape, liner offset, double-layer windings with a needle channel, the largest standard wire diameter (0.05 mm steps) that fits a given turn count, and the coil mean length of turn (MLT) and winding resistance computed from the packed wires. Free, browser-based, runs entirely client-side.",
   "applicationCategory": "EngineeringApplication",
   "operatingSystem": "Any (runs in a web browser)",
   "browserRequirements": "Requires JavaScript",
@@ -64,9 +64,22 @@
   <!-- ── 左側：輸入欄 ── -->
   <div class="panel input-panel">
 
+    <!-- 內轉／外轉 -->
+    <div class="params-box">
+      <div class="section-title" data-i18n="rotorTitle" data-info="iRotor">Motor type</div>
+      <div class="mode-tabs">
+        <button class="mode-tab active" id="tabInner" onclick="switchRotor('inner')">
+          <span data-i18n="rotorInner">Inner rotor</span>
+        </button>
+        <button class="mode-tab" id="tabOuter" onclick="switchRotor('outer')">
+          <span data-i18n="rotorOuter">Outer rotor</span>
+        </button>
+      </div>
+    </div>
+
     <!-- 存檔／讀檔 -->
     <div class="params-box">
-      <div class="section-title" data-i18n="fileTitle">Save / Open</div>
+      <div class="section-title" data-i18n="fileTitle" data-info="fileHint">Save / Open</div>
       <div class="btn-row">
         <button class="mt-btn-ghost" id="btnSaveFile" data-i18n="saveFileBtn">Save to file</button>
         <button class="mt-btn-ghost" id="btnOpenFile" data-i18n="openFileBtn">Open file…</button>
@@ -74,16 +87,11 @@
       <button class="mt-btn-ghost full-btn" id="btnExportDxf" data-i18n="exportDxfBtn">Export DXF (line drawing)</button>
       <input type="file" id="fileInput" accept=".json,application/json" hidden>
       <div class="hint-text file-status" id="fileStatus" style="display:none"></div>
-      <div class="hint-text" data-i18n="fileHint">
-        Saves the slot shape (every vertex), the parametric inputs and all wire / turns settings to
-        a .json file you can keep with the project or send to a colleague. Opening it restores
-        everything; Undo brings back the previous vertices.
-      </div>
     </div>
 
     <!-- 槽型輸入 -->
     <div class="params-box">
-      <div class="section-title" data-i18n="shapeTitle">Slot Shape</div>
+      <div class="section-title" data-i18n="shapeTitle" data-info="iShape">Slot Shape</div>
       <div class="mode-tabs">
         <button class="mode-tab active" id="tabParam" onclick="switchShapeMode('param')">
           <span data-i18n="tabParam">Parametric</span>
@@ -94,7 +102,7 @@
       </div>
 
       <div id="paramPanel">
-        <div class="param-row-2"><span class="param-label" data-i18n="slotType">Slot type</span>
+        <div class="param-row-2" data-info="iSlotType"><span class="param-label" data-i18n="slotType">Slot type</span>
           <select class="mini-select" id="p_slotType">
             <option value="1">1</option>
             <option value="2">2</option>
@@ -103,73 +111,56 @@
             <option value="5" selected>5</option>
             <option value="trap" data-i18n="slotTypeTrap">Simple trapezoid</option>
           </select></div>
-        <div class="hint-text" id="slotTypeHint"></div>
         <div class="hint-text file-status bad" id="slotParamErr" style="display:none"></div>
-        <div class="param-row-2" data-types="1,3,4,5"><span class="param-label">Bs0 [mm]</span>
+        <div class="param-row-2" data-types="1,3,4,5" data-info="iBs0"><span class="param-label">Bs0 [mm]</span>
           <input type="text" class="param-input" id="p_bs0" value="3"></div>
-        <div class="param-row-2" data-types="1,2,3,4,5"><span class="param-label">Hs0 [mm]</span>
+        <div class="param-row-2" data-types="1,2,3,4,5" data-info="iHs0"><span class="param-label">Hs0 [mm]</span>
           <input type="text" class="param-input" id="p_hs0" value="1"></div>
-        <div class="param-row-2" data-types="1,2,3,4,5"><span class="param-label">Hs1 [mm]</span>
+        <div class="param-row-2" data-types="1,2,3,4,5" data-info="iHs1"><span class="param-label">Hs1 [mm]</span>
           <input type="text" class="param-input" id="p_hs1" value="0.5"></div>
-        <div class="param-row-2" data-types="1,2,3,4,5"><span class="param-label">Bs1 [mm]</span>
+        <div class="param-row-2" data-types="1,2,3,4,5" data-info="iBs1"><span class="param-label">Bs1 [mm]</span>
           <input type="text" class="param-input" id="p_bs1" value="4"></div>
-        <div class="param-row-2" data-types="1,2,3,4,5"><span class="param-label">Bs2 [mm]</span>
+        <div class="param-row-2" data-types="1,2,3,4,5" data-info="iBs2"><span class="param-label">Bs2 [mm]</span>
           <input type="text" class="param-input" id="p_bs2" value="7"></div>
-        <div class="param-row-2" data-types="1,2,3,4,5"><span class="param-label">Hs2 [mm]</span>
+        <div class="param-row-2" data-types="1,2,3,4,5" data-info="iHs2"><span class="param-label">Hs2 [mm]</span>
           <input type="text" class="param-input" id="p_hs2" value="10.5"></div>
-        <div class="param-row-2" data-types="1,3,4,5"><span class="param-label">Rs0 [mm]</span>
+        <div class="param-row-2" data-types="1,3,4,5" data-info="iRs0"><span class="param-label">Rs0 [mm]</span>
           <input type="text" class="param-input" id="p_rs0" value="0"></div>
-        <div class="param-row-2" data-types="1,3"><span class="param-label">Rs [mm]</span>
+        <div class="param-row-2" data-types="1,3" data-info="iRs"><span class="param-label">Rs [mm]</span>
           <input type="text" class="param-input" id="p_rs" value="0.5"></div>
-        <div class="param-row-2" data-types="1,2,3,4,5"><span class="param-label" data-i18n="statorDsi">Stator inner dia. Dsi [mm]</span>
+        <div class="param-row-2" data-types="1,2,3,4,5" data-info="iDsi"><span class="param-label" id="lblDsi" data-i18n="statorDsi">Stator inner dia. Dsi [mm]</span>
           <input type="text" class="param-input" id="p_dsi" value="50"></div>
-        <div class="param-row-2" data-types="trap"><span class="param-label" data-i18n="openWidth">Opening width [mm]</span>
+        <div class="param-row-2" data-types="trap" data-info="iOpenWidth"><span class="param-label" data-i18n="openWidth">Opening width [mm]</span>
           <input type="text" class="param-input" id="p_openWidth" value="3"></div>
-        <div class="param-row-2" data-types="trap"><span class="param-label" data-i18n="openHeight">Opening height [mm]</span>
+        <div class="param-row-2" data-types="trap" data-info="iOpenHeight"><span class="param-label" data-i18n="openHeight">Opening height [mm]</span>
           <input type="text" class="param-input" id="p_openHeight" value="1.5"></div>
-        <div class="param-row-2" data-types="trap"><span class="param-label" data-i18n="topWidth">Body top width [mm]</span>
+        <div class="param-row-2" data-types="trap" data-info="iTopWidth"><span class="param-label" data-i18n="topWidth">Body top width [mm]</span>
           <input type="text" class="param-input" id="p_topWidth" value="4"></div>
-        <div class="param-row-2" data-types="trap"><span class="param-label" data-i18n="bottomWidth">Bottom width [mm]</span>
+        <div class="param-row-2" data-types="trap" data-info="iBottomWidth"><span class="param-label" data-i18n="bottomWidth">Bottom width [mm]</span>
           <input type="text" class="param-input" id="p_bottomWidth" value="7"></div>
-        <div class="param-row-2" data-types="trap"><span class="param-label" data-i18n="slotDepth">Depth [mm]</span>
+        <div class="param-row-2" data-types="trap" data-info="iDepth"><span class="param-label" data-i18n="slotDepth">Depth [mm]</span>
           <input type="text" class="param-input" id="p_depth" value="12"></div>
         <button class="mt-btn-ghost full-btn" id="btnGenerate" data-i18n="generateBtn">Generate points (overwrites below)</button>
-        <div class="hint-text" data-i18n="paramHint">
-          Symmetric slot; y=0 is the opening (air-gap side) and y grows toward the slot bottom.
-          Types 1–5 use the same Bs/Hs/Rs names as Ansys RMxprt stator slots, so values can be
-          copied straight from Maxwell. Generate writes the outline into the vertex table below
-          (arcs become short straight segments) — switch to Custom points to keep editing it.
-        </div>
       </div>
-      <div id="customPanel" style="display:none">
-        <div class="hint-text" data-i18n="customHint">
-          Start from scratch, or switch to Parametric, generate a trapezoid, then come back here —
-          every point is editable either way.
-        </div>
-      </div>
+      <div id="customPanel" style="display:none"></div>
       <div class="view-opts">
-        <div class="param-row-2"><span class="param-label" data-i18n="slotCount">Slots Q</span>
+        <div class="param-row-2" data-info="iSlots"><span class="param-label" data-i18n="slotCount">Slots Q</span>
           <input type="text" class="param-input" id="p_slots" value="12"></div>
-        <div class="param-row-2"><span class="param-label" data-i18n="statorDso">Stator outer dia. Dso [mm]</span>
+        <div class="param-row-2" data-info="iDso"><span class="param-label" id="lblDso" data-i18n="statorDso">Stator outer dia. Dso [mm]</span>
           <input type="text" class="param-input" id="p_dso" placeholder="—"></div>
-        <div class="param-row-2"><span class="param-label" data-i18n="viewOrient">View</span>
+        <div class="param-row-2" id="viewRow" data-info="viewHint"><span class="param-label" data-i18n="viewOrient">View</span>
           <select class="mini-select" id="p_view">
             <option value="real" data-i18n="viewReal">Real (opening down)</option>
             <option value="up" data-i18n="viewUp">Opening up</option>
           </select></div>
         <div class="hint-text file-status bad" id="pitchWarn" style="display:none"></div>
-        <div class="hint-text" data-i18n="viewHint">
-          Q and Dso are only for drawing the stator around the slot (one slot pitch, teeth on both
-          sides); they need the opening to follow the bore (Dsi). Leave Dso blank to draw a nominal
-          yoke. Calculations are not affected.
-        </div>
       </div>
     </div>
 
     <!-- 頂點編輯表格 -->
     <div class="params-box">
-      <div class="section-title" data-i18n="verticesTitle">Vertices</div>
-      <div class="param-row-2"><span class="param-label" data-i18n="openingArcR">Opening arc R [mm]</span>
+      <div class="section-title" data-i18n="verticesTitle" data-info="iVertices">Vertices</div>
+      <div class="param-row-2" data-info="iOpeningR"><span class="param-label" data-i18n="openingArcR">Opening arc R [mm]</span>
         <input type="text" class="param-input" id="v_openingR" placeholder="—"></div>
       <div class="vertex-table-wrap">
         <table class="vertex-table" id="vertexTable">
@@ -182,80 +173,74 @@
         <button class="mt-btn-ghost" id="btnUndoVertex" data-i18n="undoBtn" disabled>↶ Undo</button>
       </div>
       <div class="hint-text file-status bad" id="arcErr" style="display:none"></div>
-      <div class="hint-text" data-i18n="vertexHint">
-        Points connect in order and close back to the first one. No self-intersection check — keep
-        them tracing a simple outline.
-      </div>
-      <div class="hint-text" data-i18n="arcHint">
-        R: leave blank for a straight line to the next point, or enter an arc radius — positive
-        bulges outward (into the iron), negative bulges inward. On the last point, R is the slot
-        bottom arc across the centre line.
-      </div>
     </div>
 
     <!-- 線材 -->
     <div class="params-box">
-      <div class="section-title" data-i18n="wireTitle">Wire / Turns</div>
-      <div class="param-row-2"><span class="param-label" data-i18n="packMode">Winding layout</span>
+      <div class="section-title" data-i18n="wireTitle" data-info="iWire">Wire / Turns</div>
+      <div class="param-row-2" data-info="iPackMode"><span class="param-label" data-i18n="packMode">Winding layout</span>
         <select class="mini-select" id="w_packMode">
           <option value="layer" data-i18n="packModeLayer">Regular layers</option>
           <option value="settle" data-i18n="packModeSettle">Settling simulation</option>
         </select></div>
-      <div class="hint-text" id="packModeHint"></div>
-      <div class="param-row-2"><span class="param-label" data-i18n="bareDia">Bare copper dia. [mm]</span>
+      <div class="param-row-2" data-info="iBareDia"><span class="param-label" data-i18n="bareDia">Bare copper dia. [mm]</span>
         <input type="text" class="param-input" id="w_bareDia" value="0.7"></div>
-      <div class="param-row-2"><span class="param-label" data-i18n="enamelThk">Enamel thk., one side [mm]</span>
+      <div class="param-row-2" data-info="outWireOdTip"><span class="param-label" data-i18n="enamelThk">Enamel thk., one side [mm]</span>
         <input type="text" class="param-input" id="w_enamel" value="0.025"></div>
-      <div class="param-row-2"><span class="param-label" data-i18n="turnsPerSlot">Turns / slot</span>
+      <div class="param-row-2" data-info="iTurns"><span class="param-label" data-i18n="turnsPerSlot">Turns / slot</span>
         <input type="text" class="param-input" id="w_turns" value="32"></div>
-      <div class="param-row-2"><span class="param-label" data-i18n="coilsPerSlot">Coils / slot</span>
+      <div class="param-row-2" data-info="coilsSplitHint"><span class="param-label" data-i18n="coilsPerSlot">Coils / slot</span>
         <input type="text" class="param-input" id="w_coils" value="2"></div>
-      <div class="hint-text" data-i18n="coilsSplitHint">
-        2 or more: the winding window splits into a left and a right coil side, each independently
-        packed (double-layer winding). 1: the whole window is packed as one — doesn't decide
-        anything about the total wire count, which is still turns × coils × strands.
-      </div>
-      <div class="param-row-2"><span class="param-label" data-i18n="needleWidth">Needle channel width [mm]</span>
+      <div class="param-row-2" data-info="needleWidthHint"><span class="param-label" data-i18n="needleWidth">Needle channel width [mm]</span>
         <input type="text" class="param-input" id="w_needleWidth" value="1.5"></div>
-      <div class="hint-text" data-i18n="needleWidthHint">
-        Gap reserved between the two coil sides (Coils/slot ≥ 2 only) — separate from liner
-        thickness, since this is the phase-separator / needle-insertion clearance in the middle of
-        the slot, not insulation against the slot wall. Shown below as a dashed rectangle.
-      </div>
-      <div class="param-row-2"><span class="param-label" data-i18n="needleClearance">Needle clearance [mm]</span>
+      <div class="param-row-2" data-info="needleClearanceHint"><span class="param-label" data-i18n="needleClearance">Needle clearance [mm]</span>
         <input type="text" class="param-input" id="w_needleClearance" value="0"></div>
-      <div class="hint-text" data-i18n="needleClearanceHint">
-        Safety margin between the wires and each side edge of the needle channel (Coils/slot ≥ 2
-        only): the gap between the two coil sides becomes needle width + 2 × clearance. Shown as
-        dashed lines when &gt; 0.
-      </div>
-      <div class="param-row-2"><span class="param-label" data-i18n="strandsPerTurn">Strands / turn</span>
+      <div class="param-row-2" data-info="iStrands"><span class="param-label" data-i18n="strandsPerTurn">Strands / turn</span>
         <input type="text" class="param-input" id="w_strands" value="1"></div>
-      <div class="param-row-2"><span class="param-label" data-i18n="linerThickness">Liner thickness [mm]</span>
+      <div class="param-row-2" data-info="iLiner"><span class="param-label" data-i18n="linerThickness">Liner thickness [mm]</span>
         <input type="text" class="param-input" id="w_linerThickness" value="0.3"></div>
-      <div class="param-row-2"><span class="param-label" data-i18n="windStartY">No-wind depth (opening) [mm]</span>
+      <div class="param-row-2" data-info="windStartHint"><span class="param-label" data-i18n="windStartY">No-wind depth (opening) [mm]</span>
         <input type="text" class="param-input" id="w_windStartY" value="1.5"></div>
-      <div class="hint-text" data-i18n="windStartHint">
-        The opening throat is too narrow for wire — auto-filled from Opening height when you
-        Generate, but editable (e.g. for a custom shape with no formal throat).
-      </div>
-      <div class="hint-text" data-i18n="wireHint">
-        The liner is modeled as a real inward offset of the slot outline (shown in green below),
-        not just a number subtracted from the fill % — turns are packed inside that offset shape.
-      </div>
-      <div class="param-row-2" style="margin-top:8px"><span class="param-label" data-i18n="searchFix">Search keeps fixed</span>
+      <div class="param-row-2" style="margin-top:8px" data-info="searchHint"><span class="param-label" data-i18n="searchFix">Search keeps fixed</span>
         <select class="mini-select" id="w_searchFix">
           <option value="wire" data-i18n="searchFixWire">Wire diameter</option>
           <option value="turns" data-i18n="searchFixTurns">Turns</option>
         </select></div>
       <button class="mt-btn-ghost" style="width:100%;margin-top:8px" id="btnSearchBest" data-i18n="searchBtn">Find highest slot fill</button>
-      <div class="hint-text" data-i18n="searchHint">
-        Wire diameter fixed: finds the most turns that still fit. Turns fixed: tries standard bare
-        diameters in 0.05 mm steps and keeps the largest that fits. In Regular layers, every rule
-        must hold (first turn at the bottom, even layer count, layer jumps ≤ 3 pitches).
-      </div>
       <div class="hint-text" id="findWireOut" style="display:none"></div>
-      <button class="mt-btn-ghost" style="width:100%;margin-top:8px" onclick="openInDcrCalculator()" data-i18n="checkDcrBtn">Check DCR with these turns →</button>
+    </div>
+
+    <!-- 線圈與電阻 -->
+    <div class="params-box">
+      <div class="section-title" data-i18n="coilTitle" data-info="iCoil">Coil &amp; Resistance</div>
+      <div class="param-row-2" data-info="iStack"><span class="param-label" data-i18n="stackLength">Stack length L [mm]</span>
+        <input type="text" class="param-input" id="c_stack" value="30"></div>
+      <div class="param-row-2" data-info="iToothW"><span class="param-label" data-i18n="toothWidth">Tooth width b [mm]</span>
+        <input type="text" class="param-input" id="c_toothW" value="" placeholder="auto"></div>
+      <div class="param-row-2" data-info="iR0"><span class="param-label" data-i18n="sideCorner">Side-view corner r₀ [mm]</span>
+        <input type="text" class="param-input" id="c_r0" value="0.5"></div>
+      <div class="param-row-2" data-info="iCpp"><span class="param-label" data-i18n="coilsPerPhase">Coils / phase</span>
+        <input type="text" class="param-input" id="c_cpp" value="4"></div>
+      <div class="param-row-2" data-info="iPaths"><span class="param-label" data-i18n="parallelPaths">Parallel paths a</span>
+        <input type="text" class="param-input" id="c_paths" value="1"></div>
+      <div class="param-row-2" data-info="iLead"><span class="param-label" data-i18n="leadLength">Lead length / path [mm]</span>
+        <input type="text" class="param-input" id="c_lead" value="40"></div>
+      <div class="param-row-2" data-info="iConn"><span class="param-label" data-i18n="connection">Connection</span>
+        <select class="mini-select" id="c_conn">
+          <option value="Y" data-i18n="connY">Y (star)</option>
+          <option value="D" data-i18n="connD">Δ (delta)</option>
+        </select></div>
+      <div class="param-row-2" data-info="iRho"><span class="param-label">ρ₂₀ [Ω·mm²/m]</span>
+        <input type="text" class="param-input" id="c_rho" value="0.017241"></div>
+      <div class="param-row-2" data-info="iTref"><span class="param-label" data-i18n="refTemp">Reference temp. [°C]</span>
+        <input type="text" class="param-input" id="c_tref" value="20"></div>
+      <div class="param-row-2" data-info="iTop"><span class="param-label" data-i18n="opTemp">Operating temp. [°C]</span>
+        <input type="text" class="param-input" id="c_top" value="110"></div>
+      <div class="param-row-2" data-info="iHup"><span class="param-label" data-i18n="hUp">Height limit, top [mm]</span>
+        <input type="text" class="param-input" id="c_hup" value="" placeholder="—"></div>
+      <div class="param-row-2" data-info="iHdn"><span class="param-label" data-i18n="hDown">Height limit, bottom [mm]</span>
+        <input type="text" class="param-input" id="c_hdn" value="" placeholder="—"></div>
+      <button class="mt-btn-ghost" style="width:100%;margin-top:10px" onclick="openInDcrCalculator()" data-i18n="checkDcrBtn">Check DCR with these turns →</button>
     </div>
 
     <div class="params-box mt-related">
@@ -282,6 +267,13 @@
 
     <div class="results-row">
       <div class="result-card result-card-svg">
+        <div class="view-tools">
+          <div class="fit-seg" role="group">
+            <button type="button" id="fitSlot" class="active" onclick="setFitMode('slot')" data-i18n="fitSlot">Fit slot</button>
+            <button type="button" id="fitStator" onclick="setFitMode('stator')" data-i18n="fitStator">Slot pitch</button>
+          </div>
+          <span class="view-hint" data-i18n="zoomHint">Scroll to zoom · drag to pan · double-click to reset</span>
+        </div>
         <div class="svg-wrap">
           <svg id="packingSvg" viewBox="-50 -10 100 100" preserveAspectRatio="xMidYMid meet"></svg>
         </div>
@@ -299,15 +291,40 @@
       </div>
     </div>
 
+    <div class="results-row results-row-r">
+      <div class="result-card highlight result-card-res">
+        <div class="result-card-label" data-i18n="resTitle">Coil Resistance</div>
+        <div class="kpis" id="resKpis"></div>
+        <div class="result-card-body" id="resOut">—</div>
+        <ul class="res-msgs" id="resMsgs"></ul>
+      </div>
+      <div class="result-card result-card-side">
+        <div class="result-card-label" data-i18n="sideTitle">Side View (one coil)</div>
+        <div class="side-wrap"><svg id="sideSvg" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" role="img"></svg></div>
+        <div class="svg-legend">
+          <span><i class="legend-swatch" style="background:#9a9ea5"></i><span data-i18n="legendTooth">Tooth (L × b)</span></span>
+          <span><i class="legend-swatch" style="background:#5fae7c"></i><span data-i18n="legendIns">Insulation (L′ × b′)</span></span>
+          <span><i class="legend-swatch" style="background:#f2d14c"></i><span data-i18n="legendCoil">Coil</span></span>
+          <span><i class="legend-swatch legend-dash"></i><span data-i18n="legendMean">Mean turn (MLT)</span></span>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
-<script src="geometry.js?v=20261028"></script>
-<script src="app.js?v=20261028"></script>
+<div id="infoPop" role="dialog" aria-modal="false" hidden>
+  <button type="button" class="info-x" aria-label="Close">×</button>
+  <div id="infoPopBody"></div>
+</div>
+
+<script src="geometry.js?v=20261113"></script>
+<script src="resistance.js?v=20261113"></script>
+<script src="app.js?v=20261113"></script>
 <!-- mt:static nav -->
 <nav class="mt-sr-only" aria-label="Motor Toolkit tools">
   <h1>Slot Packing Viewer</h1>
-  <p>Visualize how motor winding turns pack into a stator slot and check slot fill: parametric or custom slot shape, liner offset, double-layer windings with a needle channel, and the largest standard wire diameter (0.05 mm steps) that fits a given turn count. Free, browser-based, runs entirely client-side.</p>
+  <p>Visualize how motor winding turns pack into a stator slot (inner or outer rotor) and check slot fill: parametric or custom slot shape, liner offset, double-layer windings with a needle channel, the largest standard wire diameter (0.05 mm steps) that fits a given turn count, and the coil mean length of turn (MLT) and winding resistance computed from the packed wires. Free, browser-based, runs entirely client-side.</p>
   <ul>
     <li><a href="../../index.html">Motor Toolkit — all tools</a></li>
     <li><a href="../../tools/efficiency-map/index.html">Efficiency Map</a> — Generate a contour efficiency map from speed / torque / efficiency data. PNG export.</li>
@@ -317,7 +334,7 @@
     <li><a href="../../tools/cpk-analysis/index.html">CPK Analysis</a> — Process capability (Cp / Cpk) from a single measured parameter. IQR outlier removal, USL/LSL, histogram with sigma lines, PNG export.</li>
     <li><a href="../../tools/winding-designer/index.html">Winding Designer</a> — Pick poles, slots and layers to get the winding layout diagram and fundamental winding factor. Integer- and fractional-slot windings.</li>
     <li><a href="../../tools/cost-calculator/index.html">Cost Calculator</a> — Estimate silicon steel / copper / magnet or rotor material cost from geometry, slot/pole count and winding data. Supports PMSM, EESM and induction motors.</li>
-    <li><a href="../../tools/slot-packing/index.html">Slot Packing Viewer</a> — See how turns pack into a stator slot: parametric or custom slot shape, liner offset, double-layer needle channel, and the largest standard wire that fits a given turn count.</li>
+    <li><a href="../../tools/slot-packing/index.html">Slot Packing Viewer</a> — See how turns pack into a stator slot, inner or outer rotor: parametric or custom slot shape, liner offset, double-layer needle channel, the largest standard wire that fits, and the coil MLT and winding resistance from the packed wires.</li>
   </ul>
 </nav>
 <!-- /mt:static nav -->
