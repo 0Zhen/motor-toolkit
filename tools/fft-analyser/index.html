@@ -44,7 +44,7 @@
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
   "featureList": [
     "FFT spectrum analysis",
-    "Harmonic extraction (1x–10x)",
+    "Harmonic extraction (1x–100x)",
     "THD calculation",
     "Flat-top / Hann / Hamming / Rectangular window functions",
     "CSV upload and manual data input",
@@ -80,7 +80,7 @@
       "name": "How do I calculate THD from oscilloscope data using FFT?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Upload your oscilloscope CSV file to this tool, select Flat-top window function, and click Analyse. The tool automatically computes FFT, extracts harmonic amplitudes (1x to 10x), and calculates THD using the formula: THD = sqrt(A2² + A3² + ... + A10²) / A1, where A1 is the fundamental amplitude."
+        "text": "Upload your oscilloscope CSV file to this tool, select Flat-top window function, and click Analyse. The tool automatically computes FFT, extracts harmonic amplitudes (1x to 100x), and calculates THD using the formula: THD = sqrt(A2² + A3² + ... + An²) / A1 (n selectable: 10, 40, 50 or 100), where A1 is the fundamental amplitude."
       }
     },
     {
@@ -112,7 +112,7 @@
 </script>
 
 <link rel="stylesheet" href="../../shared/theme.css?v=20261018">
-<link rel="stylesheet" href="styles.css?v=20261018">
+<link rel="stylesheet" href="styles.css?v=20261123">
 </head>
 <body data-title="FFT Analyser" data-sub="Harmonics · Window functions · THD"
       data-title-zh="FFT 頻譜分析工具" data-sub-zh="諧波分析・窗函數・THD">
@@ -188,19 +188,47 @@ Index column (1, 2, 3 …) — enter sampling rate below:<br>
     <div class="result-grid" id="metrics-row"></div>
     <div class="card">
       <div class="card-title" id="t-preview" data-i18n="preview">Preview</div>
+      <div class="zoom-hint" data-i18n="zoomHint">Wheel: zoom · Drag: pan · Double-click: reset</div>
       <div class="charts-row">
         <div>
           <div class="chart-label" id="t-bar-title" data-i18n="barTitle">Harmonic amplitude (log scale)</div>
-          <div class="chart-wrap"><canvas id="chart-bar"></canvas></div>
+          <div class="chart-wrap zoomable"><canvas id="chart-bar"></canvas></div>
+          <div class="range-row">
+            <span data-i18n="rangeOrder">Orders</span>
+            <input type="number" id="bar-from" min="1" step="1" onchange="applyBarRange()" onkeydown="onRangeKey(event,applyBarRange)">
+            <span>–</span>
+            <input type="number" id="bar-to" min="1" step="1" onchange="applyBarRange()" onkeydown="onRangeKey(event,applyBarRange)">
+            <button class="mt-btn-ghost" onclick="resetBarView()" data-i18n="btnReset">Reset</button>
+          </div>
         </div>
         <div>
           <div class="chart-label" id="t-spec-title" data-i18n="specTitle">Frequency spectrum</div>
-          <div class="chart-wrap"><canvas id="chart-spec"></canvas></div>
+          <div class="chart-wrap zoomable"><canvas id="chart-spec"></canvas></div>
+          <div class="range-row">
+            <input type="number" id="spec-from" min="0" step="any" onchange="applySpecRange()" onkeydown="onRangeKey(event,applySpecRange)">
+            <span>–</span>
+            <input type="number" id="spec-to" min="0" step="any" onchange="applySpecRange()" onkeydown="onRangeKey(event,applySpecRange)">
+            <span data-i18n="rangeHz">Hz</span>
+            <button class="mt-btn-ghost" onclick="resetSpecView()" data-i18n="btnReset">Reset</button>
+            <label class="chk"><input type="checkbox" id="spec-log" checked onchange="onSpecLogToggle()"> <span data-i18n="logY">Log Y</span></label>
+          </div>
         </div>
       </div>
     </div>
     <div class="card">
-      <div class="card-title" id="t-summary" data-i18n="summary">Harmonic Summary</div>
+      <div class="summary-head">
+        <div class="card-title" id="t-summary" data-i18n="summary">Harmonic Summary</div>
+        <label class="thd-sel"><span data-i18n="thdOrderLabel">THD up to order</span>
+          <select id="thd-order" onchange="onThdOrderChange()">
+            <option value="10">10</option>
+            <option value="40" selected>40 (IEC 61000)</option>
+            <option value="50">50 (IEEE 519)</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+      </div>
+      <div class="harm-note hidden" id="harm-note"></div>
+      <div class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -211,7 +239,9 @@ Index column (1, 2, 3 …) — enter sampling rate below:<br>
           </tr>
         </thead>
         <tbody id="harm-body"></tbody>
+        <tfoot id="harm-foot"></tfoot>
       </table>
+      </div>
     </div>
 </div>
 
@@ -229,7 +259,7 @@ Index column (1, 2, 3 …) — enter sampling rate below:<br>
         <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px" data-i18n="whatDoesLabel">What it does</div>
         <div style="font-size:13px;color:var(--text2);line-height:1.7" data-i18n="whatDoesText">
           Upload an oscilloscope CSV or paste time-domain data to compute the frequency spectrum,
-          extract harmonic amplitudes (1x–10x), and calculate THD — all in your browser, no install needed.
+          extract harmonic amplitudes (1x–100x), and calculate THD — all in your browser, no install needed.
         </div>
       </div>
 
@@ -251,6 +281,28 @@ Index column (1, 2, 3 …) — enter sampling rate below:<br>
         </div>
       </div>
 
+      <div class="about-warn">
+        <div class="about-warn-title" data-i18n="warnLabel">Warnings you may see</div>
+        <div class="about-warn-sub" data-i18n="warnSub">Shown above the harmonic table when the data limits the result. The analysis still runs, but read the affected orders with care.</div>
+        <dl>
+          <dt data-i18n="warnNyqMsg">⚠ Sampling rate only allows harmonics up to 99x. For 100x, sample faster than 10.0 kHz.</dt>
+          <dd><span class="k" data-i18n="whyLabel">Why</span><span data-i18n="warnNyqWhy">Order h sits at h × f₀ and the FFT only covers up to half the sampling rate (Nyquist). Reaching 100x needs a sampling rate above 2 × 100 × f₀, e.g. above 10 kHz for a 50 Hz fundamental. Orders past the limit are simply not listed.</span></dd>
+          <dd><span class="k" data-i18n="fixLabel">Fix</span><span data-i18n="warnNyqFix">Raise the oscilloscope sampling rate, or accept fewer orders. For accurate high-order amplitudes, aim for 5–10× the minimum.</span></dd>
+
+          <dt data-i18n="warnCycMsg">⚠ Record holds only 5.0 cycles of the fundamental — use ≥ 10 cycles, otherwise neighbouring harmonics leak into each other (even orders especially).</dt>
+          <dd><span class="k" data-i18n="whyLabel">Why</span><span data-i18n="warnCycWhy">Adjacent harmonics are as many FFT bins apart as the record has cycles. With few cycles that gap is narrower than the window's main lobe (Flat-top is widest), so a strong harmonic spills into its neighbours. A weak even order next to strong odd orders then reads far too high, and THD is inflated.</span></dd>
+          <dd><span class="k" data-i18n="fixLabel">Fix</span><span data-i18n="warnCycFix">Capture at least 10 cycles, e.g. ≥ 200 ms at 50 Hz. More cycles also lower the noise floor.</span></dd>
+        </dl>
+
+        <div class="about-warn-title" style="margin-top:18px" data-i18n="errLabel">Input errors (pop-up)</div>
+        <dl>
+          <dt data-i18n="errSrMsg">Cannot auto-detect sampling rate</dt>
+          <dd><span class="k" data-i18n="fixLabel">Fix</span><span data-i18n="errSrFix">The time column is constant, missing, or an index (1, 2, 3 …). Type the sampling rate in Hz into the field above the data.</span></dd>
+          <dt data-i18n="errFmtMsg">Not enough data points / Expected 2 columns per line</dt>
+          <dd><span class="k" data-i18n="fixLabel">Fix</span><span data-i18n="errFmtFix">CSV upload expects the Tektronix layout (column D = time, column E = voltage). Pasted data needs exactly two numbers per line, separated by tab or space, and at least 8 lines.</span></dd>
+        </dl>
+      </div>
+
 
       <div class="mt-related">
 <!-- mt:static related -->
@@ -267,7 +319,7 @@ Index column (1, 2, 3 …) — enter sampling rate below:<br>
 </div>
 </div><!-- /container -->
 
-<script src="app.js?v=20261018"></script>
+<script src="app.js?v=20261123"></script>
 <!-- mt:static nav -->
 <nav class="mt-sr-only" aria-label="Motor Toolkit tools">
   <h1>FFT Analyser</h1>

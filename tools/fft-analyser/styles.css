@@ -78,6 +78,39 @@ textarea:focus,input[type=number]:focus{border-color:var(--accent);box-shadow:0 
 @media(max-width:680px){.charts-row{grid-template-columns:1fr}}
 .chart-wrap{position:relative;height:260px}
 .chart-label{font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:600}
+.zoomable canvas{cursor:grab;touch-action:pan-y}
+.zoomable canvas.dragging{cursor:grabbing}
+.zoom-hint{font-size:var(--fs-xs);color:var(--text3);margin:-6px 0 10px}
+.range-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;
+           font-size:var(--fs-xs);color:var(--text2)}
+.range-row input[type=number]{width:96px;padding:4px 8px;font-size:12px}
+.range-row .mt-btn-ghost{padding:4px 10px;font-size:12px}
+.chk{display:inline-flex;align-items:center;gap:4px;cursor:pointer;margin-left:auto}
+
+/* summary header + THD order selector */
+.summary-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.thd-sel{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-xs);color:var(--text2)}
+.thd-sel select{background:var(--input-bg);color:var(--text);border:1px solid var(--border);
+                border-radius:8px;padding:4px 8px;font-size:12px}
+.harm-note{background:color-mix(in srgb,var(--amber) 10%,var(--surface));color:var(--amber);
+           border:1px solid color-mix(in srgb,var(--amber) 35%,var(--surface));border-radius:8px;
+           padding:8px 12px;font-size:var(--fs-xs);line-height:1.6;margin-bottom:10px}
+.table-scroll{max-height:440px;overflow:auto;border:1px solid var(--border);border-radius:8px}
+.table-scroll thead th{position:sticky;top:0;z-index:1}
+.table-scroll tfoot td{position:sticky;bottom:0;background:var(--metric-bg);font-weight:600;
+                       border-top:1px solid var(--border);border-bottom:none}
+tr.out-thd td{color:var(--text3)}
+
+/* "About" section: warnings explained */
+.about-warn{grid-column:1/-1;font-size:13px;line-height:1.7}
+.about-warn-title{font-weight:600;color:var(--text);margin-bottom:4px}
+.about-warn-sub{color:var(--text2);margin-bottom:10px}
+.about-warn dl{margin:0}
+.about-warn dt{margin-top:12px;padding:6px 10px;border-radius:8px;font-weight:500;
+               background:color-mix(in srgb,var(--amber) 10%,var(--surface));color:var(--amber);
+               border:1px solid color-mix(in srgb,var(--amber) 35%,var(--surface))}
+.about-warn dd{margin:6px 0 0 10px;color:var(--text2);display:flex;gap:10px}
+.about-warn dd .k{flex:none;min-width:3.2em;font-weight:600;color:var(--text)}
 
 /* table */
 table{width:100%;border-collapse:collapse;font-size:13px}
